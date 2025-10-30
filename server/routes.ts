@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { authenticateUser, type AuthRequest } from "./middleware/auth";
 import { generateMockThreat, generateMultipleThreats } from "./utils/threatGenerator";
 import { generatePDFReport, generateCSVReport, generateJSONReport } from "./utils/reportGenerator";
+import { checkFileHash, checkURL, checkIPAddress, submitURL, validateHash, validateIP, validateURL } from "./utils/virusTotalService";
 import { 
   type SubscriptionTier 
 } from "@shared/schema";
@@ -355,6 +356,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         threats: threats.length,
         alerts: alerts.length,
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // VirusTotal Integration
+  app.post("/api/virustotal/check-hash", authenticateUser, async (req: AuthRequest, res) => {
+    const { hash } = req.body;
+    
+    if (!hash || typeof hash !== 'string') {
+      return res.status(400).json({ error: 'File hash required' });
+    }
+    
+    if (!validateHash(hash)) {
+      return res.status(400).json({ error: 'Invalid file hash format. Expected MD5, SHA-1, or SHA-256' });
+    }
+    
+    try {
+      const result = await checkFileHash(hash.trim());
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/virustotal/check-url", authenticateUser, async (req: AuthRequest, res) => {
+    const { url } = req.body;
+    
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'URL required' });
+    }
+    
+    if (!validateURL(url)) {
+      return res.status(400).json({ error: 'Invalid URL format. Must start with http:// or https://' });
+    }
+    
+    try {
+      const result = await checkURL(url.trim());
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/virustotal/check-ip", authenticateUser, async (req: AuthRequest, res) => {
+    const { ip } = req.body;
+    
+    if (!ip || typeof ip !== 'string') {
+      return res.status(400).json({ error: 'IP address required' });
+    }
+    
+    if (!validateIP(ip)) {
+      return res.status(400).json({ error: 'Invalid IP address format. Expected IPv4 address' });
+    }
+    
+    try {
+      const result = await checkIPAddress(ip.trim());
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

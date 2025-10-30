@@ -17,6 +17,7 @@
     "threats": "Threat Log",
     "alerts": "Alerts",
     "map": "Threat Map",
+    "virustotal": "VirusTotal Scan",
     "reports": "Reports",
     "subscription": "Subscription",
     "settings": "Settings"
@@ -143,6 +144,56 @@
       "low": "Low (All threats)",
       "medium": "Medium (High & Critical)",
       "high": "High (Critical only)"
+    }
+  },
+  "virustotal": {
+    "title": "VirusTotal Scanner",
+    "description": "Scan files, URLs, and IP addresses for malware",
+    "tabs": {
+      "hash": "File Hash",
+      "url": "URL",
+      "ip": "IP Address"
+    },
+    "scan": {
+      "hashTitle": "Check File Hash",
+      "hashDescription": "Enter a file hash (MD5, SHA-1, or SHA-256) to check against VirusTotal database",
+      "hashLabel": "File Hash",
+      "hashPlaceholder": "e.g., 44d88612fea8a8f36de82e1278abb02f",
+      "hashButton": "Scan Hash",
+      "urlTitle": "Check URL",
+      "urlDescription": "Enter a URL to check for malicious content or phishing",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com",
+      "urlButton": "Scan URL",
+      "ipTitle": "Check IP Address",
+      "ipDescription": "Enter an IP address to check its reputation",
+      "ipLabel": "IP Address",
+      "ipPlaceholder": "8.8.8.8",
+      "ipButton": "Scan IP"
+    },
+    "results": {
+      "title": "Scan Results",
+      "malicious": "Malicious",
+      "suspicious": "Suspicious",
+      "harmless": "Harmless",
+      "undetected": "Undetected",
+      "totalEngines": "Total Engines",
+      "lastAnalysis": "Last Analysis",
+      "viewReport": "View Full Report on VirusTotal"
+    },
+    "toast": {
+      "scanComplete": "Scan Complete",
+      "scanFailed": "Scan Failed",
+      "hashAnalyzed": "File hash analyzed: {{status}}",
+      "urlAnalyzed": "URL analyzed: {{status}}",
+      "ipAnalyzed": "IP address analyzed: {{status}}"
+    },
+    "status": {
+      "clean": "CLEAN",
+      "malicious": "MALICIOUS",
+      "suspicious": "SUSPICIOUS",
+      "undetected": "UNDETECTED",
+      "error": "ERROR"
     }
   },
   "common": {

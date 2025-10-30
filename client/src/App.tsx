@@ -18,6 +18,7 @@ import ThreatMap from "@/pages/ThreatMap";
 import Reports from "@/pages/Reports";
 import Subscription from "@/pages/Subscription";
 import Settings from "@/pages/Settings";
+import VirusTotalScan from "@/pages/VirusTotalScan";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -66,6 +67,9 @@ function Router() {
       </Route>
       <Route path="/settings">
         <ProtectedRoute component={Settings} />
+      </Route>
+      <Route path="/virustotal">
+        <ProtectedRoute component={VirusTotalScan} />
       </Route>
       <Route component={NotFound} />
     </Switch>

@@ -17,6 +17,7 @@
     "threats": "Registro de Ameaças",
     "alerts": "Alertas",
     "map": "Mapa de Ameaças",
+    "virustotal": "VirusTotal Scanner",
     "reports": "Relatórios",
     "subscription": "Assinatura",
     "settings": "Configurações"
@@ -143,6 +144,56 @@
       "low": "Baixo (Todas as ameaças)",
       "medium": "Médio (Alta e Crítica)",
       "high": "Alto (Somente críticas)"
+    }
+  },
+  "virustotal": {
+    "title": "Scanner VirusTotal",
+    "description": "Verificar arquivos, URLs e endereços IP em busca de malware",
+    "tabs": {
+      "hash": "Hash de Arquivo",
+      "url": "URL",
+      "ip": "Endereço IP"
+    },
+    "scan": {
+      "hashTitle": "Verificar Hash de Arquivo",
+      "hashDescription": "Insira um hash de arquivo (MD5, SHA-1 ou SHA-256) para verificar no banco de dados do VirusTotal",
+      "hashLabel": "Hash de Arquivo",
+      "hashPlaceholder": "ex: 44d88612fea8a8f36de82e1278abb02f",
+      "hashButton": "Verificar Hash",
+      "urlTitle": "Verificar URL",
+      "urlDescription": "Insira uma URL para verificar conteúdo malicioso ou phishing",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://exemplo.com",
+      "urlButton": "Verificar URL",
+      "ipTitle": "Verificar Endereço IP",
+      "ipDescription": "Insira um endereço IP para verificar sua reputação",
+      "ipLabel": "Endereço IP",
+      "ipPlaceholder": "8.8.8.8",
+      "ipButton": "Verificar IP"
+    },
+    "results": {
+      "title": "Resultados da Verificação",
+      "malicious": "Maliciosos",
+      "suspicious": "Suspeitos",
+      "harmless": "Inofensivos",
+      "undetected": "Não Detectados",
+      "totalEngines": "Total de Mecanismos",
+      "lastAnalysis": "Última Análise",
+      "viewReport": "Ver Relatório Completo no VirusTotal"
+    },
+    "toast": {
+      "scanComplete": "Verificação Concluída",
+      "scanFailed": "Falha na Verificação",
+      "hashAnalyzed": "Hash de arquivo analisado: {{status}}",
+      "urlAnalyzed": "URL analisada: {{status}}",
+      "ipAnalyzed": "Endereço IP analisado: {{status}}"
+    },
+    "status": {
+      "clean": "LIMPO",
+      "malicious": "MALICIOSO",
+      "suspicious": "SUSPEITO",
+      "undetected": "NÃO DETECTADO",
+      "error": "ERRO"
     }
   },
   "common": {
