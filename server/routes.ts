@@ -1,27 +1,33 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { authenticateUser, type AuthRequest } from "./middleware/auth";
 import { generateMockThreat, generateMultipleThreats } from "./utils/threatGenerator";
 import { generatePDFReport, generateCSVReport, generateJSONReport } from "./utils/reportGenerator";
 import { 
-  insertUserSchema, 
-  insertThreatSchema, 
-  insertAlertSchema,
-  insertUserPreferencesSchema,
   type SubscriptionTier 
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Authentication - User Management
+  // Authentication - User Management (no auth required for creating user)
   app.post("/api/auth/user", async (req, res) => {
     try {
-      const userData = insertUserSchema.parse(req.body);
+      const { id, email, displayName, photoURL } = req.body;
+      
+      if (!id || !email) {
+        return res.status(400).json({ error: 'id and email required' });
+      }
       
       // Check if user already exists
-      let user = await storage.getUserByEmail(userData.email);
+      let user = await storage.getUser(id);
       
       if (!user) {
-        user = await storage.createUser(userData);
+        user = await storage.createUser({
+          id,
+          email,
+          displayName: displayName || null,
+          photoURL: photoURL || null,
+        });
       }
       
       res.json(user);
@@ -30,9 +36,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/user/:id", async (req, res) => {
+  app.get("/api/user/:id", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const user = await storage.getUser(req.params.id);
+      // Only allow users to access their own data
+      const requestedId = req.params.id;
+      const authenticatedId = req.userId!;
+      
+      if (requestedId !== authenticatedId) {
+        return res.status(403).json({ error: "Forbidden: Cannot access other users' data" });
+      }
+      
+      const user = await storage.getUser(requestedId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -43,13 +57,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard Stats
-  app.get("/api/stats", async (req, res) => {
+  app.get("/api/stats", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
-
+      const userId = req.userId!;
       const stats = await storage.getStats(userId);
       res.json(stats);
     } catch (error: any) {
@@ -58,13 +68,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Threats
-  app.get("/api/threats", async (req, res) => {
+  app.get("/api/threats", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
-
+      const userId = req.userId!;
       const threats = await storage.getThreats(userId);
       res.json(threats);
     } catch (error: any) {
@@ -72,13 +78,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/threats/recent", async (req, res) => {
+  app.get("/api/threats/recent", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
-
+      const userId = req.userId!;
       const threats = await storage.getRecentThreats(userId, 10);
       res.json(threats);
     } catch (error: any) {
@@ -86,13 +88,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/threats/map", async (req, res) => {
+  app.get("/api/threats/map", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
-
+      const userId = req.userId!;
       const threats = await storage.getThreatsForMap(userId);
       res.json(threats);
     } catch (error: any) {
@@ -100,13 +98,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/threats/timeline", async (req, res) => {
+  app.get("/api/threats/timeline", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
-
+      const userId = req.userId!;
       const threats = await storage.getRecentThreats(userId, 24);
       
       // Group by hour for timeline chart
@@ -138,13 +132,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/threats/by-type", async (req, res) => {
+  app.get("/api/threats/by-type", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
-
+      const userId = req.userId!;
       const threats = await storage.getThreats(userId);
       
       // Count by type
@@ -164,12 +154,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/threats/generate", async (req, res) => {
+  app.post("/api/threats/generate", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const { userId, count = 1 } = req.body;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
+      const userId = req.userId!;
+      const { count = 1 } = req.body;
 
       const mockThreats = generateMultipleThreats(userId, count);
       const created = await Promise.all(
@@ -183,13 +171,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Alerts
-  app.get("/api/alerts", async (req, res) => {
+  app.get("/api/alerts", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
-
+      const userId = req.userId!;
       const alerts = await storage.getAlerts(userId);
       res.json(alerts);
     } catch (error: any) {
@@ -197,13 +181,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/alerts/recent", async (req, res) => {
+  app.get("/api/alerts/recent", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
-
+      const userId = req.userId!;
       const alerts = await storage.getRecentAlerts(userId, 10);
       res.json(alerts);
     } catch (error: any) {
@@ -211,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/alerts/:id/read", async (req, res) => {
+  app.post("/api/alerts/:id/read", authenticateUser, async (req: AuthRequest, res) => {
     try {
       await storage.markAlertAsRead(req.params.id);
       res.json({ success: true });
@@ -221,13 +201,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User Preferences
-  app.get("/api/user/preferences", async (req, res) => {
+  app.get("/api/user/preferences", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
-
+      const userId = req.userId!;
       let prefs = await storage.getUserPreferences(userId);
       
       // Return defaults if not found
@@ -247,10 +223,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/user/preferences", async (req, res) => {
+  app.put("/api/user/preferences", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const data = insertUserPreferencesSchema.parse(req.body);
-      const prefs = await storage.upsertUserPreferences(data);
+      const userId = req.userId!;
+      const prefs = await storage.upsertUserPreferences({
+        userId,
+        ...req.body,
+      });
       res.json(prefs);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -258,13 +237,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Subscription
-  app.get("/api/user/subscription", async (req, res) => {
+  app.get("/api/user/subscription", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
-
+      const userId = req.userId!;
       const subscription = await storage.getUserSubscription(userId);
       res.json(subscription);
     } catch (error: any) {
@@ -272,11 +247,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user/subscription", async (req, res) => {
+  app.post("/api/user/subscription", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const { userId, tier } = req.body;
-      if (!userId || !tier) {
-        return res.status(400).json({ error: "userId and tier required" });
+      const userId = req.userId!;
+      const { tier } = req.body;
+      if (!tier) {
+        return res.status(400).json({ error: "tier required" });
       }
 
       await storage.updateSubscription(userId, tier as SubscriptionTier);
@@ -287,12 +263,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reports
-  app.post("/api/reports/generate", async (req, res) => {
+  app.post("/api/reports/generate", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const { userId, type, period, format } = req.body;
-      if (!userId) {
-        return res.status(400).json({ error: "userId required" });
-      }
+      const userId = req.userId!;
+      const { type, period, format } = req.body;
 
       const threats = await storage.getThreats(userId);
       

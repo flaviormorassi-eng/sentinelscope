@@ -1,57 +1,93 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { auth } from "./firebase";
 
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-}
-
-export async function apiRequest(
-  method: string,
+async function handleRequest(
   url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
+  options: RequestInit = {},
+): Promise<any> {
+  // Get Firebase user for authentication
+  const user = auth.currentUser;
+  let headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (user) {
+    // For MVP: Send user ID in custom header
+    // In production: Send Firebase ID token and verify server-side with Firebase Admin
+    const idToken = await user.getIdToken();
+    headers["Authorization"] = `Bearer ${idToken}`;
+    headers["X-User-ID"] = user.uid;
+  }
+
   const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    ...options,
+    headers: {
+      ...headers,
+      ...(options.headers || {}),
+    },
     credentials: "include",
   });
 
-  await throwIfResNotOk(res);
-  return res;
-}
-
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-    });
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+  if (!res.ok) {
+    if (res.status >= 500) {
+      throw new Error(`${res.status}: ${res.statusText}`);
     }
 
-    await throwIfResNotOk(res);
-    return await res.json();
-  };
+    let message = `${res.status}: ${res.statusText}`;
+    try {
+      const errorData = await res.json();
+      message = errorData.error || errorData.message || message;
+    } catch {
+      // If parsing fails, use the default message
+    }
+
+    throw new Error(message);
+  }
+
+  return res.json();
+}
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
+      queryFn: async ({ queryKey }) => {
+        const [url, ...params] = queryKey;
+        if (!url || typeof url !== 'string') {
+          throw new Error('Invalid query key');
+        }
+        
+        // For array query keys, construct URL with query params
+        if (params.length > 0) {
+          const urlObj = new URL(url, window.location.origin);
+          params.forEach((param, index) => {
+            if (param !== undefined && param !== null) {
+              urlObj.searchParams.set(`param${index}`, String(param));
+            }
+          });
+          return handleRequest(urlObj.pathname + urlObj.search);
+        }
+        
+        return handleRequest(url);
+      },
+      staleTime: 1000 * 30,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
-    },
-    mutations: {
-      retry: false,
+      retry: 1,
     },
   },
 });
+
+export async function apiRequest(
+  method: string,
+  url: string,
+  data?: any,
+): Promise<any> {
+  const options: RequestInit = {
+    method,
+  };
+
+  if (data) {
+    options.body = JSON.stringify(data);
+  }
+
+  return handleRequest(url, options);
+}

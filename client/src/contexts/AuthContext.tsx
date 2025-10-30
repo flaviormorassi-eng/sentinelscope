@@ -35,8 +35,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Listen for auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      
+      if (user) {
+        try {
+          // Sync user with backend
+          await fetch('/api/auth/user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: user.uid,
+              email: user.email!,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+            }),
+          });
+
+          // Initialize demo data for new users
+          await fetch('/api/init-demo-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+          });
+        } catch (error) {
+          console.error('Failed to sync user:', error);
+        }
+      }
+      
       setLoading(false);
     });
 
