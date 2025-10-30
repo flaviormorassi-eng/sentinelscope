@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   displayName: text("display_name"),
   photoURL: text("photo_url"),
   subscriptionTier: text("subscription_tier").notNull().default("individual"),
+  isAdmin: boolean("is_admin").notNull().default(false),
   language: text("language").notNull().default("en"),
   theme: text("theme").notNull().default("dark"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
@@ -54,6 +55,16 @@ export const userPreferences = pgTable("user_preferences", {
   alertThreshold: text("alert_threshold").notNull().default("medium"),
 });
 
+// Admin audit log
+export const adminAuditLog = pgTable("admin_audit_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").notNull().references(() => users.id),
+  action: text("action").notNull(),
+  targetUserId: varchar("target_user_id").references(() => users.id),
+  details: text("details"),
+  timestamp: timestamp("timestamp").notNull().default(sql`now()`),
+});
+
 // Insert schemas for database operations
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -73,6 +84,11 @@ export const insertUserPreferencesSchema = createInsertSchema(userPreferences).o
   id: true,
 });
 
+export const insertAdminAuditLogSchema = createInsertSchema(adminAuditLog).omit({
+  id: true,
+  timestamp: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -85,6 +101,9 @@ export type InsertAlert = z.infer<typeof insertAlertSchema>;
 
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
+
+export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
+export type InsertAdminAuditLog = z.infer<typeof insertAdminAuditLogSchema>;
 
 // Subscription tiers
 export const SUBSCRIPTION_TIERS = {
