@@ -21,6 +21,7 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 - ✅ Bilingual support (English, Portuguese)
 - ✅ Fully responsive design
 - ✅ Mock threat detection engine
+- ✅ VirusTotal API integration for live malware scanning
 
 ## Project Architecture
 
@@ -56,8 +57,9 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 3. **Threat Log** (`/threats`) - Full threat history with filters
 4. **Threat Map** (`/map`) - Geographic visualization of attacks
 5. **Reports** (`/reports`) - Generate and download security reports
-6. **Subscription** (`/subscription`) - Plan selection and management
-7. **Settings** (`/settings`) - User preferences, theme, language
+6. **VirusTotal Scanner** (`/virustotal`) - Scan file hashes, URLs, and IPs for malware
+7. **Subscription** (`/subscription`) - Plan selection and management
+8. **Settings** (`/settings`) - User preferences, theme, language
 
 ## API Endpoints
 
@@ -90,6 +92,11 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 ### Reports
 - `POST /api/reports/generate` - Generate PDF/CSV/JSON report
 
+### VirusTotal Integration
+- `POST /api/virustotal/check-hash` - Check file hash (MD5, SHA-1, SHA-256) against VT database
+- `POST /api/virustotal/check-url` - Scan URL for malicious content
+- `POST /api/virustotal/check-ip` - Check IP address reputation
+
 ### Utilities
 - `POST /api/init-demo-data` - Initialize demo data for new users
 
@@ -120,8 +127,26 @@ The threat detection engine generates realistic mock data with:
 - Environment variable management via Replit Secrets
 - No sensitive data in frontend code
 
+## VirusTotal Integration
+The platform integrates with VirusTotal API v3 for live malware scanning:
+- **File Hash Checking:** Support for MD5 (32 chars), SHA-1 (40 chars), SHA-256 (64 chars)
+- **URL Scanning:** Check URLs for malicious content and phishing
+- **IP Reputation:** Lookup IP address threat intelligence
+- **Results Display:** Color-coded results with malicious/suspicious/harmless counts
+- **Direct Links:** One-click access to full VirusTotal reports
+- **Input Validation:** Robust regex validation with clear error messages
+- **Error Handling:** Rate limit detection, 404 handling, user-friendly messages
+- **Fully Localized:** All UI strings available in English and Portuguese
+
+Technical Details:
+- Uses native Node.js fetch (Node 18+)
+- All endpoints protected with authentication middleware
+- Returns structured results with detection statistics
+- Handles VirusTotal API rate limits gracefully
+
 ## Environment Variables
 Required secrets (stored in Replit Secrets):
+- `VIRUSTOTAL_API_KEY`
 - `VITE_FIREBASE_PROJECT_ID`
 - `VITE_FIREBASE_APP_ID`
 - `VITE_FIREBASE_API_KEY`
