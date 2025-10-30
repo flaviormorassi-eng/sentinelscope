@@ -37,7 +37,9 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 
 ### Backend (`server/`)
 - **Runtime:** Node.js with Express
-- **Storage:** In-memory storage (MemStorage)
+- **Database:** PostgreSQL with Neon serverless
+- **ORM:** Drizzle ORM
+- **Storage:** DbStorage (replaces MemStorage for persistence)
 - **Validation:** Zod schemas
 - **Report Generation:** jsPDF, jsPDF-AutoTable
 
@@ -144,6 +146,9 @@ This starts:
 - ✅ Added bilingual support (EN/PT)
 - ✅ Implemented theme switcher
 - ✅ Created subscription tier system
+- ✅ **CRITICAL: Migrated from in-memory to PostgreSQL database for data persistence**
+- ✅ Implemented DbStorage with Drizzle ORM and Neon serverless
+- ✅ All threats, alerts, user data now persist across server restarts
 
 ## Next Phase Features
 - Real threat intelligence feeds integration

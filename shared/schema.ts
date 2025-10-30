@@ -54,48 +54,23 @@ export const userPreferences = pgTable("user_preferences", {
   alertThreshold: text("alert_threshold").notNull().default("medium"),
 });
 
-// Insert schemas - simplified for in-memory storage
-export const insertUserSchema = createInsertSchema(users).pick({
+// Insert schemas for database operations
+export const insertUserSchema = createInsertSchema(users).omit({
+  createdAt: true,
+});
+
+export const insertThreatSchema = createInsertSchema(threats).omit({
   id: true,
-  email: true,
-  displayName: true,
-  photoURL: true,
-}).partial({
-  displayName: true,
-  photoURL: true,
+  timestamp: true,
 });
 
-export const insertThreatSchema = createInsertSchema(threats).pick({
-  userId: true,
-  severity: true,
-  type: true,
-  sourceIP: true,
-  targetIP: true,
-  status: true,
-  description: true,
-  blocked: true,
-}).extend({
-  sourceCountry: z.string().optional(),
-  sourceCity: z.string().optional(),
-  sourceLat: z.string().optional(),
-  sourceLon: z.string().optional(),
+export const insertAlertSchema = createInsertSchema(alerts).omit({
+  id: true,
+  timestamp: true,
 });
 
-export const insertAlertSchema = createInsertSchema(alerts).pick({
-  userId: true,
-  title: true,
-  message: true,
-  severity: true,
-  read: true,
-}).extend({
-  threatId: z.string().optional(),
-});
-
-export const insertUserPreferencesSchema = createInsertSchema(userPreferences).pick({
-  userId: true,
-  emailNotifications: true,
-  pushNotifications: true,
-  alertThreshold: true,
+export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({
+  id: true,
 });
 
 // Types
