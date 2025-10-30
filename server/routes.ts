@@ -2,12 +2,15 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authenticateUser, type AuthRequest } from "./middleware/auth";
+import { requireAdmin } from "./middleware/adminAuth";
 import { generateMockThreat, generateMultipleThreats } from "./utils/threatGenerator";
 import { generatePDFReport, generateCSVReport, generateJSONReport } from "./utils/reportGenerator";
 import { checkFileHash, checkURL, checkIPAddress, submitURL, validateHash, validateIP, validateURL } from "./utils/virusTotalService";
 import { 
-  type SubscriptionTier 
+  type SubscriptionTier,
+  SUBSCRIPTION_TIERS
 } from "@shared/schema";
+import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication - User Management (no auth required for creating user)
@@ -414,6 +417,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const result = await checkIPAddress(ip.trim());
       res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin Routes - Require both authentication and admin role
+  app.get("/api/admin/users", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/admin/users/:id", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
+    // Validate request body - only allow specific fields
+    const updateUserSchema = z.object({
+      subscriptionTier: z.enum(['individual', 'smb', 'enterprise']).optional(),
+      isAdmin: z.boolean().optional(),
+      language: z.enum(['en', 'pt']).optional(),
+      theme: z.enum(['light', 'dark']).optional(),
+    }).strict(); // Reject any extra fields
+    
+    const validation = updateUserSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Invalid request body', 
+        details: validation.error.errors 
+      });
+    }
+    
+    try {
+      const { id } = req.params;
+      const updates = validation.data;
+      
+      // Log the admin action
+      await storage.createAuditLog({
+        adminId: req.userId!,
+        action: 'update_user',
+        targetUserId: id,
+        details: JSON.stringify(updates),
+      });
+      
+      const updatedUser = await storage.updateUser(id, updates);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      res.json(updatedUser);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/admin/stats", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const stats = await storage.getSystemStats();
+      res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/admin/threats", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const threats = await storage.getAllThreats(limit);
+      res.json(threats);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/admin/audit-logs", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const logs = await storage.getAuditLogs(limit);
+      res.json(logs);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

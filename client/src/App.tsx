@@ -19,6 +19,9 @@ import Reports from "@/pages/Reports";
 import Subscription from "@/pages/Subscription";
 import Settings from "@/pages/Settings";
 import VirusTotalScan from "@/pages/VirusTotalScan";
+import AdminDashboard from "@/pages/AdminDashboard";
+import UserManagement from "@/pages/UserManagement";
+import SystemAnalytics from "@/pages/SystemAnalytics";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -70,6 +73,15 @@ function Router() {
       </Route>
       <Route path="/virustotal">
         <ProtectedRoute component={VirusTotalScan} />
+      </Route>
+      <Route path="/admin">
+        <ProtectedRoute component={AdminDashboard} />
+      </Route>
+      <Route path="/admin/users">
+        <ProtectedRoute component={UserManagement} />
+      </Route>
+      <Route path="/admin/analytics">
+        <ProtectedRoute component={SystemAnalytics} />
       </Route>
       <Route component={NotFound} />
     </Switch>

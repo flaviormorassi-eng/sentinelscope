@@ -1,4 +1,4 @@
-import { Shield, LayoutDashboard, AlertTriangle, Map, FileText, CreditCard, Settings, LogOut, Scan } from 'lucide-react';
+import { Shield, LayoutDashboard, AlertTriangle, Map, FileText, CreditCard, Settings, LogOut, Scan, Users, Activity, ShieldCheck } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -9,12 +9,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useQuery } from '@tanstack/react-query';
+import { User } from '@shared/schema';
 
 const menuItems = [
   { title: 'nav.dashboard', url: '/', icon: LayoutDashboard },
@@ -26,10 +29,23 @@ const menuItems = [
   { title: 'nav.settings', url: '/settings', icon: Settings },
 ];
 
+const adminMenuItems = [
+  { title: 'nav.adminDashboard', url: '/admin', icon: ShieldCheck },
+  { title: 'nav.userManagement', url: '/admin/users', icon: Users },
+  { title: 'nav.systemAnalytics', url: '/admin/analytics', icon: Activity },
+];
+
 export function AppSidebar() {
   const [location, setLocation] = useLocation();
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
+
+  const { data: currentUser } = useQuery<User>({
+    queryKey: [`/api/user/${user?.uid}`],
+    enabled: !!user?.uid,
+  });
+
+  const isAdmin = currentUser?.isAdmin || false;
 
   return (
     <Sidebar>
@@ -63,6 +79,31 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {isAdmin && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel>{t('nav.adminPanel')}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {adminMenuItems.map((item) => (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton
+                        onClick={() => setLocation(item.url)}
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.url.replace('/admin', 'admin').replace('/', '-')}`}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{t(item.title)}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
 
       <SidebarFooter>
