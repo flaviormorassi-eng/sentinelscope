@@ -1,0 +1,162 @@
+{
+  "app": {
+    "name": "SentinelScope",
+    "tagline": "Advanced Cybersecurity Monitoring"
+  },
+  "auth": {
+    "login": "Sign In",
+    "logout": "Sign Out",
+    "loginWithGoogle": "Continue with Google",
+    "welcome": "Welcome to SentinelScope",
+    "welcomeMessage": "Monitor and protect your systems in real-time",
+    "loggingIn": "Signing in...",
+    "loginError": "Authentication failed. Please try again."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "threats": "Threat Log",
+    "alerts": "Alerts",
+    "map": "Threat Map",
+    "reports": "Reports",
+    "subscription": "Subscription",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Security Dashboard",
+    "activeThreats": "Active Threats",
+    "threatsBlocked": "Threats Blocked",
+    "alertsToday": "Alerts Today",
+    "systemStatus": "System Status",
+    "threatFeed": "Live Threat Feed",
+    "recentAlerts": "Recent Alerts",
+    "threatsByType": "Threats by Type",
+    "threatTimeline": "24-Hour Threat Timeline",
+    "viewAll": "View All",
+    "noThreats": "No active threats detected",
+    "allSystemsOperational": "All systems operational"
+  },
+  "threats": {
+    "title": "Threat Activity Log",
+    "timestamp": "Timestamp",
+    "severity": "Severity",
+    "type": "Type",
+    "source": "Source IP",
+    "target": "Target",
+    "status": "Status",
+    "actions": "Actions",
+    "filter": "Filter",
+    "search": "Search threats...",
+    "export": "Export",
+    "noThreats": "No threats found",
+    "severityLevels": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "statuses": {
+      "detected": "Detected",
+      "blocked": "Blocked",
+      "analyzing": "Analyzing",
+      "resolved": "Resolved"
+    },
+    "types": {
+      "malware": "Malware",
+      "phishing": "Phishing",
+      "ddos": "DDoS Attack",
+      "bruteforce": "Brute Force",
+      "injection": "SQL Injection",
+      "xss": "XSS Attack",
+      "ransomware": "Ransomware",
+      "botnet": "Botnet Activity"
+    }
+  },
+  "alerts": {
+    "title": "Security Alerts",
+    "markAllRead": "Mark All as Read",
+    "noAlerts": "No alerts at this time",
+    "newAlert": "New Alert"
+  },
+  "map": {
+    "title": "Global Threat Map",
+    "liveIndicator": "Live",
+    "legend": "Legend",
+    "attackOrigins": "Attack Origins",
+    "noData": "No threat location data available"
+  },
+  "reports": {
+    "title": "Security Reports",
+    "generate": "Generate Report",
+    "download": "Download",
+    "type": "Report Type",
+    "period": "Period",
+    "format": "Format",
+    "generating": "Generating report...",
+    "types": {
+      "summary": "Security Summary",
+      "detailed": "Detailed Analysis",
+      "compliance": "Compliance Report"
+    },
+    "periods": {
+      "day": "Last 24 Hours",
+      "week": "Last Week",
+      "month": "Last Month",
+      "custom": "Custom Range"
+    }
+  },
+  "subscription": {
+    "title": "Subscription Plans",
+    "current": "Current Plan",
+    "upgrade": "Upgrade",
+    "downgrade": "Downgrade",
+    "mostPopular": "Most Popular",
+    "perMonth": "/month",
+    "choosePlan": "Choose Plan",
+    "currentPlan": "Current Plan",
+    "tiers": {
+      "individual": "Individual",
+      "smb": "Small Business",
+      "enterprise": "Enterprise"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "preferences": "Preferences",
+    "notifications": "Notifications",
+    "language": "Language",
+    "theme": "Theme",
+    "emailNotifications": "Email Notifications",
+    "pushNotifications": "Push Notifications",
+    "alertThreshold": "Alert Threshold",
+    "save": "Save Changes",
+    "saved": "Settings saved successfully",
+    "languages": {
+      "en": "English",
+      "pt": "Português (Brasil)"
+    },
+    "themes": {
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "thresholds": {
+      "low": "Low (All threats)",
+      "medium": "Medium (High & Critical)",
+      "high": "High (Critical only)"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "back": "Back",
+    "next": "Next"
+  }
+}

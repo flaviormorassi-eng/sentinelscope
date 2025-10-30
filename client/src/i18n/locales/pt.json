@@ -1,0 +1,162 @@
+{
+  "app": {
+    "name": "SentinelScope",
+    "tagline": "Monitoramento Avançado de Cibersegurança"
+  },
+  "auth": {
+    "login": "Entrar",
+    "logout": "Sair",
+    "loginWithGoogle": "Continuar com Google",
+    "welcome": "Bem-vindo ao SentinelScope",
+    "welcomeMessage": "Monitore e proteja seus sistemas em tempo real",
+    "loggingIn": "Entrando...",
+    "loginError": "Falha na autenticação. Por favor, tente novamente."
+  },
+  "nav": {
+    "dashboard": "Painel",
+    "threats": "Registro de Ameaças",
+    "alerts": "Alertas",
+    "map": "Mapa de Ameaças",
+    "reports": "Relatórios",
+    "subscription": "Assinatura",
+    "settings": "Configurações"
+  },
+  "dashboard": {
+    "title": "Painel de Segurança",
+    "activeThreats": "Ameaças Ativas",
+    "threatsBlocked": "Ameaças Bloqueadas",
+    "alertsToday": "Alertas Hoje",
+    "systemStatus": "Status do Sistema",
+    "threatFeed": "Feed de Ameaças ao Vivo",
+    "recentAlerts": "Alertas Recentes",
+    "threatsByType": "Ameaças por Tipo",
+    "threatTimeline": "Linha do Tempo de 24 Horas",
+    "viewAll": "Ver Tudo",
+    "noThreats": "Nenhuma ameaça ativa detectada",
+    "allSystemsOperational": "Todos os sistemas operacionais"
+  },
+  "threats": {
+    "title": "Registro de Atividade de Ameaças",
+    "timestamp": "Data/Hora",
+    "severity": "Gravidade",
+    "type": "Tipo",
+    "source": "IP de Origem",
+    "target": "Alvo",
+    "status": "Status",
+    "actions": "Ações",
+    "filter": "Filtrar",
+    "search": "Buscar ameaças...",
+    "export": "Exportar",
+    "noThreats": "Nenhuma ameaça encontrada",
+    "severityLevels": {
+      "critical": "Crítica",
+      "high": "Alta",
+      "medium": "Média",
+      "low": "Baixa"
+    },
+    "statuses": {
+      "detected": "Detectada",
+      "blocked": "Bloqueada",
+      "analyzing": "Analisando",
+      "resolved": "Resolvida"
+    },
+    "types": {
+      "malware": "Malware",
+      "phishing": "Phishing",
+      "ddos": "Ataque DDoS",
+      "bruteforce": "Força Bruta",
+      "injection": "Injeção SQL",
+      "xss": "Ataque XSS",
+      "ransomware": "Ransomware",
+      "botnet": "Atividade Botnet"
+    }
+  },
+  "alerts": {
+    "title": "Alertas de Segurança",
+    "markAllRead": "Marcar Tudo como Lido",
+    "noAlerts": "Nenhum alerta no momento",
+    "newAlert": "Novo Alerta"
+  },
+  "map": {
+    "title": "Mapa Global de Ameaças",
+    "liveIndicator": "Ao Vivo",
+    "legend": "Legenda",
+    "attackOrigins": "Origens de Ataques",
+    "noData": "Nenhum dado de localização de ameaças disponível"
+  },
+  "reports": {
+    "title": "Relatórios de Segurança",
+    "generate": "Gerar Relatório",
+    "download": "Baixar",
+    "type": "Tipo de Relatório",
+    "period": "Período",
+    "format": "Formato",
+    "generating": "Gerando relatório...",
+    "types": {
+      "summary": "Resumo de Segurança",
+      "detailed": "Análise Detalhada",
+      "compliance": "Relatório de Conformidade"
+    },
+    "periods": {
+      "day": "Últimas 24 Horas",
+      "week": "Última Semana",
+      "month": "Último Mês",
+      "custom": "Período Personalizado"
+    }
+  },
+  "subscription": {
+    "title": "Planos de Assinatura",
+    "current": "Plano Atual",
+    "upgrade": "Melhorar",
+    "downgrade": "Rebaixar",
+    "mostPopular": "Mais Popular",
+    "perMonth": "/mês",
+    "choosePlan": "Escolher Plano",
+    "currentPlan": "Plano Atual",
+    "tiers": {
+      "individual": "Individual",
+      "smb": "Pequena Empresa",
+      "enterprise": "Empresarial"
+    }
+  },
+  "settings": {
+    "title": "Configurações",
+    "profile": "Perfil",
+    "preferences": "Preferências",
+    "notifications": "Notificações",
+    "language": "Idioma",
+    "theme": "Tema",
+    "emailNotifications": "Notificações por E-mail",
+    "pushNotifications": "Notificações Push",
+    "alertThreshold": "Limite de Alerta",
+    "save": "Salvar Alterações",
+    "saved": "Configurações salvas com sucesso",
+    "languages": {
+      "en": "English",
+      "pt": "Português (Brasil)"
+    },
+    "themes": {
+      "light": "Claro",
+      "dark": "Escuro"
+    },
+    "thresholds": {
+      "low": "Baixo (Todas as ameaças)",
+      "medium": "Médio (Alta e Crítica)",
+      "high": "Alto (Somente críticas)"
+    }
+  },
+  "common": {
+    "loading": "Carregando...",
+    "error": "Ocorreu um erro",
+    "retry": "Tentar Novamente",
+    "close": "Fechar",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "view": "Visualizar",
+    "back": "Voltar",
+    "next": "Próximo"
+  }
+}

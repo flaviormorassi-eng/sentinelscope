@@ -1,0 +1,225 @@
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { Save } from 'lucide-react';
+
+interface UserPreferences {
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  alertThreshold: string;
+}
+
+export default function Settings() {
+  const { t, i18n } = useTranslation();
+  const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
+
+  const [language, setLanguage] = useState(i18n.language);
+  const [selectedTheme, setSelectedTheme] = useState(theme);
+
+  const { data: preferences } = useQuery<UserPreferences>({
+    queryKey: ['/api/user/preferences'],
+  });
+
+  const [emailNotifications, setEmailNotifications] = useState(preferences?.emailNotifications ?? true);
+  const [pushNotifications, setPushNotifications] = useState(preferences?.pushNotifications ?? true);
+  const [alertThreshold, setAlertThreshold] = useState(preferences?.alertThreshold ?? 'medium');
+
+  useEffect(() => {
+    if (preferences) {
+      setEmailNotifications(preferences.emailNotifications);
+      setPushNotifications(preferences.pushNotifications);
+      setAlertThreshold(preferences.alertThreshold);
+    }
+  }, [preferences]);
+
+  const updatePreferencesMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest('PUT', '/api/user/preferences', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user/preferences'] });
+      toast({
+        title: t('settings.saved'),
+        description: "Your settings have been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSave = () => {
+    // Save language
+    i18n.changeLanguage(language);
+    localStorage.setItem('language', language);
+
+    // Save theme
+    setTheme(selectedTheme);
+
+    // Save preferences
+    updatePreferencesMutation.mutate({
+      emailNotifications,
+      pushNotifications,
+      alertThreshold,
+    });
+  };
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-3xl font-bold">{t('settings.title')}</h1>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('settings.profile')}</CardTitle>
+            <CardDescription>Your account information</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={user?.photoURL || undefined} />
+                <AvatarFallback className="text-lg">
+                  {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-medium">{user?.displayName || 'User'}</p>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('settings.preferences')}</CardTitle>
+            <CardDescription>Customize your experience</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="language">{t('settings.language')}</Label>
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger id="language" data-testid="select-language">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">{t('settings.languages.en')}</SelectItem>
+                  <SelectItem value="pt">{t('settings.languages.pt')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="theme">{t('settings.theme')}</Label>
+              <Select value={selectedTheme} onValueChange={(v) => setSelectedTheme(v as 'light' | 'dark')}>
+                <SelectTrigger id="theme" data-testid="select-theme">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">{t('settings.themes.light')}</SelectItem>
+                  <SelectItem value="dark">{t('settings.themes.dark')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.notifications')}</CardTitle>
+          <CardDescription>Manage how you receive alerts</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="email-notifications">{t('settings.emailNotifications')}</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive threat alerts via email
+              </p>
+            </div>
+            <Switch
+              id="email-notifications"
+              checked={emailNotifications}
+              onCheckedChange={setEmailNotifications}
+              data-testid="switch-email-notifications"
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="push-notifications">{t('settings.pushNotifications')}</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive push notifications for critical threats
+              </p>
+            </div>
+            <Switch
+              id="push-notifications"
+              checked={pushNotifications}
+              onCheckedChange={setPushNotifications}
+              data-testid="switch-push-notifications"
+            />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label htmlFor="alert-threshold">{t('settings.alertThreshold')}</Label>
+            <Select value={alertThreshold} onValueChange={setAlertThreshold}>
+              <SelectTrigger id="alert-threshold" data-testid="select-alert-threshold">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">{t('settings.thresholds.low')}</SelectItem>
+                <SelectItem value="medium">{t('settings.thresholds.medium')}</SelectItem>
+                <SelectItem value="high">{t('settings.thresholds.high')}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              Control which threats trigger notifications
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button
+          onClick={handleSave}
+          disabled={updatePreferencesMutation.isPending}
+          size="lg"
+          data-testid="button-save-settings"
+        >
+          <Save className="h-4 w-4 mr-2" />
+          {t('settings.save')}
+        </Button>
+      </div>
+    </div>
+  );
+}
