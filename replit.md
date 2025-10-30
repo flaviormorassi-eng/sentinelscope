@@ -22,6 +22,10 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 - ✅ Fully responsive design
 - ✅ Mock threat detection engine
 - ✅ VirusTotal API integration for live malware scanning
+- ✅ **Admin panel with role-based access control**
+- ✅ **User management interface (edit subscriptions, admin status)**
+- ✅ **System-wide analytics and monitoring**
+- ✅ **Admin audit logging for compliance**
 
 ## Project Architecture
 
@@ -45,11 +49,12 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 - **Report Generation:** jsPDF, jsPDF-AutoTable
 
 ### Data Models (`shared/schema.ts`)
-- Users (Firebase integration)
+- Users (Firebase integration, isAdmin flag)
 - Threats (with geolocation)
 - Alerts
 - User Preferences
 - Subscription Tiers
+- Admin Audit Log (tracks admin actions)
 
 ## Key Pages
 1. **Login** (`/login`) - Google OAuth authentication
@@ -60,6 +65,9 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 6. **VirusTotal Scanner** (`/virustotal`) - Scan file hashes, URLs, and IPs for malware
 7. **Subscription** (`/subscription`) - Plan selection and management
 8. **Settings** (`/settings`) - User preferences, theme, language
+9. **Admin Dashboard** (`/admin`) - System stats, metrics, audit logs (admin-only)
+10. **User Management** (`/admin/users`) - Manage users, subscriptions, admin roles (admin-only)
+11. **System Analytics** (`/admin/analytics`) - Cross-user threat analytics, charts (admin-only)
 
 ## API Endpoints
 
@@ -96,6 +104,14 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 - `POST /api/virustotal/check-hash` - Check file hash (MD5, SHA-1, SHA-256) against VT database
 - `POST /api/virustotal/check-url` - Scan URL for malicious content
 - `POST /api/virustotal/check-ip` - Check IP address reputation
+
+### Admin Panel (Protected)
+- `GET /api/admin/stats` - System-wide statistics (users, threats, subscriptions)
+- `GET /api/admin/users` - List all users with subscription and admin status
+- `GET /api/admin/threats` - Cross-user threat aggregation
+- `PUT /api/admin/users/:id` - Update user subscription tier and admin status
+- `POST /api/admin/audit` - Create audit log entry
+- `GET /api/admin/audit` - Get audit log history
 
 ### Utilities
 - `POST /api/init-demo-data` - Initialize demo data for new users
@@ -173,13 +189,16 @@ This starts:
 - ✅ Created subscription tier system
 - ✅ **CRITICAL: Migrated from in-memory to PostgreSQL database for data persistence**
 - ✅ Implemented DbStorage with Drizzle ORM and Neon serverless
-- ✅ All threats, alerts, user data now persist across server restarts
+- ✅ All threats, alerts, user data persist across server restarts
+- ✅ **VirusTotal API integration (file hash, URL, IP scanning)**
+- ✅ **Complete admin panel with role-based access control**
+- ✅ **User management interface (edit subscriptions, admin roles)**
+- ✅ **System-wide analytics and threat monitoring**
+- ✅ **Admin audit logging for compliance tracking**
 
-## Next Phase Features (In Progress)
-- ✅ VirusTotal API integration (completed - file hash, URL, IP scanning)
-- 🚧 Email/SMS notifications (next)
+## Next Phase Features (Planned)
+- 🚧 Email/SMS notifications (next priority)
 - 🚧 Stripe payment integration (pending)
-- 🚧 Admin panel for user management (pending)
 - Real threat intelligence feeds integration
 - Actual network monitoring agents
 - Native mobile apps (React Native)
