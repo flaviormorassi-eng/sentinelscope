@@ -41,6 +41,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Preferences - Must come BEFORE /api/user/:id
+  app.get("/api/user/preferences", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      let prefs = await storage.getUserPreferences(userId);
+      
+      // Return defaults if not found
+      if (!prefs) {
+        prefs = {
+          id: '',
+          userId,
+          emailNotifications: true,
+          pushNotifications: true,
+          alertThreshold: 'medium',
+          monitoringMode: 'demo',
+        };
+      }
+
+      res.json(prefs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/user/preferences", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const prefs = await storage.upsertUserPreferences({
+        userId,
+        ...req.body,
+      });
+      res.json(prefs);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Subscription - Must come BEFORE /api/user/:id
+  app.get("/api/user/subscription", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const subscription = await storage.getUserSubscription(userId);
+      res.json(subscription);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/user/subscription", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const { tier } = req.body;
+      if (!tier) {
+        return res.status(400).json({ error: "tier required" });
+      }
+
+      await storage.updateSubscription(userId, tier as SubscriptionTier);
+      res.json({ success: true, tier });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/user/:id", authenticateUser, async (req: AuthRequest, res) => {
     try {
       // Only allow users to access their own data
@@ -223,69 +286,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       await storage.markAlertAsRead(req.params.id);
       res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // User Preferences
-  app.get("/api/user/preferences", authenticateUser, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.userId!;
-      let prefs = await storage.getUserPreferences(userId);
-      
-      // Return defaults if not found
-      if (!prefs) {
-        prefs = {
-          id: '',
-          userId,
-          emailNotifications: true,
-          pushNotifications: true,
-          alertThreshold: 'medium',
-          monitoringMode: 'demo',
-        };
-      }
-
-      res.json(prefs);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.put("/api/user/preferences", authenticateUser, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.userId!;
-      const prefs = await storage.upsertUserPreferences({
-        userId,
-        ...req.body,
-      });
-      res.json(prefs);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  // Subscription
-  app.get("/api/user/subscription", authenticateUser, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.userId!;
-      const subscription = await storage.getUserSubscription(userId);
-      res.json(subscription);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/user/subscription", authenticateUser, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.userId!;
-      const { tier } = req.body;
-      if (!tier) {
-        return res.status(400).json({ error: "tier required" });
-      }
-
-      await storage.updateSubscription(userId, tier as SubscriptionTier);
-      res.json({ success: true, tier });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
