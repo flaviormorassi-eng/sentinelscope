@@ -739,6 +739,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Event Ingestion - Public endpoint (API key authentication)
+  app.post("/api/ingest/events", async (req, res) => {
+    try {
+      // API key can be in header or body
+      const apiKey = req.headers['x-api-key'] as string || req.body.apiKey;
+      
+      if (!apiKey) {
+        return res.status(401).json({ error: 'API key required' });
+      }
+
+      // Find event source by API key (timing-safe verification)
+      const eventSource = await storage.verifyEventSourceApiKey(apiKey);
+      
+      if (!eventSource) {
+        return res.status(401).json({ error: 'Invalid API key' });
+      }
+
+      if (!eventSource.isActive) {
+        return res.status(403).json({ error: 'Event source is inactive' });
+      }
+
+      // Validate event data
+      const eventSchema = z.object({
+        timestamp: z.string().optional(),
+        severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+        eventType: z.string().optional(),
+        sourceIp: z.string().optional(),
+        destinationIp: z.string().optional(),
+        message: z.string().optional(),
+        rawData: z.any(),
+      });
+
+      const validation = eventSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: 'Invalid event data', 
+          details: validation.error.errors 
+        });
+      }
+
+      const eventData = validation.data;
+
+      // Store raw event
+      const rawEvent = await storage.createRawEvent({
+        sourceId: eventSource.id,
+        userId: eventSource.userId,
+        rawData: eventData.rawData || req.body,
+      });
+
+      // Update event source heartbeat
+      await storage.updateEventSourceHeartbeat(eventSource.id);
+
+      res.status(201).json({ 
+        success: true, 
+        eventId: rawEvent.id,
+        message: 'Event received successfully'
+      });
+    } catch (error: any) {
+      console.error('Event ingestion error:', error);
+      res.status(500).json({ error: 'Failed to process event' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
