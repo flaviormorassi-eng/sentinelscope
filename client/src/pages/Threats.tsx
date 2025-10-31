@@ -97,7 +97,8 @@ export default function Threats() {
       threat.description.toLowerCase().includes(search.toLowerCase()) ||
       threat.type.toLowerCase().includes(search.toLowerCase()) ||
       (threat.deviceName && threat.deviceName.toLowerCase().includes(search.toLowerCase())) ||
-      (threat.sourceURL && threat.sourceURL.toLowerCase().includes(search.toLowerCase()));
+      (threat.sourceURL && threat.sourceURL.toLowerCase().includes(search.toLowerCase())) ||
+      (threat.threatVector && threat.threatVector.toLowerCase().includes(search.toLowerCase()));
     
     const matchesSeverity = severityFilter === 'all' || threat.severity === severityFilter;
     const matchesStatus = statusFilter === 'all' || threat.status === statusFilter;
