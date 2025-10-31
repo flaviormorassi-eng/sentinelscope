@@ -18,6 +18,7 @@
     "alerts": "Alertas",
     "map": "Mapa de Ameaças",
     "virustotal": "VirusTotal Scanner",
+    "eventSources": "Fontes de Eventos",
     "reports": "Relatórios",
     "subscription": "Assinatura",
     "settings": "Configurações",
@@ -267,6 +268,17 @@
     "decision": "Decisão",
     "reason": "Motivo",
     "noDecisionHistory": "Nenhum histórico de decisões disponível para esta ameaça"
+  },
+  "eventSources": {
+    "title": "Fontes de Eventos",
+    "description": "Configure fontes de dados de eventos de segurança para monitoramento em tempo real",
+    "createNew": "Criar Fonte de Eventos",
+    "createDescription": "Adicione uma nova fonte de eventos para coletar eventos de segurança de sua infraestrutura",
+    "created": "Fonte de Eventos Criada",
+    "updated": "Fonte de Eventos Atualizada",
+    "deleted": "Fonte de Eventos Excluída",
+    "noSources": "Nenhuma Fonte de Eventos",
+    "noSourcesDescription": "Crie sua primeira fonte de eventos para começar a receber eventos de segurança em tempo real"
   },
   "common": {
     "loading": "Carregando...",

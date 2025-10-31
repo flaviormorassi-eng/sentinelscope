@@ -18,6 +18,7 @@
     "alerts": "Alerts",
     "map": "Threat Map",
     "virustotal": "VirusTotal Scan",
+    "eventSources": "Event Sources",
     "reports": "Reports",
     "subscription": "Subscription",
     "settings": "Settings",
@@ -267,6 +268,17 @@
     "decision": "Decision",
     "reason": "Reason",
     "noDecisionHistory": "No decision history available for this threat"
+  },
+  "eventSources": {
+    "title": "Event Sources",
+    "description": "Configure security event data sources for real-time monitoring",
+    "createNew": "Create Event Source",
+    "createDescription": "Add a new event source to collect security events from your infrastructure",
+    "created": "Event Source Created",
+    "updated": "Event Source Updated",
+    "deleted": "Event Source Deleted",
+    "noSources": "No Event Sources",
+    "noSourcesDescription": "Create your first event source to start receiving real-time security events"
   },
   "common": {
     "loading": "Loading...",

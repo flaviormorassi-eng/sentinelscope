@@ -20,6 +20,7 @@ import Reports from "@/pages/Reports";
 import Subscription from "@/pages/Subscription";
 import Settings from "@/pages/Settings";
 import VirusTotalScan from "@/pages/VirusTotalScan";
+import EventSources from "@/pages/EventSources";
 import AdminDashboard from "@/pages/AdminDashboard";
 import UserManagement from "@/pages/UserManagement";
 import SystemAnalytics from "@/pages/SystemAnalytics";
@@ -75,6 +76,9 @@ function Router() {
       </Route>
       <Route path="/virustotal">
         <ProtectedRoute component={VirusTotalScan} />
+      </Route>
+      <Route path="/event-sources">
+        <ProtectedRoute component={EventSources} />
       </Route>
       <Route path="/admin">
         <ProtectedRoute component={AdminDashboard} />
