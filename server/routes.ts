@@ -6,6 +6,7 @@ import { requireAdmin } from "./middleware/adminAuth";
 import { generateMockThreat, generateMultipleThreats } from "./utils/threatGenerator";
 import { generatePDFReport, generateCSVReport, generateJSONReport } from "./utils/reportGenerator";
 import { checkFileHash, checkURL, checkIPAddress, submitURL, validateHash, validateIP, validateURL } from "./utils/virusTotalService";
+import { hashApiKey, generateApiKey } from "./utils/security";
 import { 
   type SubscriptionTier,
   SUBSCRIPTION_TIERS
@@ -618,6 +619,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const history = await storage.getThreatDecisionHistory(id);
       res.json(history);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Event Sources - Real Monitoring Configuration
+  app.get("/api/event-sources", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const sources = await storage.getEventSources(userId);
+      res.json(sources);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/event-sources", authenticateUser, async (req: AuthRequest, res) => {
+    const schema = z.object({
+      name: z.string().min(1),
+      sourceType: z.string().min(1),
+      description: z.string().optional(),
+      metadata: z.any().optional(),
+    });
+
+    const validation = schema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Invalid request', 
+        details: validation.error.errors 
+      });
+    }
+
+    try {
+      const userId = req.userId!;
+      const { name, sourceType, description, metadata } = validation.data;
+
+      // Generate API key for this source
+      const apiKey = generateApiKey();
+      const apiKeyHash = hashApiKey(apiKey);
+
+      const source = await storage.createEventSource({
+        userId,
+        name,
+        sourceType,
+        description: description || null,
+        apiKeyHash,
+        metadata: metadata || null,
+      });
+
+      // Exclude apiKeyHash from response for security, add plain API key
+      const { apiKeyHash: _, ...sanitizedSource } = source;
+      res.json({ ...sanitizedSource, apiKey });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/event-sources/:id", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const source = await storage.getEventSource(id);
+      
+      if (!source) {
+        return res.status(404).json({ error: 'Event source not found' });
+      }
+
+      // Verify ownership
+      if (source.userId !== req.userId!) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      res.json(source);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/event-sources/:id", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const source = await storage.getEventSource(id);
+      
+      if (!source) {
+        return res.status(404).json({ error: 'Event source not found' });
+      }
+
+      // Verify ownership
+      if (source.userId !== req.userId!) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      await storage.deleteEventSource(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/event-sources/:id/toggle", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const source = await storage.getEventSource(id);
+      
+      if (!source) {
+        return res.status(404).json({ error: 'Event source not found' });
+      }
+
+      // Verify ownership
+      if (source.userId !== req.userId!) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      await storage.toggleEventSource(id, !source.isActive);
+      const updated = await storage.getEventSource(id);
+      res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

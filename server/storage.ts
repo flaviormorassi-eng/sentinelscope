@@ -105,6 +105,8 @@ export interface IStorage {
   createEventSource(source: InsertEventSource): Promise<EventSource>;
   getEventSources(userId: string): Promise<EventSource[]>;
   getEventSource(id: string): Promise<EventSource | undefined>;
+  deleteEventSource(id: string): Promise<void>;
+  toggleEventSource(id: string, isActive: boolean): Promise<void>;
   updateEventSourceHeartbeat(id: string): Promise<void>;
   verifyEventSourceApiKey(apiKey: string): Promise<EventSource | undefined>;
 
@@ -400,6 +402,8 @@ export class MemStorage implements IStorage {
   async createEventSource(): Promise<EventSource> { throw new Error("Real monitoring not supported in MemStorage"); }
   async getEventSources(): Promise<EventSource[]> { return []; }
   async getEventSource(): Promise<EventSource | undefined> { return undefined; }
+  async deleteEventSource(): Promise<void> { return; }
+  async toggleEventSource(): Promise<void> { return; }
   async updateEventSourceHeartbeat(): Promise<void> { return; }
   async verifyEventSourceApiKey(): Promise<EventSource | undefined> { return undefined; }
   async createRawEvent(): Promise<RawEvent> { throw new Error("Real monitoring not supported in MemStorage"); }
@@ -761,6 +765,19 @@ export class DbStorage implements IStorage {
       .from(eventSources)
       .where(and(eq(eventSources.apiKeyHash, hashedKey), eq(eventSources.isActive, true)));
     return result[0];
+  }
+
+  async deleteEventSource(id: string): Promise<void> {
+    await this.db
+      .delete(eventSources)
+      .where(eq(eventSources.id, id));
+  }
+
+  async toggleEventSource(id: string, isActive: boolean): Promise<void> {
+    await this.db
+      .update(eventSources)
+      .set({ isActive })
+      .where(eq(eventSources.id, id));
   }
 
   // Raw Events
