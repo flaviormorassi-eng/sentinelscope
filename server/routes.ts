@@ -768,6 +768,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sourceIp: z.string().optional(),
         destinationIp: z.string().optional(),
         message: z.string().optional(),
+        sourceURL: z.string().optional(),
+        deviceName: z.string().optional(),
+        threatVector: z.enum(['email', 'web', 'network', 'usb', 'download', 'other']).optional(),
         rawData: z.any(),
       });
 

@@ -3,6 +3,8 @@ import { type InsertThreat } from '@shared/schema';
 const THREAT_TYPES = ['malware', 'phishing', 'ddos', 'bruteforce', 'injection', 'xss', 'ransomware', 'botnet'];
 const SEVERITIES = ['low', 'medium', 'high', 'critical'];
 const STATUSES = ['detected', 'blocked', 'analyzing', 'resolved'];
+const THREAT_VECTORS = ['email', 'web', 'network', 'usb', 'download', 'other'];
+const DEVICE_NAMES = ['DESKTOP-PC01', 'LAPTOP-DEV02', 'SERVER-WEB01', 'WORKSTATION-05', 'MACBOOK-ADMIN', 'PC-FINANCE01', 'LAPTOP-HR03', 'SERVER-DB01'];
 
 // Sample IP addresses and locations
 const THREAT_SOURCES = [
@@ -82,9 +84,22 @@ export function generateMockThreat(userId: string, targetIP: string = '192.168.1
   const type = randomItem(THREAT_TYPES);
   const severity = randomItem(SEVERITIES);
   const status = randomItem(STATUSES);
+  const vector = randomItem(THREAT_VECTORS);
   
   const sourceIP = `${source.ip}${randomInt(1, 254)}`;
   const description = randomItem(DESCRIPTIONS[type as keyof typeof DESCRIPTIONS]);
+
+  // Generate realistic URLs based on threat type
+  let sourceURL = null;
+  if (type === 'phishing') {
+    const phishingDomains = ['secure-login-verify.net', 'account-confirm.com', 'update-credentials.org', 'verify-account-now.net'];
+    sourceURL = `https://${randomItem(phishingDomains)}/login?ref=${randomInt(1000, 9999)}`;
+  } else if (type === 'malware' || type === 'ransomware') {
+    const malwareDomains = ['free-software-download.xyz', 'crack-tools.net', 'pirated-apps.org', 'fake-update.com'];
+    sourceURL = `https://${randomItem(malwareDomains)}/download/${randomInt(100, 999)}`;
+  } else if (type === 'xss' || type === 'injection') {
+    sourceURL = `https://vulnerable-site.com/search?q=<script>alert(${randomInt(1, 100)})</script>`;
+  }
 
   return {
     userId,
@@ -99,6 +114,9 @@ export function generateMockThreat(userId: string, targetIP: string = '192.168.1
     status,
     description,
     blocked: status === 'blocked' || (severity === 'critical' && Math.random() > 0.3),
+    sourceURL,
+    deviceName: randomItem(DEVICE_NAMES),
+    threatVector: vector,
   };
 }
 
