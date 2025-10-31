@@ -503,6 +503,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Threat decision endpoints - Admin approval/blocking
+  app.get("/api/admin/threats/pending", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.query.userId as string | undefined;
+      const pending = await storage.getPendingThreats(userId);
+      res.json(pending);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/threats/:id/decide", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
+    const decisionSchema = z.object({
+      decision: z.enum(['block', 'allow', 'unblock']),
+      reason: z.string().optional(),
+    });
+
+    const validation = decisionSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Invalid request body', 
+        details: validation.error.errors 
+      });
+    }
+
+    try {
+      const { id } = req.params;
+      const { decision, reason } = validation.data;
+      
+      // Get current threat
+      const threat = await storage.getThreatById(id);
+      if (!threat) {
+        return res.status(404).json({ error: 'Threat not found' });
+      }
+
+      const previousStatus = threat.status;
+      
+      // Determine new status and blocked state
+      let newStatus = threat.status;
+      let blocked = threat.blocked;
+      
+      if (decision === 'block') {
+        newStatus = 'blocked';
+        blocked = true;
+      } else if (decision === 'allow') {
+        newStatus = 'allowed';
+        blocked = false;
+      } else if (decision === 'unblock') {
+        newStatus = 'detected';
+        blocked = false;
+      }
+
+      // Update threat status
+      await storage.updateThreatStatus(id, newStatus, blocked);
+      
+      // Record decision
+      await storage.recordThreatDecision({
+        threatId: id,
+        decidedBy: req.userId!,
+        decision,
+        reason,
+        previousStatus,
+      });
+      
+      // Log admin action
+      await storage.createAuditLog({
+        adminId: req.userId!,
+        action: `threat_${decision}`,
+        details: JSON.stringify({ 
+          threatId: id, 
+          sourceIP: threat.sourceIP,
+          type: threat.type,
+          severity: threat.severity,
+          reason 
+        }),
+      });
+      
+      // Get updated threat
+      const updatedThreat = await storage.getThreatById(id);
+      res.json(updatedThreat);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/admin/threats/:id/history", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const history = await storage.getThreatDecisionHistory(id);
+      res.json(history);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
