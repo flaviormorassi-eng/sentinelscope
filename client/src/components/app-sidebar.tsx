@@ -20,7 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { User } from '@shared/schema';
 
 const menuItems = [
-  { title: 'nav.dashboard', url: '/', icon: LayoutDashboard },
+  { title: 'nav.dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'nav.threats', url: '/threats', icon: AlertTriangle },
   { title: 'nav.map', url: '/map', icon: Map },
   { title: 'nav.virustotal', url: '/virustotal', icon: Scan },

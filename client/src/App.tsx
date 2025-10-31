@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import "@/i18n/config";
 
+import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Threats from "@/pages/Threats";
@@ -50,10 +51,11 @@ function Router() {
 
   return (
     <Switch>
+      <Route path="/" component={Landing} />
       <Route path="/login">
-        {user ? <Redirect to="/" /> : <Login />}
+        {user ? <Redirect to="/dashboard" /> : <Login />}
       </Route>
-      <Route path="/">
+      <Route path="/dashboard">
         <ProtectedRoute component={Dashboard} />
       </Route>
       <Route path="/threats">
