@@ -4,12 +4,13 @@
 SentinelScope is a real-time cybersecurity monitoring platform that detects malware, tracks infiltration attempts, and protects systems with advanced threat intelligence. Built with React, Node.js/Express, and Firebase Authentication.
 
 ## Current State
-**Status:** MVP Complete + Threat Blocking System
-**Version:** 1.1.0
+**Status:** MVP Complete + Threat Blocking System + Professional Landing Page
+**Version:** 1.2.0
 **Last Updated:** October 31, 2025
 
 ### Implemented Features
 - ✅ Firebase Authentication with Google OAuth
+- ✅ **Professional public landing page with marketing content**
 - ✅ Real-time threat monitoring dashboard
 - ✅ Visual threat map with IP geolocation
 - ✅ Alert system with in-app notifications
@@ -61,17 +62,18 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 - Admin Audit Log (tracks admin actions)
 
 ## Key Pages
-1. **Login** (`/login`) - Google OAuth authentication
-2. **Dashboard** (`/`) - Overview with stats, charts, threat feed
-3. **Threat Log** (`/threats`) - Full threat history with filters
-4. **Threat Map** (`/map`) - Geographic visualization of attacks
-5. **Reports** (`/reports`) - Generate and download security reports
-6. **VirusTotal Scanner** (`/virustotal`) - Scan file hashes, URLs, and IPs for malware
-7. **Subscription** (`/subscription`) - Plan selection and management
-8. **Settings** (`/settings`) - User preferences, theme, language
-9. **Admin Dashboard** (`/admin`) - System stats, metrics, audit logs (admin-only)
-10. **User Management** (`/admin/users`) - Manage users, subscriptions, admin roles (admin-only)
-11. **System Analytics** (`/admin/analytics`) - Cross-user threat analytics, charts (admin-only)
+1. **Landing Page** (`/`) - Public marketing page with hero, features, pricing (no auth required)
+2. **Login** (`/login`) - Google OAuth authentication
+3. **Dashboard** (`/dashboard`) - Overview with stats, charts, threat feed
+4. **Threat Log** (`/threats`) - Full threat history with filters
+5. **Threat Map** (`/map`) - Geographic visualization of attacks
+6. **Reports** (`/reports`) - Generate and download security reports
+7. **VirusTotal Scanner** (`/virustotal`) - Scan file hashes, URLs, and IPs for malware
+8. **Subscription** (`/subscription`) - Plan selection and management
+9. **Settings** (`/settings`) - User preferences, theme, language
+10. **Admin Dashboard** (`/admin`) - System stats, metrics, audit logs (admin-only)
+11. **User Management** (`/admin/users`) - Manage users, subscriptions, admin roles (admin-only)
+12. **System Analytics** (`/admin/analytics`) - Cross-user threat analytics, charts (admin-only)
 
 ## API Endpoints
 
@@ -216,6 +218,20 @@ This starts:
 ## Recent Changes
 
 ### October 31, 2025
+- ✅ **Professional Landing Page**
+  - Created public landing page at "/" with hero section, features showcase, pricing
+  - Sticky header with navigation, theme toggle, and language toggle
+  - Hero section with compelling headline, CTAs, and stats (uptime, detection speed, monitoring, threat types)
+  - 6 feature cards highlighting Real-Time Monitoring, Geographic Mapping, VirusTotal, Alerts, Admin Blocking, Reports
+  - "How It Works" section with 3-step process (Connect, Monitor, Protect)
+  - Pricing section matching three-tier subscription system (Individual, SMB, Enterprise)
+  - CTA section and footer with product, company, and legal links
+  - Fully responsive design with proper data-testid attributes for testing
+- ✅ **Routing Architecture Update**
+  - Landing page now at "/" (public, no auth required)
+  - Dashboard moved to "/dashboard" (protected, requires auth)
+  - Updated all navigation links in sidebar and throughout app
+  - Updated ProtectedRoute and Login page redirects
 - ✅ **Semi-automatic threat blocking system**
   - Added threat status tracking (detected/pending_review/blocked/allowed/unblocked)
   - Created threat_decisions database table for decision history
