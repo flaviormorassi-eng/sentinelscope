@@ -11,6 +11,18 @@ import {
   type InsertAdminAuditLog,
   type ThreatDecision,
   type InsertThreatDecision,
+  type EventSource,
+  type InsertEventSource,
+  type RawEvent,
+  type InsertRawEvent,
+  type NormalizedEvent,
+  type InsertNormalizedEvent,
+  type ThreatEvent,
+  type InsertThreatEvent,
+  type IntelMatch,
+  type InsertIntelMatch,
+  type AgentRegistration,
+  type InsertAgentRegistration,
   type SubscriptionTier,
   users,
   threats,
@@ -18,6 +30,12 @@ import {
   userPreferences,
   adminAuditLog,
   threatDecisions,
+  eventSources,
+  rawEvents,
+  normalizedEvents,
+  threatEvents,
+  intelMatches,
+  agentRegistrations,
   SUBSCRIPTION_TIERS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -25,6 +43,7 @@ import { drizzle } from 'drizzle-orm/neon-serverless';
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { eq, desc, and, count } from 'drizzle-orm';
 import ws from 'ws';
+import { hashApiKey, verifyApiKey } from './utils/security';
 
 // Configure Neon with WebSocket for serverless
 neonConfig.webSocketConstructor = ws;
@@ -79,6 +98,36 @@ export interface IStorage {
   updateThreatStatus(threatId: string, status: string, blocked: boolean): Promise<void>;
   recordThreatDecision(decision: { threatId: string; decidedBy: string; decision: string; reason?: string; previousStatus: string }): Promise<void>;
   getThreatDecisionHistory(threatId: string): Promise<any[]>;
+
+  // Real monitoring - Event Sources
+  createEventSource(source: InsertEventSource): Promise<EventSource>;
+  getEventSources(userId: string): Promise<EventSource[]>;
+  getEventSource(id: string): Promise<EventSource | undefined>;
+  updateEventSourceHeartbeat(id: string): Promise<void>;
+  verifyEventSourceApiKey(apiKey: string): Promise<EventSource | undefined>;
+
+  // Real monitoring - Raw Events
+  createRawEvent(event: InsertRawEvent): Promise<RawEvent>;
+  getUnprocessedRawEvents(limit?: number): Promise<RawEvent[]>;
+  markRawEventAsProcessed(id: string): Promise<void>;
+
+  // Real monitoring - Normalized Events
+  createNormalizedEvent(event: InsertNormalizedEvent): Promise<NormalizedEvent>;
+  getNormalizedEvents(userId: string, limit?: number): Promise<NormalizedEvent[]>;
+
+  // Real monitoring - Threat Events
+  createThreatEvent(event: InsertThreatEvent): Promise<ThreatEvent>;
+  getThreatEvents(userId: string, limit?: number): Promise<ThreatEvent[]>;
+
+  // Real monitoring - Intel Matches
+  createIntelMatch(match: InsertIntelMatch): Promise<IntelMatch>;
+  getIntelMatches(eventId: string): Promise<IntelMatch[]>;
+
+  // Real monitoring - Agent Registrations
+  createAgent(agent: InsertAgentRegistration): Promise<AgentRegistration>;
+  getAgents(userId: string): Promise<AgentRegistration[]>;
+  updateAgentHeartbeat(id: string): Promise<void>;
+  verifyAgentApiKey(apiKey: string): Promise<AgentRegistration | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -329,6 +378,26 @@ export class MemStorage implements IStorage {
   async getThreatDecisionHistory(): Promise<any[]> {
     return [];
   }
+
+  // Real monitoring stubs - MemStorage not used for real monitoring
+  async createEventSource(): Promise<EventSource> { throw new Error("Real monitoring not supported in MemStorage"); }
+  async getEventSources(): Promise<EventSource[]> { return []; }
+  async getEventSource(): Promise<EventSource | undefined> { return undefined; }
+  async updateEventSourceHeartbeat(): Promise<void> { return; }
+  async verifyEventSourceApiKey(): Promise<EventSource | undefined> { return undefined; }
+  async createRawEvent(): Promise<RawEvent> { throw new Error("Real monitoring not supported in MemStorage"); }
+  async getUnprocessedRawEvents(): Promise<RawEvent[]> { return []; }
+  async markRawEventAsProcessed(): Promise<void> { return; }
+  async createNormalizedEvent(): Promise<NormalizedEvent> { throw new Error("Real monitoring not supported in MemStorage"); }
+  async getNormalizedEvents(): Promise<NormalizedEvent[]> { return []; }
+  async createThreatEvent(): Promise<ThreatEvent> { throw new Error("Real monitoring not supported in MemStorage"); }
+  async getThreatEvents(): Promise<ThreatEvent[]> { return []; }
+  async createIntelMatch(): Promise<IntelMatch> { throw new Error("Real monitoring not supported in MemStorage"); }
+  async getIntelMatches(): Promise<IntelMatch[]> { return []; }
+  async createAgent(): Promise<AgentRegistration> { throw new Error("Real monitoring not supported in MemStorage"); }
+  async getAgents(): Promise<AgentRegistration[]> { return []; }
+  async updateAgentHeartbeat(): Promise<void> { return; }
+  async verifyAgentApiKey(): Promise<AgentRegistration | undefined> { return undefined; }
 }
 
 // Database storage implementation using Drizzle ORM
@@ -590,6 +659,171 @@ export class DbStorage implements IStorage {
       .from(threatDecisions)
       .where(eq(threatDecisions.threatId, threatId))
       .orderBy(desc(threatDecisions.timestamp));
+  }
+
+  // ========== REAL MONITORING IMPLEMENTATIONS ==========
+
+  // Event Sources
+  async createEventSource(source: InsertEventSource): Promise<EventSource> {
+    const result = await this.db
+      .insert(eventSources)
+      .values(source)
+      .returning();
+    return result[0];
+  }
+
+  async getEventSources(userId: string): Promise<EventSource[]> {
+    const results = await this.db
+      .select()
+      .from(eventSources)
+      .where(eq(eventSources.userId, userId))
+      .orderBy(desc(eventSources.createdAt));
+    
+    // Exclude apiKeyHash from response for security
+    return results.map(({ apiKeyHash, ...source }) => source as EventSource);
+  }
+
+  async getEventSource(id: string): Promise<EventSource | undefined> {
+    const result = await this.db
+      .select()
+      .from(eventSources)
+      .where(eq(eventSources.id, id));
+    
+    if (!result[0]) return undefined;
+    
+    // Exclude apiKeyHash from response for security
+    const { apiKeyHash, ...source } = result[0];
+    return source as EventSource;
+  }
+
+  async updateEventSourceHeartbeat(id: string): Promise<void> {
+    await this.db
+      .update(eventSources)
+      .set({ lastHeartbeat: new Date() })
+      .where(eq(eventSources.id, id));
+  }
+
+  async verifyEventSourceApiKey(apiKey: string): Promise<EventSource | undefined> {
+    const hashedKey = hashApiKey(apiKey);
+    const result = await this.db
+      .select()
+      .from(eventSources)
+      .where(and(eq(eventSources.apiKeyHash, hashedKey), eq(eventSources.isActive, true)));
+    return result[0];
+  }
+
+  // Raw Events
+  async createRawEvent(event: InsertRawEvent): Promise<RawEvent> {
+    const result = await this.db
+      .insert(rawEvents)
+      .values(event)
+      .returning();
+    return result[0];
+  }
+
+  async getUnprocessedRawEvents(limit: number = 100): Promise<RawEvent[]> {
+    return await this.db
+      .select()
+      .from(rawEvents)
+      .where(eq(rawEvents.processed, false))
+      .orderBy(rawEvents.receivedAt)
+      .limit(limit);
+  }
+
+  async markRawEventAsProcessed(id: string): Promise<void> {
+    await this.db
+      .update(rawEvents)
+      .set({ processed: true, processedAt: new Date() })
+      .where(eq(rawEvents.id, id));
+  }
+
+  // Normalized Events
+  async createNormalizedEvent(event: InsertNormalizedEvent): Promise<NormalizedEvent> {
+    const result = await this.db
+      .insert(normalizedEvents)
+      .values(event)
+      .returning();
+    return result[0];
+  }
+
+  async getNormalizedEvents(userId: string, limit: number = 100): Promise<NormalizedEvent[]> {
+    return await this.db
+      .select()
+      .from(normalizedEvents)
+      .where(eq(normalizedEvents.userId, userId))
+      .orderBy(desc(normalizedEvents.timestamp))
+      .limit(limit);
+  }
+
+  // Threat Events
+  async createThreatEvent(event: InsertThreatEvent): Promise<ThreatEvent> {
+    const result = await this.db
+      .insert(threatEvents)
+      .values(event)
+      .returning();
+    return result[0];
+  }
+
+  async getThreatEvents(userId: string, limit: number = 100): Promise<ThreatEvent[]> {
+    return await this.db
+      .select()
+      .from(threatEvents)
+      .where(eq(threatEvents.userId, userId))
+      .orderBy(desc(threatEvents.createdAt))
+      .limit(limit);
+  }
+
+  // Intel Matches
+  async createIntelMatch(match: InsertIntelMatch): Promise<IntelMatch> {
+    const result = await this.db
+      .insert(intelMatches)
+      .values(match)
+      .returning();
+    return result[0];
+  }
+
+  async getIntelMatches(eventId: string): Promise<IntelMatch[]> {
+    return await this.db
+      .select()
+      .from(intelMatches)
+      .where(eq(intelMatches.normalizedEventId, eventId))
+      .orderBy(desc(intelMatches.matchedAt));
+  }
+
+  // Agent Registrations
+  async createAgent(agent: InsertAgentRegistration): Promise<AgentRegistration> {
+    const result = await this.db
+      .insert(agentRegistrations)
+      .values(agent)
+      .returning();
+    return result[0];
+  }
+
+  async getAgents(userId: string): Promise<AgentRegistration[]> {
+    const results = await this.db
+      .select()
+      .from(agentRegistrations)
+      .where(eq(agentRegistrations.userId, userId))
+      .orderBy(desc(agentRegistrations.registeredAt));
+    
+    // Exclude apiKeyHash from response for security
+    return results.map(({ apiKeyHash, ...agent }) => agent as AgentRegistration);
+  }
+
+  async updateAgentHeartbeat(id: string): Promise<void> {
+    await this.db
+      .update(agentRegistrations)
+      .set({ lastHeartbeat: new Date() })
+      .where(eq(agentRegistrations.id, id));
+  }
+
+  async verifyAgentApiKey(apiKey: string): Promise<AgentRegistration | undefined> {
+    const hashedKey = hashApiKey(apiKey);
+    const result = await this.db
+      .select()
+      .from(agentRegistrations)
+      .where(and(eq(agentRegistrations.apiKeyHash, hashedKey), eq(agentRegistrations.isActive, true)));
+    return result[0];
   }
 }
 
