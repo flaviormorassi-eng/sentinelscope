@@ -61,10 +61,14 @@
     },
     "statuses": {
       "detected": "Detected",
+      "pending_review": "Pending Review",
       "blocked": "Blocked",
+      "allowed": "Allowed",
+      "unblocked": "Unblocked",
       "analyzing": "Analyzing",
       "resolved": "Resolved"
     },
+    "threatUnblocked": "Threat has been unblocked successfully",
     "types": {
       "malware": "Malware",
       "phishing": "Phishing",
@@ -256,7 +260,13 @@
     "unblockThreat": "Unblock",
     "decisionRecorded": "Decision Recorded",
     "threatDecisionSuccess": "Your threat decision has been recorded successfully",
-    "threatDecisionError": "Failed to record threat decision"
+    "threatDecisionError": "Failed to record threat decision",
+    "history": "History",
+    "decisionHistory": "Decision History",
+    "decisionHistoryDescription": "View all administrative decisions made for this threat",
+    "decision": "Decision",
+    "reason": "Reason",
+    "noDecisionHistory": "No decision history available for this threat"
   },
   "common": {
     "loading": "Loading...",

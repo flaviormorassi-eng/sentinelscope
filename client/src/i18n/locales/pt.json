@@ -61,10 +61,14 @@
     },
     "statuses": {
       "detected": "Detectada",
+      "pending_review": "Pendente de Revisão",
       "blocked": "Bloqueada",
+      "allowed": "Permitida",
+      "unblocked": "Desbloqueada",
       "analyzing": "Analisando",
       "resolved": "Resolvida"
     },
+    "threatUnblocked": "Ameaça foi desbloqueada com sucesso",
     "types": {
       "malware": "Malware",
       "phishing": "Phishing",
@@ -256,7 +260,13 @@
     "unblockThreat": "Desbloquear",
     "decisionRecorded": "Decisão Registrada",
     "threatDecisionSuccess": "Sua decisão sobre a ameaça foi registrada com sucesso",
-    "threatDecisionError": "Falha ao registrar decisão sobre a ameaça"
+    "threatDecisionError": "Falha ao registrar decisão sobre a ameaça",
+    "history": "Histórico",
+    "decisionHistory": "Histórico de Decisões",
+    "decisionHistoryDescription": "Visualize todas as decisões administrativas tomadas para esta ameaça",
+    "decision": "Decisão",
+    "reason": "Motivo",
+    "noDecisionHistory": "Nenhum histórico de decisões disponível para esta ameaça"
   },
   "common": {
     "loading": "Carregando...",

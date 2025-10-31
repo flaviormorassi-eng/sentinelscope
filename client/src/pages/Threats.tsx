@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,18 +20,75 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Download, Search, Filter } from 'lucide-react';
-import { Threat } from '@shared/schema';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Download, Search, Filter, Unlock, History } from 'lucide-react';
+import { Threat, User } from '@shared/schema';
 import { format } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+
+interface ThreatDecision {
+  id: number;
+  threatId: string;
+  adminId: string;
+  decision: string;
+  reason: string | null;
+  timestamp: string;
+}
 
 export default function Threats() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [historyThreatId, setHistoryThreatId] = useState<string | null>(null);
+
+  const { data: currentUser } = useQuery<User>({
+    queryKey: [`/api/user/${user?.uid}`],
+    enabled: !!user?.uid,
+  });
 
   const { data: threats = [], isLoading } = useQuery<Threat[]>({
     queryKey: ['/api/threats'],
+  });
+
+  const { data: decisionHistory = [], isLoading: historyLoading } = useQuery<ThreatDecision[]>({
+    queryKey: [`/api/admin/threats/${historyThreatId}/history`],
+    enabled: !!historyThreatId && !!currentUser?.isAdmin,
+  });
+
+  const unblockMutation = useMutation({
+    mutationFn: async (threatId: string) => {
+      return await apiRequest('POST', `/api/admin/threats/${threatId}/decide`, {
+        decision: 'unblock',
+        reason: 'Unblocked from threat log view',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/threats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/threats/pending'] });
+      toast({
+        title: t('admin.decisionRecorded'),
+        description: t('threats.threatUnblocked'),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t('common.error'),
+        description: t('admin.threatDecisionError'),
+        variant: 'destructive',
+      });
+    },
   });
 
   const filteredThreats = threats.filter((threat) => {
@@ -51,6 +108,16 @@ export default function Threats() {
       case 'critical': return 'destructive';
       case 'high': return 'default';
       case 'medium': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'blocked': return 'destructive';
+      case 'pending_review': return 'secondary';
+      case 'allowed': return 'default';
+      case 'unblocked': return 'default';
       default: return 'outline';
     }
   };
@@ -119,9 +186,10 @@ export default function Threats() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="detected">{t('threats.statuses.detected')}</SelectItem>
+                  <SelectItem value="pending_review">{t('threats.statuses.pending_review')}</SelectItem>
                   <SelectItem value="blocked">{t('threats.statuses.blocked')}</SelectItem>
-                  <SelectItem value="analyzing">{t('threats.statuses.analyzing')}</SelectItem>
-                  <SelectItem value="resolved">{t('threats.statuses.resolved')}</SelectItem>
+                  <SelectItem value="allowed">{t('threats.statuses.allowed')}</SelectItem>
+                  <SelectItem value="unblocked">{t('threats.statuses.unblocked')}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -142,14 +210,15 @@ export default function Threats() {
                   <TableHead>{t('threats.type')}</TableHead>
                   <TableHead className="w-[140px]">{t('threats.source')}</TableHead>
                   <TableHead className="w-[140px]">{t('threats.target')}</TableHead>
-                  <TableHead className="w-[100px]">{t('threats.status')}</TableHead>
+                  <TableHead className="w-[120px]">{t('threats.status')}</TableHead>
                   <TableHead>Description</TableHead>
+                  {currentUser?.isAdmin && <TableHead className="w-[100px] text-right">{t('admin.actions')}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={currentUser?.isAdmin ? 8 : 7} className="text-center py-8 text-muted-foreground">
                       {t('common.loading')}
                     </TableCell>
                   </TableRow>
@@ -168,16 +237,45 @@ export default function Threats() {
                       <TableCell className="font-mono text-xs">{threat.sourceIP}</TableCell>
                       <TableCell className="font-mono text-xs">{threat.targetIP}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">
+                        <Badge variant={getStatusBadgeVariant(threat.status)}>
                           {t(`threats.statuses.${threat.status}`)}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">{threat.description}</TableCell>
+                      {currentUser?.isAdmin && (
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            {threat.status !== 'detected' && threat.status !== 'pending_review' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setHistoryThreatId(threat.id)}
+                                data-testid={`button-history-${threat.id}`}
+                              >
+                                <History className="h-3 w-3 mr-1" />
+                                {t('admin.history')}
+                              </Button>
+                            )}
+                            {threat.status === 'blocked' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => unblockMutation.mutate(threat.id)}
+                                disabled={unblockMutation.isPending}
+                                data-testid={`button-unblock-${threat.id}`}
+                              >
+                                <Unlock className="h-3 w-3 mr-1" />
+                                {t('admin.unblockThreat')}
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={currentUser?.isAdmin ? 8 : 7} className="text-center py-8 text-muted-foreground">
                       {t('threats.noThreats')}
                     </TableCell>
                   </TableRow>
@@ -187,6 +285,62 @@ export default function Threats() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!historyThreatId} onOpenChange={(open) => !open && setHistoryThreatId(null)}>
+        <DialogContent data-testid="dialog-threat-history">
+          <DialogHeader>
+            <DialogTitle>{t('admin.decisionHistory')}</DialogTitle>
+            <DialogDescription>
+              {t('admin.decisionHistoryDescription')}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {historyLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : decisionHistory.length > 0 ? (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[180px]">{t('admin.timestamp')}</TableHead>
+                      <TableHead className="w-[120px]">{t('admin.decision')}</TableHead>
+                      <TableHead className="w-[120px]">{t('admin.admin')}</TableHead>
+                      <TableHead>{t('admin.reason')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {decisionHistory.map((decision) => (
+                      <TableRow key={decision.id} data-testid={`history-row-${decision.id}`}>
+                        <TableCell className="font-mono text-xs">
+                          {format(new Date(decision.timestamp), 'yyyy-MM-dd HH:mm:ss')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={decision.decision === 'block' ? 'destructive' : 'default'}>
+                            {decision.decision}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">{decision.adminId.slice(0, 8)}...</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {decision.reason || '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="text-center py-8 text-muted-foreground">
+                {t('admin.noDecisionHistory')}
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
