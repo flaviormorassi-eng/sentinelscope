@@ -32,6 +32,9 @@ export const threats = pgTable("threats", {
   status: text("status").notNull().default("detected"),
   description: text("description").notNull(),
   blocked: boolean("blocked").notNull().default(false),
+  sourceURL: text("source_url"),
+  deviceName: text("device_name"),
+  threatVector: text("threat_vector"),
 });
 
 // Threat decisions (admin approval/blocking actions)
@@ -131,6 +134,9 @@ export const normalizedEvents = pgTable("normalized_events", {
   metadata: jsonb("metadata"),
   timestamp: timestamp("timestamp").notNull().default(sql`now()`),
   isThreat: boolean("is_threat").notNull().default(false),
+  sourceURL: text("source_url"),
+  deviceName: text("device_name"),
+  threatVector: text("threat_vector"),
 }, (table) => ({
   userTimestampIdx: index("normalized_events_user_timestamp_idx").on(table.userId, table.timestamp),
   isThreatIdx: index("normalized_events_is_threat_idx").on(table.isThreat),
@@ -151,6 +157,9 @@ export const threatEvents = pgTable("threat_events", {
   reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   reviewedAt: timestamp("reviewed_at"),
+  sourceURL: text("source_url"),
+  deviceName: text("device_name"),
+  threatVector: text("threat_vector"),
 }, (table) => ({
   userCreatedIdx: index("threat_events_user_created_idx").on(table.userId, table.createdAt),
   statusIdx: index("threat_events_status_idx").on(table.mitigationStatus),
