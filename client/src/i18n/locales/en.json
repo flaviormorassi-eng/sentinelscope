@@ -243,7 +243,20 @@
     "topCountries": "Top Countries by Threat Origin",
     "recentThreats": "Recent Threats (All Users)",
     "noThreats": "No threats found",
-    "country": "Country"
+    "country": "Country",
+    "pendingThreats": "Pending Threats",
+    "pendingThreatsReview": "Pending Threats - Review Required",
+    "review": "Review",
+    "reviewThreat": "Review Threat",
+    "reviewThreatDescription": "Decide whether to block or allow this threat. Your decision will be logged for audit purposes.",
+    "decisionReason": "Decision Reason",
+    "decisionReasonPlaceholder": "Enter reason for this decision (optional)...",
+    "allowThreat": "Allow Threat",
+    "blockThreat": "Block Threat",
+    "unblockThreat": "Unblock",
+    "decisionRecorded": "Decision Recorded",
+    "threatDecisionSuccess": "Your threat decision has been recorded successfully",
+    "threatDecisionError": "Failed to record threat decision"
   },
   "common": {
     "loading": "Loading...",
@@ -258,6 +271,7 @@
     "edit": "Edit",
     "view": "View",
     "back": "Back",
-    "next": "Next"
+    "next": "Next",
+    "optional": "optional"
   }
 }

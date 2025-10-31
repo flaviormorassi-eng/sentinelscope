@@ -243,7 +243,20 @@
     "topCountries": "Principais Países por Origem de Ameaça",
     "recentThreats": "Ameaças Recentes (Todos os Usuários)",
     "noThreats": "Nenhuma ameaça encontrada",
-    "country": "País"
+    "country": "País",
+    "pendingThreats": "Ameaças Pendentes",
+    "pendingThreatsReview": "Ameaças Pendentes - Revisão Necessária",
+    "review": "Revisar",
+    "reviewThreat": "Revisar Ameaça",
+    "reviewThreatDescription": "Decida se deve bloquear ou permitir esta ameaça. Sua decisão será registrada para fins de auditoria.",
+    "decisionReason": "Motivo da Decisão",
+    "decisionReasonPlaceholder": "Digite o motivo desta decisão (opcional)...",
+    "allowThreat": "Permitir Ameaça",
+    "blockThreat": "Bloquear Ameaça",
+    "unblockThreat": "Desbloquear",
+    "decisionRecorded": "Decisão Registrada",
+    "threatDecisionSuccess": "Sua decisão sobre a ameaça foi registrada com sucesso",
+    "threatDecisionError": "Falha ao registrar decisão sobre a ameaça"
   },
   "common": {
     "loading": "Carregando...",
@@ -258,6 +271,7 @@
     "edit": "Editar",
     "view": "Visualizar",
     "back": "Voltar",
-    "next": "Próximo"
+    "next": "Próximo",
+    "optional": "opcional"
   }
 }
