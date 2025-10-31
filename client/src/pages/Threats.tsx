@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Download, Search, Filter, Unlock, History } from 'lucide-react';
+import { Download, Search, Filter, Unlock, History, ExternalLink, Monitor, Mail, Usb, Globe, Network } from 'lucide-react';
 import { Threat, User } from '@shared/schema';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,7 +95,9 @@ export default function Threats() {
     const matchesSearch = 
       threat.sourceIP.toLowerCase().includes(search.toLowerCase()) ||
       threat.description.toLowerCase().includes(search.toLowerCase()) ||
-      threat.type.toLowerCase().includes(search.toLowerCase());
+      threat.type.toLowerCase().includes(search.toLowerCase()) ||
+      (threat.deviceName && threat.deviceName.toLowerCase().includes(search.toLowerCase())) ||
+      (threat.sourceURL && threat.sourceURL.toLowerCase().includes(search.toLowerCase()));
     
     const matchesSeverity = severityFilter === 'all' || threat.severity === severityFilter;
     const matchesStatus = statusFilter === 'all' || threat.status === statusFilter;
@@ -122,15 +124,30 @@ export default function Threats() {
     }
   };
 
+  const getThreatVectorIcon = (vector: string | null) => {
+    if (!vector) return null;
+    switch (vector) {
+      case 'email': return <Mail className="h-3 w-3" />;
+      case 'web': return <Globe className="h-3 w-3" />;
+      case 'network': return <Network className="h-3 w-3" />;
+      case 'usb': return <Usb className="h-3 w-3" />;
+      case 'download': return <Download className="h-3 w-3" />;
+      default: return <Monitor className="h-3 w-3" />;
+    }
+  };
+
   const handleExport = () => {
     const csv = [
-      ['Timestamp', 'Severity', 'Type', 'Source IP', 'Target IP', 'Status', 'Description'],
+      ['Timestamp', 'Severity', 'Type', 'Source IP', 'Target IP', 'Device', 'Vector', 'Source URL', 'Status', 'Description'],
       ...filteredThreats.map(t => [
         format(new Date(t.timestamp), 'yyyy-MM-dd HH:mm:ss'),
         t.severity,
         t.type,
         t.sourceIP,
         t.targetIP,
+        t.deviceName || '-',
+        t.threatVector || '-',
+        t.sourceURL || '-',
         t.status,
         t.description
       ])
@@ -209,7 +226,9 @@ export default function Threats() {
                   <TableHead className="w-[100px]">{t('threats.severity')}</TableHead>
                   <TableHead>{t('threats.type')}</TableHead>
                   <TableHead className="w-[140px]">{t('threats.source')}</TableHead>
-                  <TableHead className="w-[140px]">{t('threats.target')}</TableHead>
+                  <TableHead className="w-[120px]">{t('threats.device')}</TableHead>
+                  <TableHead className="w-[80px]">{t('threats.vector')}</TableHead>
+                  <TableHead className="w-[200px]">{t('threats.sourceURL')}</TableHead>
                   <TableHead className="w-[120px]">{t('threats.status')}</TableHead>
                   <TableHead>Description</TableHead>
                   {currentUser?.isAdmin && <TableHead className="w-[100px] text-right">{t('admin.actions')}</TableHead>}
@@ -218,7 +237,7 @@ export default function Threats() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={currentUser?.isAdmin ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={currentUser?.isAdmin ? 11 : 10} className="text-center py-8 text-muted-foreground">
                       {t('common.loading')}
                     </TableCell>
                   </TableRow>
@@ -235,7 +254,29 @@ export default function Threats() {
                       </TableCell>
                       <TableCell>{t(`threats.types.${threat.type}`)}</TableCell>
                       <TableCell className="font-mono text-xs">{threat.sourceIP}</TableCell>
-                      <TableCell className="font-mono text-xs">{threat.targetIP}</TableCell>
+                      <TableCell className="font-mono text-xs">{threat.deviceName || '-'}</TableCell>
+                      <TableCell>
+                        {threat.threatVector ? (
+                          <div className="flex items-center gap-1" title={threat.threatVector}>
+                            {getThreatVectorIcon(threat.threatVector)}
+                            <span className="text-xs capitalize">{threat.threatVector}</span>
+                          </div>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {threat.sourceURL ? (
+                          <a 
+                            href={threat.sourceURL} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline text-xs"
+                            data-testid={`link-source-url-${threat.id}`}
+                          >
+                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{threat.sourceURL}</span>
+                          </a>
+                        ) : '-'}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(threat.status)}>
                           {t(`threats.statuses.${threat.status}`)}
@@ -275,7 +316,7 @@ export default function Threats() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={currentUser?.isAdmin ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={currentUser?.isAdmin ? 11 : 10} className="text-center py-8 text-muted-foreground">
                       {t('threats.noThreats')}
                     </TableCell>
                   </TableRow>
