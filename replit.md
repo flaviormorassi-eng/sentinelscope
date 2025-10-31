@@ -4,9 +4,9 @@
 SentinelScope is a real-time cybersecurity monitoring platform that detects malware, tracks infiltration attempts, and protects systems with advanced threat intelligence. Built with React, Node.js/Express, and Firebase Authentication.
 
 ## Current State
-**Status:** MVP Complete
-**Version:** 1.0.0
-**Last Updated:** October 30, 2025
+**Status:** MVP Complete + Threat Blocking System
+**Version:** 1.1.0
+**Last Updated:** October 31, 2025
 
 ### Implemented Features
 - ✅ Firebase Authentication with Google OAuth
@@ -26,6 +26,9 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 - ✅ **User management interface (edit subscriptions, admin status)**
 - ✅ **System-wide analytics and monitoring**
 - ✅ **Admin audit logging for compliance**
+- ✅ **Semi-automatic threat blocking system with admin approval workflow**
+- ✅ **Threat status tracking (detected/pending_review/blocked/allowed/unblocked)**
+- ✅ **Decision history timeline for audit and compliance**
 
 ## Project Architecture
 
@@ -50,7 +53,8 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 
 ### Data Models (`shared/schema.ts`)
 - Users (Firebase integration, isAdmin flag)
-- Threats (with geolocation)
+- Threats (with geolocation and status tracking)
+- Threat Decisions (admin block/allow/unblock actions with reasons)
 - Alerts
 - User Preferences
 - Subscription Tiers
@@ -109,6 +113,9 @@ SentinelScope is a real-time cybersecurity monitoring platform that detects malw
 - `GET /api/admin/stats` - System-wide statistics (users, threats, subscriptions)
 - `GET /api/admin/users` - List all users with subscription and admin status
 - `GET /api/admin/threats` - Cross-user threat aggregation
+- `GET /api/admin/threats/pending` - Get threats pending admin review
+- `POST /api/admin/threats/:id/decide` - Block/allow/unblock threat with reason
+- `GET /api/admin/threats/:id/history` - Get complete decision history for a threat
 - `PUT /api/admin/users/:id` - Update user subscription tier and admin status
 - `POST /api/admin/audit` - Create audit log entry
 - `GET /api/admin/audit` - Get audit log history
@@ -160,6 +167,35 @@ Technical Details:
 - Returns structured results with detection statistics
 - Handles VirusTotal API rate limits gracefully
 
+## Threat Blocking Workflow
+The platform includes a semi-automatic threat blocking system with admin approval:
+
+### Threat Status States
+1. **detected** - Initial state when threat is first detected
+2. **pending_review** - Threat flagged for admin review
+3. **blocked** - Admin has blocked the threat (active protection)
+4. **allowed** - Admin has approved the threat as safe
+5. **unblocked** - Previously blocked threat has been unblocked
+
+### Admin Workflow
+1. **Detection**: System detects threats and marks them as "detected"
+2. **Review Queue**: High-severity threats automatically move to "pending_review"
+3. **Admin Decision**: Admin reviews pending threats and decides to block or allow
+4. **Action Logging**: All decisions recorded with timestamp, admin ID, and reason
+5. **Unblock Option**: Admins can unblock threats if needed (e.g., false positive)
+
+### UI Features
+- **Admin Dashboard**: Shows count of pending threats requiring review
+- **Review Interface**: Dialog with threat details and block/allow actions
+- **Threat Log**: Status badges (color-coded) and filtering by status
+- **Decision History**: Timeline of all block/allow/unblock actions
+- **Audit Trail**: Complete compliance logging for regulatory requirements
+
+### Database Tables
+- **threats**: Includes status column tracking current state
+- **threat_decisions**: Records every admin decision (block/allow/unblock)
+- **admin_audit_log**: Tracks all admin actions for compliance
+
 ## Environment Variables
 Required secrets (stored in Replit Secrets):
 - `VIRUSTOTAL_API_KEY`
@@ -177,7 +213,29 @@ This starts:
 - Vite dev server (frontend)
 - Both accessible at http://localhost:5000
 
-## Recent Changes (October 30, 2025)
+## Recent Changes
+
+### October 31, 2025
+- ✅ **Semi-automatic threat blocking system**
+  - Added threat status tracking (detected/pending_review/blocked/allowed/unblocked)
+  - Created threat_decisions database table for decision history
+  - Implemented admin review interface in Admin Dashboard
+  - Added block/allow decision workflow with reason field
+  - Built unblock functionality for false positive corrections
+- ✅ **Enhanced Threat Log UI**
+  - Status badges with color coding (blocked=red, allowed=default, unblocked=default)
+  - Admin-only unblock buttons
+  - Decision history dialog showing complete timeline
+  - Filtering by threat status
+- ✅ **Full i18n support for new features**
+  - Translated all threat statuses, actions, and messages (EN/PT)
+  - Localized decision history dialog and admin workflows
+- ✅ **API endpoints for threat management**
+  - GET /api/admin/threats/pending - Pending review queue
+  - POST /api/admin/threats/:id/decide - Block/allow/unblock
+  - GET /api/admin/threats/:id/history - Decision audit trail
+
+### October 30, 2025
 - ✅ Completed MVP implementation
 - ✅ Added comprehensive mock threat engine
 - ✅ Implemented all API endpoints
