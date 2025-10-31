@@ -82,9 +82,9 @@ export default function AdminDashboard() {
 
   const decisionMutation = useMutation({
     mutationFn: async ({ threatId, decision, reason }: { threatId: string; decision: 'block' | 'allow'; reason?: string }) => {
-      return await apiRequest(`/api/admin/threats/${threatId}/decide`, {
-        method: 'POST',
-        body: JSON.stringify({ decision, reason }),
+      return await apiRequest('POST', `/api/admin/threats/${threatId}/decide`, {
+        decision,
+        reason,
       });
     },
     onSuccess: () => {
