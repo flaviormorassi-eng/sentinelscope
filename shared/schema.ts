@@ -64,6 +64,7 @@ export const userPreferences = pgTable("user_preferences", {
   emailNotifications: boolean("email_notifications").notNull().default(true),
   pushNotifications: boolean("push_notifications").notNull().default(true),
   alertThreshold: text("alert_threshold").notNull().default("medium"),
+  monitoringMode: text("monitoring_mode").notNull().default("demo"),
 });
 
 // Admin audit log

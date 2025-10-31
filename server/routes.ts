@@ -64,8 +64,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/stats", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
-      const stats = await storage.getStats(userId);
-      res.json(stats);
+      
+      // Check monitoring mode
+      const preferences = await storage.getUserPreferences(userId);
+      const monitoringMode = preferences?.monitoringMode || 'demo';
+      
+      if (monitoringMode === 'real') {
+        // Get real monitoring stats from normalized_events and threat_events
+        const stats = await storage.getRealMonitoringStats(userId);
+        res.json(stats);
+      } else {
+        // Use demo/mock data
+        const stats = await storage.getStats(userId);
+        res.json(stats);
+      }
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -105,7 +117,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/threats/timeline", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
-      const threats = await storage.getRecentThreats(userId, 24);
+      
+      // Check monitoring mode
+      const preferences = await storage.getUserPreferences(userId);
+      const monitoringMode = preferences?.monitoringMode || 'demo';
+      
+      let threats: any[];
+      if (monitoringMode === 'real') {
+        threats = await storage.getRecentThreatEvents(userId, 24);
+      } else {
+        threats = await storage.getRecentThreats(userId, 24);
+      }
       
       // Group by hour for timeline chart
       const timeline: { [key: string]: number } = {};
@@ -117,8 +139,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timeline[key] = 0;
       }
 
-      threats.forEach(threat => {
-        const hour = new Date(threat.timestamp).getHours();
+      threats.forEach((threat: any) => {
+        const threatTime = monitoringMode === 'real' ? threat.createdAt : threat.timestamp;
+        const hour = new Date(threatTime).getHours();
         const key = `${hour.toString().padStart(2, '0')}:00`;
         if (timeline[key] !== undefined) {
           timeline[key]++;
@@ -218,6 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailNotifications: true,
           pushNotifications: true,
           alertThreshold: 'medium',
+          monitoringMode: 'demo',
         };
       }
 

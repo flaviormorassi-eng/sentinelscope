@@ -24,6 +24,7 @@ interface UserPreferences {
   emailNotifications: boolean;
   pushNotifications: boolean;
   alertThreshold: string;
+  monitoringMode: string;
 }
 
 export default function Settings() {
@@ -42,12 +43,14 @@ export default function Settings() {
   const [emailNotifications, setEmailNotifications] = useState(preferences?.emailNotifications ?? true);
   const [pushNotifications, setPushNotifications] = useState(preferences?.pushNotifications ?? true);
   const [alertThreshold, setAlertThreshold] = useState(preferences?.alertThreshold ?? 'medium');
+  const [monitoringMode, setMonitoringMode] = useState(preferences?.monitoringMode ?? 'demo');
 
   useEffect(() => {
     if (preferences) {
       setEmailNotifications(preferences.emailNotifications);
       setPushNotifications(preferences.pushNotifications);
       setAlertThreshold(preferences.alertThreshold);
+      setMonitoringMode(preferences.monitoringMode);
     }
   }, [preferences]);
 
@@ -84,6 +87,7 @@ export default function Settings() {
       emailNotifications,
       pushNotifications,
       alertThreshold,
+      monitoringMode,
     });
   };
 
@@ -206,6 +210,41 @@ export default function Settings() {
               Control which threats trigger notifications
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Monitoring Mode</CardTitle>
+          <CardDescription>Choose between demo data or real-time monitoring</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="monitoring-mode">Data Source</Label>
+            <Select value={monitoringMode} onValueChange={setMonitoringMode}>
+              <SelectTrigger id="monitoring-mode" data-testid="select-monitoring-mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="demo">Demo Mode (Simulated Data)</SelectItem>
+                <SelectItem value="real">Real Monitoring (Live Data)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {monitoringMode === 'demo' 
+                ? 'Using simulated threat data for demonstration purposes'
+                : 'Connected to real-time security monitoring sources'}
+            </p>
+          </div>
+
+          {monitoringMode === 'real' && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <p className="text-sm font-medium mb-2">📡 Real Monitoring Active</p>
+              <p className="text-sm text-muted-foreground">
+                Configure your data sources in the Event Sources page to start receiving real-time security events.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -41,7 +41,7 @@ import {
 import { randomUUID } from "crypto";
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { Pool, neonConfig } from '@neondatabase/serverless';
-import { eq, desc, and, count } from 'drizzle-orm';
+import { eq, desc, and, count, sql } from 'drizzle-orm';
 import ws from 'ws';
 import { hashApiKey, verifyApiKey } from './utils/security';
 
@@ -77,6 +77,8 @@ export interface IStorage {
 
   // Stats
   getStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }>;
+  getRealMonitoringStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }>;
+  getRecentThreatEvents(userId: string, hours: number): Promise<ThreatEvent[]>;
 
   // Admin methods
   getAllUsers(): Promise<User[]>;
@@ -263,6 +265,7 @@ export class MemStorage implements IStorage {
         emailNotifications: prefs.emailNotifications ?? true,
         pushNotifications: prefs.pushNotifications ?? true,
         alertThreshold: prefs.alertThreshold ?? 'medium',
+        monitoringMode: prefs.monitoringMode ?? 'demo',
       };
       this.preferences.set(id, newPrefs);
       return newPrefs;
@@ -290,6 +293,20 @@ export class MemStorage implements IStorage {
       blocked: threats.filter(t => t.blocked).length,
       alerts: alerts.filter(a => new Date(a.timestamp) >= today).length,
     };
+  }
+
+  async getRealMonitoringStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }> {
+    // MemStorage doesn't support real monitoring - return zeros
+    return {
+      active: 0,
+      blocked: 0,
+      alerts: 0,
+    };
+  }
+
+  async getRecentThreatEvents(userId: string, hours: number): Promise<ThreatEvent[]> {
+    // MemStorage doesn't support real monitoring - return empty array
+    return [];
   }
 
   async getAllUsers(): Promise<User[]> {
@@ -534,6 +551,40 @@ export class DbStorage implements IStorage {
       blocked: userThreats.filter(t => t.blocked).length,
       alerts: userAlerts.filter(a => new Date(a.timestamp) >= today).length,
     };
+  }
+
+  async getRealMonitoringStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }> {
+    // Get stats from real monitoring tables
+    const allThreatEvents = await this.db
+      .select()
+      .from(threatEvents)
+      .where(eq(threatEvents.userId, userId));
+    
+    const userAlerts = await this.getAlerts(userId);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return {
+      active: allThreatEvents.filter(t => t.mitigationStatus === 'detected').length,
+      blocked: allThreatEvents.filter(t => t.autoBlocked).length,
+      alerts: userAlerts.filter(a => new Date(a.timestamp) >= today).length,
+    };
+  }
+
+  async getRecentThreatEvents(userId: string, hours: number): Promise<ThreatEvent[]> {
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    
+    const results = await this.db
+      .select()
+      .from(threatEvents)
+      .where(and(
+        eq(threatEvents.userId, userId),
+        sql`${threatEvents.createdAt} >= ${since}`
+      ))
+      .orderBy(desc(threatEvents.createdAt));
+    
+    return results;
   }
 
   async getAllUsers(): Promise<User[]> {
