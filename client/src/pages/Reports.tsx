@@ -36,7 +36,9 @@ export default function Reports() {
         const link = document.createElement('a');
         link.href = data.downloadUrl;
         link.download = data.filename || `report-${Date.now()}.${format}`;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
       }
       toast({
         title: "Success",
