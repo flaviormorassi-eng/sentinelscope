@@ -71,14 +71,7 @@ export default function SystemAnalytics() {
   }, [userLoading, currentUser, setLocation]);
 
   const { data: threats = [], isLoading } = useQuery<Threat[]>({
-    queryKey: ['/api/admin/threats', { limit: limitFilter }],
-    queryFn: async () => {
-      const response = await fetch(`/api/admin/threats?limit=${limitFilter}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch threats');
-      return response.json();
-    },
+    queryKey: [`/api/admin/threats?limit=${limitFilter}`],
     enabled: currentUser?.isAdmin === true,
   });
 
