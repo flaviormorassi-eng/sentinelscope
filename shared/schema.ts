@@ -34,6 +34,17 @@ export const threats = pgTable("threats", {
   blocked: boolean("blocked").notNull().default(false),
 });
 
+// Threat decisions (admin approval/blocking actions)
+export const threatDecisions = pgTable("threat_decisions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  threatId: varchar("threat_id").notNull().references(() => threats.id),
+  decidedBy: varchar("decided_by").notNull().references(() => users.id),
+  decision: text("decision").notNull(),
+  reason: text("reason"),
+  previousStatus: text("previous_status"),
+  timestamp: timestamp("timestamp").notNull().default(sql`now()`),
+});
+
 // Alerts
 export const alerts = pgTable("alerts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -89,6 +100,11 @@ export const insertAdminAuditLogSchema = createInsertSchema(adminAuditLog).omit(
   timestamp: true,
 });
 
+export const insertThreatDecisionSchema = createInsertSchema(threatDecisions).omit({
+  id: true,
+  timestamp: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -104,6 +120,9 @@ export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 
 export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
 export type InsertAdminAuditLog = z.infer<typeof insertAdminAuditLogSchema>;
+
+export type ThreatDecision = typeof threatDecisions.$inferSelect;
+export type InsertThreatDecision = z.infer<typeof insertThreatDecisionSchema>;
 
 // Subscription tiers
 export const SUBSCRIPTION_TIERS = {

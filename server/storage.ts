@@ -9,12 +9,15 @@ import {
   type InsertUserPreferences,
   type AdminAuditLog,
   type InsertAdminAuditLog,
+  type ThreatDecision,
+  type InsertThreatDecision,
   type SubscriptionTier,
   users,
   threats,
   alerts,
   userPreferences,
   adminAuditLog,
+  threatDecisions,
   SUBSCRIPTION_TIERS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -69,6 +72,13 @@ export interface IStorage {
     totalAlerts: number; 
     estimatedRevenue: number;
   }>;
+  
+  // Threat decision methods (admin blocking/unblocking)
+  getPendingThreats(userId?: string): Promise<Threat[]>;
+  getThreatById(id: string): Promise<Threat | undefined>;
+  updateThreatStatus(threatId: string, status: string, blocked: boolean): Promise<void>;
+  recordThreatDecision(decision: { threatId: string; decidedBy: string; decision: string; reason?: string; previousStatus: string }): Promise<void>;
+  getThreatDecisionHistory(threatId: string): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -292,6 +302,33 @@ export class MemStorage implements IStorage {
       estimatedRevenue,
     };
   }
+
+  async getPendingThreats(userId?: string): Promise<Threat[]> {
+    const allThreats = Array.from(this.threats.values());
+    const filtered = userId 
+      ? allThreats.filter(t => t.userId === userId && t.status === 'detected')
+      : allThreats.filter(t => t.status === 'detected');
+    return filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async getThreatById(id: string): Promise<Threat | undefined> {
+    return this.threats.get(id);
+  }
+
+  async updateThreatStatus(threatId: string, status: string, blocked: boolean): Promise<void> {
+    const threat = this.threats.get(threatId);
+    if (threat) {
+      this.threats.set(threatId, { ...threat, status, blocked });
+    }
+  }
+
+  async recordThreatDecision(): Promise<void> {
+    return;
+  }
+
+  async getThreatDecisionHistory(): Promise<any[]> {
+    return [];
+  }
 }
 
 // Database storage implementation using Drizzle ORM
@@ -503,6 +540,56 @@ export class DbStorage implements IStorage {
       totalAlerts: alertCountResult[0]?.count || 0,
       estimatedRevenue,
     };
+  }
+
+  async getPendingThreats(userId?: string): Promise<Threat[]> {
+    if (userId) {
+      return await this.db
+        .select()
+        .from(threats)
+        .where(and(eq(threats.userId, userId), eq(threats.status, 'detected')))
+        .orderBy(desc(threats.timestamp));
+    }
+    return await this.db
+      .select()
+      .from(threats)
+      .where(eq(threats.status, 'detected'))
+      .orderBy(desc(threats.timestamp));
+  }
+
+  async getThreatById(id: string): Promise<Threat | undefined> {
+    const result = await this.db
+      .select()
+      .from(threats)
+      .where(eq(threats.id, id));
+    return result[0];
+  }
+
+  async updateThreatStatus(threatId: string, status: string, blocked: boolean): Promise<void> {
+    await this.db
+      .update(threats)
+      .set({ status, blocked })
+      .where(eq(threats.id, threatId));
+  }
+
+  async recordThreatDecision(decision: { threatId: string; decidedBy: string; decision: string; reason?: string; previousStatus: string }): Promise<void> {
+    await this.db
+      .insert(threatDecisions)
+      .values({
+        threatId: decision.threatId,
+        decidedBy: decision.decidedBy,
+        decision: decision.decision,
+        reason: decision.reason || null,
+        previousStatus: decision.previousStatus,
+      });
+  }
+
+  async getThreatDecisionHistory(threatId: string): Promise<ThreatDecision[]> {
+    return await this.db
+      .select()
+      .from(threatDecisions)
+      .where(eq(threatDecisions.threatId, threatId))
+      .orderBy(desc(threatDecisions.timestamp));
   }
 }
 
