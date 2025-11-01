@@ -125,7 +125,6 @@ function CheckoutForm({ tier, clientSecret }: { tier: SubscriptionTier; clientSe
 export default function Checkout() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Get tier from URL params
@@ -155,14 +154,15 @@ export default function Checkout() {
   const tierInfo = SUBSCRIPTION_TIERS[tier];
 
   useEffect(() => {
-    const createSubscription = async () => {
+    const createCheckoutSession = async () => {
       try {
         const response = await apiRequest('POST', '/api/stripe/create-subscription', { tier });
         
-        if (response.clientSecret) {
-          setClientSecret(response.clientSecret);
+        if (response.sessionUrl) {
+          // Redirect to Stripe Checkout
+          window.location.href = response.sessionUrl;
         } else {
-          throw new Error('No client secret received');
+          throw new Error('No checkout URL received');
         }
       } catch (err: any) {
         console.error('Checkout error:', err);
@@ -170,7 +170,7 @@ export default function Checkout() {
       }
     };
 
-    createSubscription();
+    createCheckoutSession();
   }, [tier, t]);
 
   if (error) {
@@ -192,55 +192,15 @@ export default function Checkout() {
     );
   }
 
-  if (!clientSecret) {
-    return (
-      <div className="container max-w-2xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">{t('checkout.loading')}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const options = {
-    clientSecret,
-    appearance: {
-      theme: 'stripe' as const,
-    },
-  };
-
+  // Show loading state while redirecting to Stripe Checkout
   return (
-    <div className="container max-w-2xl mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold" data-testid="text-checkout-title">
-          {t('checkout.title')}
-        </h1>
-        <p className="text-muted-foreground mt-2">{t('checkout.subtitle')}</p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('checkout.cardTitle')}</CardTitle>
-          <CardDescription>{t('checkout.cardDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Elements stripe={stripePromise} options={options}>
-            <CheckoutForm tier={tier} clientSecret={clientSecret} />
-          </Elements>
-        </CardContent>
-      </Card>
-
-      <div className="mt-6 space-y-4">
-        <h2 className="font-semibold">{t('checkout.features.title')}</h2>
-        <ul className="space-y-2">
-          {tierInfo.features.map((feature, index) => (
-            <li key={index} className="flex items-start gap-2 text-sm">
-              <Shield className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-              <span>{feature}</span>
-            </li>
-          ))}
-        </ul>
+    <div className="container max-w-2xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
+      <div className="text-center space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+        <p className="text-muted-foreground">{t('checkout.loading')}</p>
+        <p className="text-sm text-muted-foreground">
+          Redirecting to secure Stripe Checkout...
+        </p>
       </div>
     </div>
   );

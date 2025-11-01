@@ -813,7 +813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== STRIPE SUBSCRIPTION ROUTES ==========
   
-  // Create or retrieve Stripe subscription
+  // Create Stripe Checkout Session (recommended approach)
   app.post('/api/stripe/create-subscription', authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
@@ -830,30 +830,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const priceId = SUBSCRIPTION_TIERS[tier as SubscriptionTier].stripePriceId;
       if (!priceId) {
-        return res.status(400).json({ error: `Price ID not configured for tier: ${tier}. Please configure STRIPE_PRICE_${tier.toUpperCase()} or add stripePriceId to SUBSCRIPTION_TIERS in schema.ts` });
+        return res.status(400).json({ error: `Price ID not configured for tier: ${tier}` });
       }
 
       const user = await storage.getUser(userId);
       if (!user || !user.email) {
         return res.status(404).json({ error: 'User not found or missing email' });
-      }
-
-      // If user already has a subscription, retrieve it
-      if (user.stripeSubscriptionId) {
-        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
-          expand: ['latest_invoice.payment_intent'],
-        });
-        
-        if (subscription.status === 'active' || subscription.status === 'trialing') {
-          const invoice = subscription.latest_invoice as any;
-          const paymentIntent = invoice?.payment_intent as any;
-          
-          return res.json({
-            subscriptionId: subscription.id,
-            clientSecret: paymentIntent?.client_secret,
-            status: subscription.status,
-          });
-        }
       }
 
       let customerId = user.stripeCustomerId;
@@ -871,69 +853,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create subscription
-      const subscription = await stripe.subscriptions.create({
+      // Create Checkout Session
+      const session = await stripe.checkout.sessions.create({
         customer: customerId,
-        items: [{ price: priceId }],
-        payment_behavior: 'default_incomplete',
-        payment_settings: { save_default_payment_method: 'on_subscription' },
-        expand: ['latest_invoice.payment_intent'],
-      });
-
-      // Update user with subscription info
-      const periodEnd = (subscription as any).current_period_end 
-        ? new Date((subscription as any).current_period_end * 1000) 
-        : null;
-      
-      await storage.updateUserStripeInfo(userId, {
-        stripeSubscriptionId: subscription.id,
-        stripePriceId: priceId,
-        subscriptionStatus: subscription.status,
-        subscriptionTier: tier as SubscriptionTier,
-        currentPeriodEnd: periodEnd,
-      });
-
-      // Get client secret - need to explicitly retrieve the invoice with expanded payment_intent
-      let clientSecret: string | undefined;
-      
-      if (subscription.latest_invoice) {
-        const invoiceId = typeof subscription.latest_invoice === 'string' 
-          ? subscription.latest_invoice 
-          : subscription.latest_invoice.id;
-        
-        // Retrieve invoice with payment intent expanded
-        const invoice = await stripe.invoices.retrieve(invoiceId, {
-          expand: ['payment_intent'],
-        });
-        
-        console.log('[Stripe Debug] Invoice details:', {
-          invoiceId: invoice.id,
-          status: invoice.status,
-          amount_due: invoice.amount_due,
-          payment_intent: typeof (invoice as any).payment_intent,
-          payment_intent_id: (invoice as any).payment_intent,
-        });
-        
-        const paymentIntent = (invoice as any).payment_intent;
-        if (paymentIntent && typeof paymentIntent === 'object' && 'client_secret' in paymentIntent) {
-          clientSecret = paymentIntent.client_secret as string;
-        }
-      }
-
-      console.log('[Stripe Debug] Subscription created:', {
-        subscriptionId: subscription.id,
-        status: subscription.status,
-        clientSecret: clientSecret ? 'present' : 'missing',
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/subscription?success=true`,
+        cancel_url: `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/subscription?canceled=true`,
+        subscription_data: {
+          metadata: {
+            userId,
+            tier,
+          },
+        },
       });
 
       res.json({
-        subscriptionId: subscription.id,
-        clientSecret,
-        status: subscription.status,
+        sessionUrl: session.url,
       });
     } catch (error: any) {
-      console.error('Stripe subscription creation error:', error);
-      res.status(500).json({ error: error.message || 'Failed to create subscription' });
+      console.error('Stripe checkout creation error:', error);
+      res.status(500).json({ error: error.message || 'Failed to create checkout session' });
     }
   });
 
