@@ -44,13 +44,25 @@ The platform is built with a clear separation between frontend and backend.
 - Ownership verification on all event source operations
 - Environment variable management via Replit Secrets
 
-**Threat Blocking Workflow**: A semi-automatic system with states (detected, pending_review, blocked, allowed, unblocked) and an admin approval process. All decisions are logged for compliance.
+**Threat Blocking Workflow**: 
+- **User-Level Blocking**: All authenticated users can block/allow/unblock their own threats via `POST /api/threats/:id/decide` with ownership verification
+- **Admin-Level Blocking**: Admins can manage any threat via `POST /api/admin/threats/:id/decide` with full audit logging
+- **States**: detected, pending_review, blocked, allowed, unblocked
+- **Compliance**: All decisions are logged in threat_decisions table for audit trails
 
-**Monitoring Mode System (NEW - v1.3.0)**:
+**Monitoring Mode System & Access Control**:
 - **Feature Flag**: Users can toggle between "demo" and "real" monitoring modes in Settings
-- **Demo Mode**: Uses mock threat data from the legacy threats table (default for new users)
+- **Demo Mode**: Uses mock threat data from the legacy threats table (default for all users, always available)
 - **Real Mode**: Uses production event ingestion pipeline with event_sources → raw_events → normalized_events → threat_events
-- **Data Routing**: Dashboard API (`GET /api/stats`) respects user's monitoringMode preference and routes queries accordingly
+- **Access Control**:
+  - **Individual Tier**: 24-hour free trial (starts on first real mode activation), then restricted
+  - **SMB/Enterprise Tiers**: Unlimited real monitoring access
+  - Trial tracking via `trialStartedAt` and `trialExpiresAt` in user_preferences table
+- **Strict Data Separation**: 
+  - Demo mode queries ONLY legacy tables (threats, alerts)
+  - Real mode queries ONLY new tables (threat_events, normalized_events)
+  - Zero data mixing between modes - each mode shows exclusively its own data source
+- **Dashboard API Routing**: All endpoints (`/api/stats`, `/api/threats/*`, `/api/alerts/*`) check monitoringMode and route accordingly
 - **Event Source Management**: UI for configuring syslog servers, REST APIs, agents, and webhooks
 - **API Key Security**: 
   - Generated with crypto.randomBytes (64 hex chars)
@@ -91,6 +103,19 @@ The platform is built with a clear separation between frontend and backend.
 - **Replit Secrets**: For secure management of environment variables.
 
 ## Recent Changes
+
+### v1.6.0 (November 1, 2025) - Real Monitoring Access Control & Free Trial
+- ✅ Implemented 24-hour free trial system for real monitoring mode
+- ✅ Added trial tracking fields (trialStartedAt, trialExpiresAt) to user_preferences table
+- ✅ Created subscription access control utilities (checkRealMonitoringAccess, startRealMonitoringTrial)
+- ✅ Enforced strict data separation: demo mode shows only demo data, real mode shows only real data
+- ✅ Updated all dashboard API endpoints to respect monitoring mode and route to appropriate data sources
+- ✅ Made threat blocking available to all users (not just admins) with ownership verification
+- ✅ Enhanced Settings page with trial countdown timer and access restriction warnings
+- ✅ Added upgrade prompts when trial expires for free-tier users
+- ✅ Implemented automatic trial activation on first switch to real monitoring mode
+- ✅ Access policy: Individual tier users get 24-hour trial, SMB/Enterprise users have unlimited real monitoring access
+- ✅ Full bilingual support (EN/PT) for all trial and access control features
 
 ### v1.5.0 (November 1, 2025) - Stripe Payment Integration
 - ✅ Integrated Stripe for worldwide payment processing
