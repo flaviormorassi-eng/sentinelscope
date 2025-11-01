@@ -366,6 +366,171 @@ export default function InstallGuide() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
+              <Terminal className="w-5 h-5 text-primary" />
+              Test Event Ingestion
+            </CardTitle>
+            <CardDescription>Send a test event to verify your setup is working correctly</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="powershell" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="powershell">PowerShell</TabsTrigger>
+                <TabsTrigger value="bash">Bash/Linux</TabsTrigger>
+                <TabsTrigger value="mac">macOS</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="powershell" className="space-y-3">
+                <p className="text-sm text-muted-foreground">Use PowerShell to send a test event (replace YOUR_API_KEY with your actual API key):</p>
+                <div className="relative">
+                  <pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm">
+                    <code>{`$headers = @{
+    "Content-Type" = "application/json"
+    "X-API-Key" = "YOUR_API_KEY"
+}
+
+$body = @{
+    eventType = "threat_detected"
+    severity = "high"
+    source = "win-test"
+    message = "Test event from PowerShell"
+    timestamp = "2025-11-01T15:00:00Z"
+    metadata = @{
+        ip = "192.168.1.100"
+        username = "test-user"
+    }
+} | ConvertTo-Json
+
+Invoke-WebRequest -Uri "${replitUrl}/api/ingest/events" -Method POST -Headers $headers -Body $body`}</code>
+                  </pre>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard(`$headers = @{
+    "Content-Type" = "application/json"
+    "X-API-Key" = "YOUR_API_KEY"
+}
+
+$body = @{
+    eventType = "threat_detected"
+    severity = "high"
+    source = "win-test"
+    message = "Test event from PowerShell"
+    timestamp = "2025-11-01T15:00:00Z"
+    metadata = @{
+        ip = "192.168.1.100"
+        username = "test-user"
+    }
+} | ConvertTo-Json
+
+Invoke-WebRequest -Uri "${replitUrl}/api/ingest/events" -Method POST -Headers $headers -Body $body`, "test-powershell")}
+                    data-testid="button-copy-test-powershell"
+                  >
+                    {copiedCommand === "test-powershell" ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="bash" className="space-y-3">
+                <p className="text-sm text-muted-foreground">Use curl to send a test event (replace YOUR_API_KEY with your actual API key):</p>
+                <div className="relative">
+                  <pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm">
+                    <code>{`curl -X POST "${replitUrl}/api/ingest/events" \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -d '{
+    "eventType": "threat_detected",
+    "severity": "high",
+    "source": "linux-test",
+    "message": "Test event from Linux",
+    "timestamp": "2025-11-01T15:00:00Z",
+    "metadata": {
+      "ip": "192.168.1.100",
+      "username": "test-user"
+    }
+  }'`}</code>
+                  </pre>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard(`curl -X POST "${replitUrl}/api/ingest/events" \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -d '{
+    "eventType": "threat_detected",
+    "severity": "high",
+    "source": "linux-test",
+    "message": "Test event from Linux",
+    "timestamp": "2025-11-01T15:00:00Z",
+    "metadata": {
+      "ip": "192.168.1.100",
+      "username": "test-user"
+    }
+  }'`, "test-bash")}
+                    data-testid="button-copy-test-bash"
+                  >
+                    {copiedCommand === "test-bash" ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="mac" className="space-y-3">
+                <p className="text-sm text-muted-foreground">Use curl to send a test event (replace YOUR_API_KEY with your actual API key):</p>
+                <div className="relative">
+                  <pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm">
+                    <code>{`curl -X POST "${replitUrl}/api/ingest/events" \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -d '{
+    "eventType": "threat_detected",
+    "severity": "high",
+    "source": "mac-test",
+    "message": "Test event from macOS",
+    "timestamp": "2025-11-01T15:00:00Z",
+    "metadata": {
+      "ip": "192.168.1.100",
+      "username": "test-user"
+    }
+  }'`}</code>
+                  </pre>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard(`curl -X POST "${replitUrl}/api/ingest/events" \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -d '{
+    "eventType": "threat_detected",
+    "severity": "high",
+    "source": "mac-test",
+    "message": "Test event from macOS",
+    "timestamp": "2025-11-01T15:00:00Z",
+    "metadata": {
+      "ip": "192.168.1.100",
+      "username": "test-user"
+    }
+  }'`, "test-mac")}
+                    data-testid="button-copy-test-mac"
+                  >
+                    {copiedCommand === "test-mac" ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
+            <Alert className="mt-4">
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>
+                After sending the test event, check your Dashboard in Real Monitoring mode to see if it appears. Make sure you have an active Event Source configured with the same API key.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-primary" />
               {t("install.troubleshooting")}
             </CardTitle>
