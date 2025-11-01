@@ -18,13 +18,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { Save } from 'lucide-react';
+import { Save, AlertCircle, Clock, CreditCard } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Link } from 'wouter';
 
 interface UserPreferences {
   emailNotifications: boolean;
   pushNotifications: boolean;
   alertThreshold: string;
   monitoringMode: string;
+}
+
+interface RealMonitoringAccess {
+  canAccess: boolean;
+  reason: 'paid_subscription' | 'active_trial' | 'no_access';
+  trialStatus?: {
+    isActive: boolean;
+    expiresAt: string | null;
+    hoursRemaining: number | null;
+  };
 }
 
 export default function Settings() {
@@ -38,6 +50,10 @@ export default function Settings() {
 
   const { data: preferences } = useQuery<UserPreferences>({
     queryKey: ['/api/user/preferences'],
+  });
+
+  const { data: realMonitoringAccess } = useQuery<RealMonitoringAccess>({
+    queryKey: ['/api/user/real-monitoring-access'],
   });
 
   const [emailNotifications, setEmailNotifications] = useState(preferences?.emailNotifications ?? true);
@@ -237,13 +253,60 @@ export default function Settings() {
             </p>
           </div>
 
-          {monitoringMode === 'real' && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-              <p className="text-sm font-medium mb-2">📡 Real Monitoring Active</p>
-              <p className="text-sm text-muted-foreground">
-                Configure your data sources in the Event Sources page to start receiving real-time security events.
-              </p>
-            </div>
+          {/* Access Status Alerts */}
+          {realMonitoringAccess && monitoringMode === 'real' && (
+            <>
+              {realMonitoringAccess.reason === 'paid_subscription' && (
+                <Alert className="border-green-500/50 bg-green-500/10">
+                  <CreditCard className="h-4 w-4 text-green-500" />
+                  <AlertTitle className="text-green-500">Paid Subscription Active</AlertTitle>
+                  <AlertDescription className="text-muted-foreground">
+                    You have unlimited access to real monitoring with your current plan.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {realMonitoringAccess.reason === 'active_trial' && realMonitoringAccess.trialStatus && (
+                <Alert className="border-yellow-500/50 bg-yellow-500/10">
+                  <Clock className="h-4 w-4 text-yellow-500" />
+                  <AlertTitle className="text-yellow-500">Free Trial Active</AlertTitle>
+                  <AlertDescription className="text-muted-foreground">
+                    {realMonitoringAccess.trialStatus.hoursRemaining} hours remaining. 
+                    <Link href="/subscription">
+                      <Button variant="link" className="px-1 h-auto text-yellow-500">
+                        Upgrade now
+                      </Button>
+                    </Link>
+                    to continue after trial ends.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {realMonitoringAccess.reason === 'no_access' && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Trial Expired</AlertTitle>
+                  <AlertDescription>
+                    Your 24-hour free trial has ended. 
+                    <Link href="/subscription">
+                      <Button variant="link" className="px-1 h-auto text-destructive">
+                        Upgrade to a paid plan
+                      </Button>
+                    </Link>
+                    to continue using real monitoring.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {realMonitoringAccess.canAccess && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                  <p className="text-sm font-medium mb-2">📡 Real Monitoring Active</p>
+                  <p className="text-sm text-muted-foreground">
+                    Configure your data sources in the Event Sources page to start receiving real-time security events.
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

@@ -7,6 +7,7 @@ import { generateMockThreat, generateMultipleThreats } from "./utils/threatGener
 import { generatePDFReport, generateCSVReport, generateJSONReport } from "./utils/reportGenerator";
 import { checkFileHash, checkURL, checkIPAddress, submitURL, validateHash, validateIP, validateURL } from "./utils/virusTotalService";
 import { hashApiKey, generateApiKey } from "./utils/security";
+import { checkRealMonitoringAccess, startRealMonitoringTrial } from "./utils/subscriptionAccess";
 import { 
   type SubscriptionTier,
   SUBSCRIPTION_TIERS
@@ -76,6 +77,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/user/preferences", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
+      
+      // If switching to real monitoring mode, check access and handle trial
+      if (req.body.monitoringMode === 'real') {
+        const access = await checkRealMonitoringAccess(userId);
+        
+        // If no access and no trial has been started, start the trial
+        if (!access.canAccess && !access.trialStatus?.expiresAt) {
+          await startRealMonitoringTrial(userId);
+        } else if (!access.canAccess) {
+          return res.status(403).json({ 
+            error: 'Real monitoring access denied. Upgrade to a paid plan to continue.',
+            trialExpired: true
+          });
+        }
+      }
+      
       const prefs = await storage.upsertUserPreferences({
         userId,
         ...req.body,
@@ -83,6 +100,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(prefs);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Check real monitoring access
+  app.get("/api/user/real-monitoring-access", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const access = await checkRealMonitoringAccess(userId);
+      res.json(access);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
