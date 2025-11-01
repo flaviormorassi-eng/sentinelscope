@@ -62,6 +62,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pushNotifications: true,
           alertThreshold: 'medium',
           monitoringMode: 'demo',
+          trialStartedAt: null,
+          trialExpiresAt: null,
         };
       }
 
