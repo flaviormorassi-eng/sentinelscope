@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,10 +20,12 @@ import {
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { useAuth } from '@/contexts/AuthContext';
+import { SUBSCRIPTION_TIERS, type SubscriptionTier } from '@shared/schema';
 
 export default function Landing() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   const features = [
     {
@@ -253,81 +255,61 @@ export default function Landing() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {[
-              {
-                name: 'Individual',
-                price: '$9.99',
-                description: 'Perfect for personal use',
-                features: [
-                  'Up to 5 devices protected',
-                  'Real-time threat monitoring',
-                  'Basic threat detection',
-                  'Email alerts',
-                  '7-day threat history',
-                  'Monthly reports',
-                ],
-              },
-              {
-                name: 'Small Business',
-                price: '$49.99',
-                description: 'For growing teams',
-                features: [
-                  'Up to 50 devices protected',
-                  'Advanced threat intelligence',
-                  'Email & SMS alerts',
-                  '30-day threat history',
-                  'Weekly reports',
-                  'Priority support',
-                ],
-                popular: true,
-              },
-              {
-                name: 'Enterprise',
-                price: '$199.99',
-                description: 'For large organizations',
-                features: [
-                  'Unlimited devices',
-                  'Custom threat rules',
-                  'Multi-channel alerts',
-                  'Unlimited history',
-                  'Custom reports',
-                  '24/7 dedicated support',
-                ],
-              },
-            ].map((plan, index) => (
-              <Card key={index} className={`relative ${plan.popular ? 'border-primary border-2' : ''}`}>
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary">Most Popular</Badge>
-                  </div>
-                )}
-                <CardContent className="p-6">
-                  <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                  <p className="text-muted-foreground mb-4">{plan.description}</p>
-                  <div className="mb-6">
-                    <span className="text-4xl font-bold">{plan.price}</span>
-                    <span className="text-muted-foreground">/month</span>
-                  </div>
-                  <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/login">
-                    <Button 
-                      className="w-full" 
-                      variant={plan.popular ? 'default' : 'outline'}
-                      data-testid={`button-plan-${plan.name.toLowerCase().replace(' ', '-')}`}
-                    >
-                      Get Started
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
+            {(Object.entries(SUBSCRIPTION_TIERS) as [SubscriptionTier, typeof SUBSCRIPTION_TIERS[SubscriptionTier]][]).map(
+              ([tierId, tier]) => {
+                const isPopular = tierId === 'smb';
+                
+                return (
+                  <Card key={tierId} className={`relative ${isPopular ? 'border-primary border-2' : ''}`}>
+                    {isPopular && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <Badge className="bg-primary">Most Popular</Badge>
+                      </div>
+                    )}
+                    <CardContent className="p-6">
+                      <h3 className="text-2xl font-bold mb-2">{tier.name}</h3>
+                      <p className="text-muted-foreground mb-4">
+                        {tierId === 'individual' && 'Perfect for personal use'}
+                        {tierId === 'smb' && 'For growing teams'}
+                        {tierId === 'enterprise' && 'For large organizations'}
+                      </p>
+                      <div className="mb-6">
+                        <span className="text-4xl font-bold">${tier.price}</span>
+                        <span className="text-muted-foreground">/month</span>
+                      </div>
+                      <ul className="space-y-3 mb-6">
+                        {tier.features.map((feature, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                            <span className="text-sm">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      {user ? (
+                        <Button 
+                          className="w-full" 
+                          variant={isPopular ? 'default' : 'outline'}
+                          onClick={() => setLocation(`/checkout?tier=${tierId}`)}
+                          data-testid={`button-plan-${tierId}`}
+                        >
+                          Choose Plan
+                        </Button>
+                      ) : (
+                        <Link href="/login">
+                          <Button 
+                            className="w-full" 
+                            variant={isPopular ? 'default' : 'outline'}
+                            data-testid={`button-plan-${tierId}`}
+                          >
+                            Get Started
+                          </Button>
+                        </Link>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              }
+            )}
           </div>
         </div>
       </section>
