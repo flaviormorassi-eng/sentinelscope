@@ -74,6 +74,17 @@ export interface IStorage {
   // Subscription
   getUserSubscription(userId: string): Promise<{ tier: SubscriptionTier }>;
   updateSubscription(userId: string, tier: SubscriptionTier): Promise<void>;
+  
+  // Stripe integration
+  updateUserStripeInfo(userId: string, stripeInfo: {
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+    stripePriceId?: string | null;
+    subscriptionStatus?: string | null;
+    subscriptionTier?: SubscriptionTier;
+    currentPeriodEnd?: Date | null;
+  }): Promise<void>;
+  getUserByStripeCustomerId(customerId: string): Promise<User | undefined>;
 
   // Stats
   getStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }>;
@@ -168,6 +179,11 @@ export class MemStorage implements IStorage {
       isAdmin: insertUser.isAdmin ?? false,
       language: insertUser.language ?? 'en',
       theme: insertUser.theme ?? 'dark',
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      stripePriceId: null,
+      subscriptionStatus: 'inactive',
+      currentPeriodEnd: null,
       createdAt: new Date(),
     };
     this.users.set(user.id, user);
@@ -208,6 +224,9 @@ export class MemStorage implements IStorage {
       sourceCity: insertThreat.sourceCity ?? null,
       sourceLat: insertThreat.sourceLat ?? null,
       sourceLon: insertThreat.sourceLon ?? null,
+      sourceURL: insertThreat.sourceURL ?? null,
+      deviceName: insertThreat.deviceName ?? null,
+      threatVector: insertThreat.threatVector ?? null,
       status: insertThreat.status ?? 'detected',
       blocked: insertThreat.blocked ?? false,
       timestamp: new Date(),
@@ -281,6 +300,27 @@ export class MemStorage implements IStorage {
 
   async updateSubscription(userId: string, tier: SubscriptionTier): Promise<void> {
     await this.updateUser(userId, { subscriptionTier: tier });
+  }
+
+  async updateUserStripeInfo(userId: string, stripeInfo: {
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+    stripePriceId?: string | null;
+    subscriptionStatus?: string | null;
+    subscriptionTier?: SubscriptionTier;
+    currentPeriodEnd?: Date | null;
+  }): Promise<void> {
+    // Validate subscription tier if provided
+    if (stripeInfo.subscriptionTier && !['individual', 'smb', 'enterprise'].includes(stripeInfo.subscriptionTier)) {
+      throw new Error(`Invalid subscription tier: ${stripeInfo.subscriptionTier}`);
+    }
+    await this.updateUser(userId, stripeInfo);
+  }
+
+  async getUserByStripeCustomerId(customerId: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.stripeCustomerId === customerId,
+    );
   }
 
   async getStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }> {
@@ -541,6 +581,30 @@ export class DbStorage implements IStorage {
 
   async updateSubscription(userId: string, tier: SubscriptionTier): Promise<void> {
     await this.updateUser(userId, { subscriptionTier: tier });
+  }
+
+  async updateUserStripeInfo(userId: string, stripeInfo: {
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+    stripePriceId?: string | null;
+    subscriptionStatus?: string | null;
+    subscriptionTier?: SubscriptionTier;
+    currentPeriodEnd?: Date | null;
+  }): Promise<void> {
+    // Validate subscription tier if provided
+    if (stripeInfo.subscriptionTier && !['individual', 'smb', 'enterprise'].includes(stripeInfo.subscriptionTier)) {
+      throw new Error(`Invalid subscription tier: ${stripeInfo.subscriptionTier}`);
+    }
+    await this.updateUser(userId, stripeInfo as any);
+  }
+
+  async getUserByStripeCustomerId(customerId: string): Promise<User | undefined> {
+    const result = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.stripeCustomerId, customerId))
+      .limit(1);
+    return result[0];
   }
 
   async getStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }> {

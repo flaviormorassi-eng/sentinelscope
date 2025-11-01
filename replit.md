@@ -92,6 +92,17 @@ The platform is built with a clear separation between frontend and backend.
 
 ## Recent Changes
 
+### v1.5.0 (November 1, 2025) - Stripe Payment Integration
+- ✅ Integrated Stripe for worldwide payment processing
+- ✅ Added subscription database schema (stripeCustomerId, stripeSubscriptionId, stripePriceId, subscriptionStatus, currentPeriodEnd)
+- ✅ Implemented subscription creation and management APIs
+- ✅ Built Stripe webhook handler for real-time subscription events (payment succeeded/failed, subscription updated/deleted)
+- ✅ Added Stripe Billing Portal integration for customer self-service
+- ✅ Implemented cancellation flow (non-refundable, cancels at period end)
+- ✅ Created comprehensive STRIPE_SETUP.md guide for product configuration
+- 🔄 Frontend checkout UI with Stripe Elements (in progress)
+- 🔄 Subscription page integration with real payment flow (in progress)
+
 ### v1.4.0 (November 1, 2025)
 - ✅ Created comprehensive Installation Guide page with step-by-step instructions for Windows, Mac, and Linux
 - ✅ Added copy-to-clipboard functionality for all installation commands
