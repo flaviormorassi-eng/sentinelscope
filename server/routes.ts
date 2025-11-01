@@ -906,6 +906,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expand: ['payment_intent'],
         });
         
+        console.log('[Stripe Debug] Invoice details:', {
+          invoiceId: invoice.id,
+          status: invoice.status,
+          amount_due: invoice.amount_due,
+          payment_intent: typeof (invoice as any).payment_intent,
+          payment_intent_id: (invoice as any).payment_intent,
+        });
+        
         const paymentIntent = (invoice as any).payment_intent;
         if (paymentIntent && typeof paymentIntent === 'object' && 'client_secret' in paymentIntent) {
           clientSecret = paymentIntent.client_secret as string;
