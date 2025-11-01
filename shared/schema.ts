@@ -432,7 +432,7 @@ export const SUBSCRIPTION_TIERS = {
   individual: {
     name: "Individual",
     price: 5,
-    stripePriceId: "prod_TLMdMqbS4BdOak",
+    stripePriceId: "price_1SOfuLEXjD2OTWbkqH0beyPj",
     features: [
       "Real-time threat monitoring",
       "Up to 3 devices protected",
@@ -445,7 +445,7 @@ export const SUBSCRIPTION_TIERS = {
   smb: {
     name: "Small Business",
     price: 49.99,
-    stripePriceId: "prod_TLMevoXf0Bw4SK",
+    stripePriceId: "price_1SOfvCEXjD2OTWbkBSBlbW0t",
     features: [
       "Everything in Individual",
       "Up to 50 devices protected",
@@ -460,7 +460,7 @@ export const SUBSCRIPTION_TIERS = {
   enterprise: {
     name: "Enterprise",
     price: 199.99,
-    stripePriceId: "prod_TLMfu4LGEzmQ5O",
+    stripePriceId: "price_1SOfvxEXjD2OTWbk7QSqxe9j",
     features: [
       "Everything in Small Business",
       "Unlimited devices",
