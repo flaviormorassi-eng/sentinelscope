@@ -110,6 +110,8 @@ export const userPreferences = pgTable("user_preferences", {
   pushNotifications: boolean("push_notifications").notNull().default(true),
   alertThreshold: text("alert_threshold").notNull().default("medium"),
   monitoringMode: text("monitoring_mode").notNull().default("demo"),
+  trialStartedAt: timestamp("trial_started_at"),
+  trialExpiresAt: timestamp("trial_expires_at"),
 });
 
 // Admin audit log
