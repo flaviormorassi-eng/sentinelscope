@@ -13,6 +13,11 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").notNull().default(false),
   language: text("language").notNull().default("en"),
   theme: text("theme").notNull().default("dark"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripePriceId: text("stripe_price_id"),
+  subscriptionStatus: text("subscription_status").notNull().default("inactive"),
+  currentPeriodEnd: timestamp("current_period_end"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
