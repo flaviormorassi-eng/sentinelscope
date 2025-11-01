@@ -817,10 +817,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/stripe/create-subscription', authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
-      const { priceId, tier } = req.body;
+      const { tier } = req.body;
 
-      if (!priceId || !tier) {
-        return res.status(400).json({ error: 'priceId and tier are required' });
+      if (!tier) {
+        return res.status(400).json({ error: 'tier is required' });
+      }
+
+      // Validate tier and get price ID
+      if (!['individual', 'smb', 'enterprise'].includes(tier)) {
+        return res.status(400).json({ error: 'Invalid tier. Must be individual, smb, or enterprise' });
+      }
+
+      const priceId = SUBSCRIPTION_TIERS[tier as SubscriptionTier].stripePriceId;
+      if (!priceId) {
+        return res.status(400).json({ error: `Price ID not configured for tier: ${tier}. Please configure STRIPE_PRICE_${tier.toUpperCase()} or add stripePriceId to SUBSCRIPTION_TIERS in schema.ts` });
       }
 
       const user = await storage.getUser(userId);

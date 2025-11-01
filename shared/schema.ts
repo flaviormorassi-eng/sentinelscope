@@ -306,6 +306,7 @@ export const SUBSCRIPTION_TIERS = {
   individual: {
     name: "Individual",
     price: 5,
+    stripePriceId: process.env.STRIPE_PRICE_INDIVIDUAL || "", // Add your Stripe Price ID here or set STRIPE_PRICE_INDIVIDUAL in env
     features: [
       "Real-time threat monitoring",
       "Up to 3 devices protected",
@@ -318,6 +319,7 @@ export const SUBSCRIPTION_TIERS = {
   smb: {
     name: "Small Business",
     price: 49.99,
+    stripePriceId: process.env.STRIPE_PRICE_SMB || "", // Add your Stripe Price ID here or set STRIPE_PRICE_SMB in env
     features: [
       "Everything in Individual",
       "Up to 50 devices protected",
@@ -332,6 +334,7 @@ export const SUBSCRIPTION_TIERS = {
   enterprise: {
     name: "Enterprise",
     price: 199.99,
+    stripePriceId: process.env.STRIPE_PRICE_ENTERPRISE || "", // Add your Stripe Price ID here or set STRIPE_PRICE_ENTERPRISE in env
     features: [
       "Everything in Small Business",
       "Unlimited devices",
