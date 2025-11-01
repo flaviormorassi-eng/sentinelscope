@@ -609,7 +609,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Threat decision endpoints - Admin approval/blocking
+  // Threat decision endpoints - Available to all authenticated users
+  app.post("/api/threats/:id/decide", authenticateUser, async (req: AuthRequest, res) => {
+    const decisionSchema = z.object({
+      decision: z.enum(['block', 'allow', 'unblock']),
+      reason: z.string().optional(),
+    });
+
+    const validation = decisionSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Invalid request body', 
+        details: validation.error.errors 
+      });
+    }
+
+    try {
+      const { id } = req.params;
+      const { decision, reason } = validation.data;
+      const userId = req.userId!;
+      
+      // Get current threat
+      const threat = await storage.getThreatById(id);
+      if (!threat) {
+        return res.status(404).json({ error: 'Threat not found' });
+      }
+
+      // Verify ownership (users can only manage their own threats)
+      if (threat.userId !== userId) {
+        return res.status(403).json({ error: 'Unauthorized to manage this threat' });
+      }
+
+      const previousStatus = threat.status;
+      
+      // Determine new status and blocked state
+      let newStatus = threat.status;
+      let blocked = threat.blocked;
+      
+      if (decision === 'block') {
+        newStatus = 'blocked';
+        blocked = true;
+      } else if (decision === 'allow') {
+        newStatus = 'allowed';
+        blocked = false;
+      } else if (decision === 'unblock') {
+        newStatus = 'detected';
+        blocked = false;
+      }
+
+      // Update threat status
+      await storage.updateThreatStatus(id, newStatus, blocked);
+      
+      // Record decision
+      await storage.recordThreatDecision({
+        threatId: id,
+        decidedBy: userId,
+        decision,
+        reason,
+        previousStatus,
+      });
+      
+      // Get updated threat
+      const updatedThreat = await storage.getThreatById(id);
+      res.json(updatedThreat);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin-only threat decision endpoints
   app.get("/api/admin/threats/pending", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const userId = req.query.userId as string | undefined;
