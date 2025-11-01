@@ -273,11 +273,9 @@ export default function Settings() {
                   <AlertDescription className="text-muted-foreground">
                     {realMonitoringAccess.trialStatus.hoursRemaining} hours remaining. 
                     <Link href="/subscription">
-                      <Button variant="link" className="px-1 h-auto text-yellow-500">
-                        Upgrade now
-                      </Button>
+                      <span className="text-yellow-500 underline cursor-pointer">Upgrade now</span>
                     </Link>
-                    to continue after trial ends.
+                    {' '}to continue after trial ends.
                   </AlertDescription>
                 </Alert>
               )}
@@ -289,11 +287,9 @@ export default function Settings() {
                   <AlertDescription>
                     Your 24-hour free trial has ended. 
                     <Link href="/subscription">
-                      <Button variant="link" className="px-1 h-auto text-destructive">
-                        Upgrade to a paid plan
-                      </Button>
+                      <span className="text-destructive-foreground underline cursor-pointer">Upgrade to a paid plan</span>
                     </Link>
-                    to continue using real monitoring.
+                    {' '}to continue using real monitoring.
                   </AlertDescription>
                 </Alert>
               )}

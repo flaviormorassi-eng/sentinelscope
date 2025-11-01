@@ -187,7 +187,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/threats", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
-      const threats = await storage.getThreats(userId);
+      
+      // Check monitoring mode
+      const preferences = await storage.getUserPreferences(userId);
+      const monitoringMode = preferences?.monitoringMode || 'demo';
+      
+      // Real mode: return empty array (real threats come from threat_events table)
+      // Demo mode: return demo threats
+      const threats = monitoringMode === 'real' ? [] : await storage.getThreats(userId);
       res.json(threats);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -197,7 +204,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/threats/recent", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
-      const threats = await storage.getRecentThreats(userId, 10);
+      
+      // Check monitoring mode
+      const preferences = await storage.getUserPreferences(userId);
+      const monitoringMode = preferences?.monitoringMode || 'demo';
+      
+      let threats: any[];
+      if (monitoringMode === 'real') {
+        threats = await storage.getRecentThreatEvents(userId, 10);
+      } else {
+        threats = await storage.getRecentThreats(userId, 10);
+      }
       res.json(threats);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -207,7 +224,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/threats/map", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
-      const threats = await storage.getThreatsForMap(userId);
+      
+      // Check monitoring mode
+      const preferences = await storage.getUserPreferences(userId);
+      const monitoringMode = preferences?.monitoringMode || 'demo';
+      
+      let threats: any[];
+      if (monitoringMode === 'real') {
+        // Get real threat events (they already have location data)
+        threats = await storage.getThreatEvents(userId, 1000);
+      } else {
+        threats = await storage.getThreatsForMap(userId);
+      }
       res.json(threats);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -262,7 +290,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/threats/by-type", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
-      const threats = await storage.getThreats(userId);
+      
+      // Check monitoring mode
+      const preferences = await storage.getUserPreferences(userId);
+      const monitoringMode = preferences?.monitoringMode || 'demo';
+      
+      let threats: any[];
+      if (monitoringMode === 'real') {
+        threats = await storage.getRecentThreatEvents(userId, 1000); // Get all recent for aggregation
+      } else {
+        threats = await storage.getThreats(userId);
+      }
       
       // Count by type
       const typeCounts: { [key: string]: number } = {};
@@ -311,7 +349,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/alerts/recent", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
-      const alerts = await storage.getRecentAlerts(userId, 10);
+      
+      // Check monitoring mode
+      const preferences = await storage.getUserPreferences(userId);
+      const monitoringMode = preferences?.monitoringMode || 'demo';
+      
+      // Real mode: return empty array (no alerts from real monitoring yet)
+      // Demo mode: return demo alerts
+      const alerts = monitoringMode === 'real' ? [] : await storage.getRecentAlerts(userId, 10);
       res.json(alerts);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
