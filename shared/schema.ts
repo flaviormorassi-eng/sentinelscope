@@ -300,10 +300,10 @@ export type InsertAgentRegistration = z.infer<typeof insertAgentRegistrationSche
 export const SUBSCRIPTION_TIERS = {
   individual: {
     name: "Individual",
-    price: 9.99,
+    price: 5,
     features: [
       "Real-time threat monitoring",
-      "Up to 5 devices protected",
+      "Up to 2 devices protected",
       "Basic threat detection",
       "Email alerts",
       "7-day threat history",

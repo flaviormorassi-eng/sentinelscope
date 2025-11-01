@@ -127,8 +127,8 @@ export default function Subscription() {
         <CardContent>
           <div className="text-sm text-muted-foreground space-y-2">
             <p>
-              <strong>Individual:</strong> Perfect for personal use and small home networks. 
-              Get real-time protection for up to 5 devices with essential threat detection.
+              <strong>Individual:</strong> Perfect for personal use and small home setups. 
+              Get real-time protection for up to 2 devices with essential threat detection.
             </p>
             <p>
               <strong>Small Business:</strong> Ideal for growing teams and small companies. 
