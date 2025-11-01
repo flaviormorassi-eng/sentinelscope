@@ -21,6 +21,7 @@ import Subscription from "@/pages/Subscription";
 import Settings from "@/pages/Settings";
 import VirusTotalScan from "@/pages/VirusTotalScan";
 import EventSources from "@/pages/EventSources";
+import InstallGuide from "@/pages/InstallGuide";
 import AdminDashboard from "@/pages/AdminDashboard";
 import UserManagement from "@/pages/UserManagement";
 import SystemAnalytics from "@/pages/SystemAnalytics";
@@ -79,6 +80,9 @@ function Router() {
       </Route>
       <Route path="/event-sources">
         <ProtectedRoute component={EventSources} />
+      </Route>
+      <Route path="/install-guide">
+        <ProtectedRoute component={InstallGuide} />
       </Route>
       <Route path="/admin">
         <ProtectedRoute component={AdminDashboard} />
