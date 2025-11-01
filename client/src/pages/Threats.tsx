@@ -69,7 +69,7 @@ export default function Threats() {
 
   const unblockMutation = useMutation({
     mutationFn: async (threatId: string) => {
-      return await apiRequest('POST', `/api/admin/threats/${threatId}/decide`, {
+      return await apiRequest('POST', `/api/threats/${threatId}/decide`, {
         decision: 'unblock',
         reason: 'Unblocked from threat log view',
       });
