@@ -303,7 +303,7 @@ export const SUBSCRIPTION_TIERS = {
     price: 5,
     features: [
       "Real-time threat monitoring",
-      "Up to 2 devices protected",
+      "Up to 3 devices protected",
       "Basic threat detection",
       "Email alerts",
       "7-day threat history",

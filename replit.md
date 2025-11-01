@@ -97,7 +97,7 @@ The platform is built with a clear separation between frontend and backend.
 - ✅ Added copy-to-clipboard functionality for all installation commands
 - ✅ Integrated Installation Guide into sidebar navigation
 - ✅ Updated subscription pricing: Individual tier from $9.99 to $5/month
-- ✅ Reduced Individual tier device limit from 5 to 2 devices
+- ✅ Adjusted Individual tier device limit to 3 devices (affordable entry point)
 - ✅ Enhanced threat tracking with sourceURL, deviceName, and threatVector fields
 - ✅ Added clickable URLs and threat vector icons to Threat Log
 - ✅ Extended search functionality to include new threat detail fields
