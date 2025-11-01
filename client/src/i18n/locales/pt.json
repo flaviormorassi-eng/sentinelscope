@@ -125,12 +125,50 @@
     "downgrade": "Rebaixar",
     "mostPopular": "Mais Popular",
     "perMonth": "/mês",
+    "month": "mês",
     "choosePlan": "Escolher Plano",
     "currentPlan": "Plano Atual",
+    "manageBilling": "Gerenciar Cobrança",
+    "renewsOn": "Renova em",
+    "loading": "Carregando...",
+    "active": {
+      "message": "Você tem uma assinatura ativa. Gerencie sua cobrança, atualize o método de pagamento ou cancele a qualquer momento."
+    },
+    "success": {
+      "title": "Pagamento Bem-sucedido!",
+      "description": "Sua assinatura está ativa agora. Bem-vindo ao SentinelScope!"
+    },
+    "error": {
+      "title": "Erro",
+      "billingPortal": "Falha ao abrir portal de cobrança. Por favor, tente novamente."
+    },
     "tiers": {
       "individual": "Individual",
       "smb": "Pequena Empresa",
       "enterprise": "Empresarial"
+    }
+  },
+  "checkout": {
+    "title": "Complete sua Assinatura",
+    "subtitle": "Checkout seguro fornecido pela Stripe",
+    "cardTitle": "Detalhes do Pagamento",
+    "cardDescription": "Insira suas informações de pagamento para ativar sua assinatura",
+    "plan": "Plano",
+    "price": "Preço",
+    "pay": "Pagar",
+    "processing": "Processando...",
+    "cancel": "Cancelar",
+    "secure": "Pagamento seguro fornecido pela Stripe",
+    "terms": "Ao confirmar sua assinatura, você permite que o SentinelScope cobre seu cartão para este pagamento e pagamentos futuros de acordo com nossos termos. Você pode cancelar a qualquer momento.",
+    "loading": "Preparando checkout...",
+    "backToPlans": "Voltar aos Planos",
+    "features": {
+      "title": "Incluído no seu plano"
+    },
+    "error": {
+      "title": "Falha no Pagamento",
+      "payment": "Falha no pagamento. Por favor, verifique os detalhes do cartão e tente novamente.",
+      "init": "Falha ao inicializar checkout. Por favor, tente novamente ou entre em contato com o suporte."
     }
   },
   "settings": {

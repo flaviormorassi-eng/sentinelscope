@@ -18,6 +18,7 @@ import Threats from "@/pages/Threats";
 import ThreatMap from "@/pages/ThreatMap";
 import Reports from "@/pages/Reports";
 import Subscription from "@/pages/Subscription";
+import Checkout from "@/pages/Checkout";
 import Settings from "@/pages/Settings";
 import VirusTotalScan from "@/pages/VirusTotalScan";
 import EventSources from "@/pages/EventSources";
@@ -71,6 +72,9 @@ function Router() {
       </Route>
       <Route path="/subscription">
         <ProtectedRoute component={Subscription} />
+      </Route>
+      <Route path="/checkout">
+        <ProtectedRoute component={Checkout} />
       </Route>
       <Route path="/settings">
         <ProtectedRoute component={Settings} />

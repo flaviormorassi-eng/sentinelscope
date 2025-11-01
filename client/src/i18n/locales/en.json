@@ -125,12 +125,50 @@
     "downgrade": "Downgrade",
     "mostPopular": "Most Popular",
     "perMonth": "/month",
+    "month": "month",
     "choosePlan": "Choose Plan",
     "currentPlan": "Current Plan",
+    "manageBilling": "Manage Billing",
+    "renewsOn": "Renews on",
+    "loading": "Loading...",
+    "active": {
+      "message": "You have an active subscription. Manage your billing, update payment method, or cancel anytime."
+    },
+    "success": {
+      "title": "Payment Successful!",
+      "description": "Your subscription is now active. Welcome to SentinelScope!"
+    },
+    "error": {
+      "title": "Error",
+      "billingPortal": "Failed to open billing portal. Please try again."
+    },
     "tiers": {
       "individual": "Individual",
       "smb": "Small Business",
       "enterprise": "Enterprise"
+    }
+  },
+  "checkout": {
+    "title": "Complete Your Subscription",
+    "subtitle": "Secure checkout powered by Stripe",
+    "cardTitle": "Payment Details",
+    "cardDescription": "Enter your payment information to activate your subscription",
+    "plan": "Plan",
+    "price": "Price",
+    "pay": "Pay",
+    "processing": "Processing...",
+    "cancel": "Cancel",
+    "secure": "Secure payment powered by Stripe",
+    "terms": "By confirming your subscription, you allow SentinelScope to charge your card for this payment and future payments in accordance with our terms. You can cancel at any time.",
+    "loading": "Preparing checkout...",
+    "backToPlans": "Back to Plans",
+    "features": {
+      "title": "Included in your plan"
+    },
+    "error": {
+      "title": "Payment Failed",
+      "payment": "Payment failed. Please check your card details and try again.",
+      "init": "Failed to initialize checkout. Please try again or contact support."
     }
   },
   "settings": {
