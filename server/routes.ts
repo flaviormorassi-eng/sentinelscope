@@ -853,6 +853,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get base URL for redirects
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+        : 'http://localhost:5000';
+
       // Create Checkout Session
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
@@ -863,8 +868,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ],
         mode: 'subscription',
-        success_url: `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/subscription?success=true`,
-        cancel_url: `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/subscription?canceled=true`,
+        success_url: `${baseUrl}/subscription?success=true`,
+        cancel_url: `${baseUrl}/subscription?canceled=true`,
         subscription_data: {
           metadata: {
             userId,
