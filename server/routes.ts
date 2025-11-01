@@ -893,20 +893,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentPeriodEnd: periodEnd,
       });
 
-      const invoice = subscription.latest_invoice as any;
-      const paymentIntent = invoice?.payment_intent as any;
+      // Get client secret from invoice's payment intent
+      const latestInvoice = subscription.latest_invoice;
+      let clientSecret: string | undefined;
+
+      if (latestInvoice && typeof latestInvoice === 'object' && 'payment_intent' in latestInvoice) {
+        const paymentIntent = latestInvoice.payment_intent;
+        if (paymentIntent && typeof paymentIntent === 'object' && 'client_secret' in paymentIntent) {
+          clientSecret = paymentIntent.client_secret as string;
+        }
+      }
 
       console.log('[Stripe Debug] Subscription created:', {
         subscriptionId: subscription.id,
         status: subscription.status,
-        hasInvoice: !!invoice,
-        hasPaymentIntent: !!paymentIntent,
-        clientSecret: paymentIntent?.client_secret,
+        invoiceType: typeof latestInvoice,
+        clientSecret: clientSecret ? 'present' : 'missing',
       });
 
       res.json({
         subscriptionId: subscription.id,
-        clientSecret: paymentIntent?.client_secret,
+        clientSecret,
         status: subscription.status,
       });
     } catch (error: any) {
