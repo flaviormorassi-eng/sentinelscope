@@ -22,7 +22,7 @@ The platform is built with a clear separation between frontend and backend.
 - **Internationalization**: react-i18next
 - **Authentication**: Firebase Auth
 - **Design System**: Material Design 3 inspired, consistent 4px baseline grid, WCAG AA compliant accessibility, Inter typography for UI and JetBrains Mono for code. Primary color is Blue (#4285F4). Dark mode is default with a light mode option.
-- **Key Pages**: Public Landing Page, Login, Dashboard, Threat Log, Threat Map, Reports, VirusTotal Scanner, Event Sources, Subscription, Settings, Admin Dashboard, User Management, System Analytics.
+- **Key Pages**: Public Landing Page, Login, Dashboard, Threat Log, Threat Map, Reports, VirusTotal Scanner, Event Sources, Installation Guide, Subscription, Settings, Admin Dashboard, User Management, System Analytics.
 
 **Backend (`server/`)**:
 - **Runtime**: Node.js with Express
@@ -90,7 +90,20 @@ The platform is built with a clear separation between frontend and backend.
 - **jsPDF, jsPDF-AutoTable**: For generating security reports in PDF format.
 - **Replit Secrets**: For secure management of environment variables.
 
-## Recent Changes (v1.3.0 - October 31, 2025)
+## Recent Changes
+
+### v1.4.0 (November 1, 2025)
+- ✅ Created comprehensive Installation Guide page with step-by-step instructions for Windows, Mac, and Linux
+- ✅ Added copy-to-clipboard functionality for all installation commands
+- ✅ Integrated Installation Guide into sidebar navigation
+- ✅ Updated subscription pricing: Individual tier from $9.99 to $5/month
+- ✅ Reduced Individual tier device limit from 5 to 2 devices
+- ✅ Enhanced threat tracking with sourceURL, deviceName, and threatVector fields
+- ✅ Added clickable URLs and threat vector icons to Threat Log
+- ✅ Extended search functionality to include new threat detail fields
+- ✅ Full bilingual support (EN/PT) for all new features
+
+### v1.3.0 (October 31, 2025)
 - ✅ Added monitoring mode feature flag (demo/real toggle in Settings)
 - ✅ Created Event Sources page for managing data sources
 - ✅ Implemented secure API key generation and management system
