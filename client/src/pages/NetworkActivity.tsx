@@ -33,7 +33,10 @@ interface BrowsingStats {
 export default function NetworkActivity() {
   const { t } = useTranslation();
   const [domainFilter, setDomainFilter] = useState('');
+  const [ipFilter, setIpFilter] = useState('');
   const [browserFilter, setBrowserFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const { data: activities = [], isLoading, refetch } = useQuery<BrowsingActivity[]>({
     queryKey: ['/api/browsing'],
@@ -47,8 +50,28 @@ export default function NetworkActivity() {
     if (domainFilter && !activity.domain.toLowerCase().includes(domainFilter.toLowerCase())) {
       return false;
     }
+    if (ipFilter) {
+      if (!activity.ipAddress || !activity.ipAddress.toLowerCase().includes(ipFilter.toLowerCase())) {
+        return false;
+      }
+    }
     if (browserFilter !== 'all' && activity.browserType !== browserFilter) {
       return false;
+    }
+    if (dateFrom) {
+      const activityDate = new Date(activity.timestamp);
+      const fromDate = new Date(dateFrom);
+      if (activityDate < fromDate) {
+        return false;
+      }
+    }
+    if (dateTo) {
+      const activityDate = new Date(activity.timestamp);
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (activityDate > toDate) {
+        return false;
+      }
     }
     return true;
   });
@@ -139,7 +162,7 @@ export default function NetworkActivity() {
           <CardDescription>{t('networkActivity.filtersDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <label className="text-sm font-medium">{t('networkActivity.searchDomain')}</label>
               <div className="relative">
@@ -150,6 +173,20 @@ export default function NetworkActivity() {
                   onChange={(e) => setDomainFilter(e.target.value)}
                   className="pl-9"
                   data-testid="input-domain-filter"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t('networkActivity.searchIp')}</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t('networkActivity.searchIpPlaceholder')}
+                  value={ipFilter}
+                  onChange={(e) => setIpFilter(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-ip-filter"
                 />
               </div>
             </div>
@@ -169,12 +206,35 @@ export default function NetworkActivity() {
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t('networkActivity.dateFrom')}</label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                data-testid="input-date-from"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t('networkActivity.dateTo')}</label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                data-testid="input-date-to"
+              />
+            </div>
+
             <div className="flex items-end">
               <Button
                 variant="outline"
                 onClick={() => {
                   setDomainFilter('');
+                  setIpFilter('');
                   setBrowserFilter('all');
+                  setDateFrom('');
+                  setDateTo('');
                 }}
                 className="w-full"
                 data-testid="button-clear-filters"
