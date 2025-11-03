@@ -332,9 +332,11 @@ export default function Landing() {
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </Link>
-                <Button size="lg" variant="outline" className="gap-2 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" data-testid="button-cta-contact">
-                  Contact Sales
-                </Button>
+                <Link href="/contact">
+                  <Button size="lg" variant="outline" className="gap-2 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" data-testid="button-cta-contact">
+                    Contact Sales
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
@@ -359,26 +361,26 @@ export default function Landing() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#features" className="hover:text-foreground" data-testid="link-footer-features">Features</a></li>
                 <li><a href="#pricing" className="hover:text-foreground" data-testid="link-footer-pricing">Pricing</a></li>
-                <li><a href="#" className="hover:text-foreground" data-testid="link-footer-security">Security</a></li>
-                <li><a href="#" className="hover:text-foreground" data-testid="link-footer-integrations">Integrations</a></li>
+                <li><Link href="/security"><a className="hover:text-foreground" data-testid="link-footer-security">Security</a></Link></li>
+                <li><Link href="/install-guide"><a className="hover:text-foreground" data-testid="link-footer-integrations">Integrations</a></Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground" data-testid="link-footer-about">About</a></li>
-                <li><a href="#" className="hover:text-foreground" data-testid="link-footer-blog">Blog</a></li>
-                <li><a href="#" className="hover:text-foreground" data-testid="link-footer-careers">Careers</a></li>
-                <li><a href="#" className="hover:text-foreground" data-testid="link-footer-contact">Contact</a></li>
+                <li><Link href="/about"><a className="hover:text-foreground" data-testid="link-footer-about">About</a></Link></li>
+                <li><Link href="/blog"><a className="hover:text-foreground" data-testid="link-footer-blog">Blog</a></Link></li>
+                <li><Link href="/careers"><a className="hover:text-foreground" data-testid="link-footer-careers">Careers</a></Link></li>
+                <li><Link href="/contact"><a className="hover:text-foreground" data-testid="link-footer-contact">Contact</a></Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground" data-testid="link-footer-privacy">Privacy</a></li>
-                <li><a href="#" className="hover:text-foreground" data-testid="link-footer-terms">Terms</a></li>
-                <li><a href="#" className="hover:text-foreground" data-testid="link-footer-security-legal">Security</a></li>
-                <li><a href="#" className="hover:text-foreground" data-testid="link-footer-compliance">Compliance</a></li>
+                <li><Link href="/privacy"><a className="hover:text-foreground" data-testid="link-footer-privacy">Privacy</a></Link></li>
+                <li><Link href="/terms"><a className="hover:text-foreground" data-testid="link-footer-terms">Terms</a></Link></li>
+                <li><Link href="/security"><a className="hover:text-foreground" data-testid="link-footer-security-legal">Security</a></Link></li>
+                <li><Link href="/compliance-info"><a className="hover:text-foreground" data-testid="link-footer-compliance">Compliance</a></Link></li>
               </ul>
             </div>
           </div>
