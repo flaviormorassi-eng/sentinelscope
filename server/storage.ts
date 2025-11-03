@@ -25,6 +25,8 @@ import {
   type InsertIntelMatch,
   type AgentRegistration,
   type InsertAgentRegistration,
+  type BrowsingActivity,
+  type InsertBrowsingActivity,
   type SubscriptionTier,
   users,
   threats,
@@ -39,6 +41,7 @@ import {
   threatEvents,
   intelMatches,
   agentRegistrations,
+  browsingActivity,
   SUBSCRIPTION_TIERS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -157,6 +160,25 @@ export interface IStorage {
     endDate?: Date;
     limit?: number;
   }): Promise<SecurityAuditLog[]>;
+
+  // Browsing activity monitoring
+  createBrowsingActivity(activity: InsertBrowsingActivity): Promise<BrowsingActivity>;
+  getBrowsingActivity(userId: string, options?: {
+    domain?: string;
+    browser?: string;
+    isFlagged?: boolean;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<BrowsingActivity[]>;
+  getBrowsingStats(userId: string): Promise<{
+    totalVisits: number;
+    uniqueDomains: number;
+    flaggedDomains: number;
+    topDomains: Array<{ domain: string; count: number }>;
+    browserBreakdown: Array<{ browser: string; count: number }>;
+  }>;
+  flagDomain(userId: string, domain: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -488,6 +510,20 @@ export class MemStorage implements IStorage {
   // Security audit logs stubs
   async createSecurityAuditLog(): Promise<SecurityAuditLog> { throw new Error("Security audit logs not supported in MemStorage"); }
   async getSecurityAuditLogs(): Promise<SecurityAuditLog[]> { return []; }
+  
+  // Browsing activity stubs
+  async createBrowsingActivity(): Promise<BrowsingActivity> { throw new Error("Browsing activity not supported in MemStorage"); }
+  async getBrowsingActivity(): Promise<BrowsingActivity[]> { return []; }
+  async getBrowsingStats(): Promise<any> { 
+    return { 
+      totalVisits: 0, 
+      uniqueDomains: 0, 
+      flaggedDomains: 0, 
+      topDomains: [], 
+      browserBreakdown: [] 
+    }; 
+  }
+  async flagDomain(): Promise<void> { }
 }
 
 // Database storage implementation using Drizzle ORM
@@ -1032,6 +1068,134 @@ export class DbStorage implements IStorage {
       .where(whereClause)
       .orderBy(desc(securityAuditLogs.timestamp))
       .limit(limit);
+  }
+
+  // Browsing activity monitoring
+  async createBrowsingActivity(activity: InsertBrowsingActivity): Promise<BrowsingActivity> {
+    const result = await this.db
+      .insert(browsingActivity)
+      .values(activity)
+      .returning();
+    return result[0];
+  }
+
+  async getBrowsingActivity(userId: string, options: {
+    domain?: string;
+    browser?: string;
+    isFlagged?: boolean;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  } = {}): Promise<BrowsingActivity[]> {
+    const { domain, browser, isFlagged, startDate, endDate, limit = 100 } = options;
+    
+    const conditions = [eq(browsingActivity.userId, userId)];
+    
+    if (domain) {
+      conditions.push(eq(browsingActivity.domain, domain));
+    }
+    if (browser) {
+      conditions.push(eq(browsingActivity.browser, browser));
+    }
+    if (isFlagged !== undefined) {
+      conditions.push(eq(browsingActivity.isFlagged, isFlagged));
+    }
+    if (startDate) {
+      conditions.push(sql`${browsingActivity.detectedAt} >= ${startDate}`);
+    }
+    if (endDate) {
+      conditions.push(sql`${browsingActivity.detectedAt} <= ${endDate}`);
+    }
+
+    return await this.db
+      .select()
+      .from(browsingActivity)
+      .where(and(...conditions))
+      .orderBy(desc(browsingActivity.detectedAt))
+      .limit(limit);
+  }
+
+  async getBrowsingStats(userId: string): Promise<{
+    totalVisits: number;
+    uniqueDomains: number;
+    flaggedDomains: number;
+    topDomains: Array<{ domain: string; count: number }>;
+    browserBreakdown: Array<{ browser: string; count: number }>;
+  }> {
+    // Total visits
+    const totalResult = await this.db
+      .select({ count: count() })
+      .from(browsingActivity)
+      .where(eq(browsingActivity.userId, userId));
+    const totalVisits = Number(totalResult[0]?.count || 0);
+
+    // Unique domains
+    const uniqueResult = await this.db
+      .selectDistinct({ domain: browsingActivity.domain })
+      .from(browsingActivity)
+      .where(eq(browsingActivity.userId, userId));
+    const uniqueDomains = uniqueResult.length;
+
+    // Flagged domains
+    const flaggedResult = await this.db
+      .selectDistinct({ domain: browsingActivity.domain })
+      .from(browsingActivity)
+      .where(and(
+        eq(browsingActivity.userId, userId),
+        eq(browsingActivity.isFlagged, true)
+      ));
+    const flaggedDomains = flaggedResult.length;
+
+    // Top domains
+    const topDomainsResult = await this.db
+      .select({
+        domain: browsingActivity.domain,
+        count: count(),
+      })
+      .from(browsingActivity)
+      .where(eq(browsingActivity.userId, userId))
+      .groupBy(browsingActivity.domain)
+      .orderBy(desc(count()))
+      .limit(10);
+    const topDomains = topDomainsResult.map(r => ({
+      domain: r.domain,
+      count: Number(r.count),
+    }));
+
+    // Browser breakdown
+    const browserResult = await this.db
+      .select({
+        browser: browsingActivity.browser,
+        count: count(),
+      })
+      .from(browsingActivity)
+      .where(eq(browsingActivity.userId, userId))
+      .groupBy(browsingActivity.browser)
+      .orderBy(desc(count()));
+    const browserBreakdown = browserResult
+      .filter(r => r.browser !== null)
+      .map(r => ({
+        browser: r.browser as string,
+        count: Number(r.count),
+      }));
+
+    return {
+      totalVisits,
+      uniqueDomains,
+      flaggedDomains,
+      topDomains,
+      browserBreakdown,
+    };
+  }
+
+  async flagDomain(userId: string, domain: string): Promise<void> {
+    await this.db
+      .update(browsingActivity)
+      .set({ isFlagged: true })
+      .where(and(
+        eq(browsingActivity.userId, userId),
+        eq(browsingActivity.domain, domain)
+      ));
   }
 }
 
