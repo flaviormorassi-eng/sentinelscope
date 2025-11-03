@@ -102,7 +102,56 @@ The platform is built with a clear separation between frontend and backend.
 - **jsPDF, jsPDF-AutoTable**: For generating security reports in PDF format.
 - **Replit Secrets**: For secure management of environment variables.
 
+## Deployment & Data Safety
+
+**Publishing the Application:**
+- Click "Publish" in Replit to deploy to production
+- Creates a `.replit.app` domain automatically
+- Can republish anytime to update with new changes
+- See `DEPLOYMENT_GUIDE.md` for complete deployment documentation
+
+**Data Persistence & Safety:**
+- All data stored in PostgreSQL (Neon-hosted) - persists between deploys
+- Point-in-time restore available (configure in Database Settings)
+- Automatic checkpoints capture complete project state + database
+- 7-day retention for deleted databases
+- Rollback system allows restoration to any checkpoint
+- Production database separate from development database
+
+**What Persists When Republishing:**
+- ✅ All PostgreSQL data (users, threats, subscriptions, audit logs)
+- ✅ Environment secrets (API keys, credentials)
+- ✅ Custom domain configuration
+- ⚠️ Files on filesystem do NOT persist (but we don't use them)
+
+**Backup Strategy:**
+1. Enable point-in-time restore in Database Settings (7+ day retention)
+2. Replit automatically creates checkpoints during development
+3. Can rollback to any checkpoint (code + optional database restore)
+4. Export user data via `/api/compliance/data-export` endpoint
+
+**Emergency Recovery:**
+- Use Replit checkpoint system for full project restore
+- Use database point-in-time restore for data-only recovery
+- Contact support for deleted database recovery (within 7 days)
+- All compliance actions logged in security_audit_logs table
+
 ## Recent Changes
+
+### v1.7.0 (November 3, 2025) - SOC2/ISO 27001 Compliance & Deployment Safety
+- ✅ Implemented comprehensive security audit logging system
+- ✅ Created security_audit_logs table with event tracking (auth, data access, config changes, security events)
+- ✅ Added data_retention_policies table for compliance
+- ✅ Built Compliance Dashboard (`/admin/compliance`) with audit log viewer
+- ✅ Implemented advanced filtering (category, type, date range, severity)
+- ✅ Added compliance reporting API with security metrics
+- ✅ Created data export endpoint for GDPR compliance (right to data portability)
+- ✅ Added security audit utility with helper functions (logAuthEvent, logDataAccess, logThreatAction)
+- ✅ Indexed audit logs for performance (userId, timestamp, eventType, eventCategory)
+- ✅ Created comprehensive DEPLOYMENT_GUIDE.md with safety procedures
+- ✅ Documented checkpoint/rollback system and point-in-time restore
+- ✅ Added Installation Guide test event section (PowerShell, Bash, macOS formats)
+- ✅ Full bilingual support (EN/PT) for all compliance features
 
 ### v1.6.0 (November 1, 2025) - Real Monitoring Access Control & Free Trial
 - ✅ Implemented 24-hour free trial system for real monitoring mode
