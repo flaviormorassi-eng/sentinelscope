@@ -44,6 +44,10 @@ export default function Dashboard() {
     queryKey: ['/api/threats/by-type'],
   });
 
+  const { data: browsingStats } = useQuery({
+    queryKey: ['/api/browsing/stats'],
+  });
+
   const getSeverityBadgeVariant = (severity: string) => {
     switch (severity) {
       case 'critical': return 'destructive';
@@ -208,6 +212,52 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {browsingStats && (browsingStats.totalVisits > 0 || browsingStats.uniqueDomains > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Network Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Total Visits</p>
+                <p className="text-2xl font-bold" data-testid="stat-total-visits">{browsingStats.totalVisits.toLocaleString()}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Unique Domains</p>
+                <p className="text-2xl font-bold" data-testid="stat-unique-domains">{browsingStats.uniqueDomains.toLocaleString()}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Flagged Domains</p>
+                <p className="text-2xl font-bold text-destructive" data-testid="stat-flagged-domains">{browsingStats.flaggedDomains.toLocaleString()}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Top Browser</p>
+                <p className="text-lg font-bold" data-testid="stat-top-browser">
+                  {browsingStats.browserBreakdown?.[0]?.browser || 'N/A'}
+                </p>
+              </div>
+            </div>
+            {browsingStats.topDomains && browsingStats.topDomains.length > 0 && (
+              <div className="mt-6 space-y-2">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Top Visited Domains</p>
+                <div className="space-y-2">
+                  {browsingStats.topDomains.slice(0, 5).map((domain: { domain: string; count: number }) => (
+                    <div key={domain.domain} className="flex items-center justify-between text-sm">
+                      <span className="font-mono truncate mr-4">{domain.domain}</span>
+                      <Badge variant="secondary">{domain.count.toLocaleString()}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
