@@ -1262,6 +1262,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Browsing activity endpoints
+  app.get("/api/browsing/activity", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const domain = req.query.domain as string | undefined;
+      const browser = req.query.browser as string | undefined;
+      const isFlagged = req.query.isFlagged === 'true' ? true : req.query.isFlagged === 'false' ? false : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+
+      const activities = await storage.getBrowsingActivity(userId, {
+        domain,
+        browser,
+        isFlagged,
+        startDate,
+        endDate,
+        limit,
+      });
+
+      res.json(activities);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/browsing/stats", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const stats = await storage.getBrowsingStats(userId);
+      res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/browsing/flag", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const { domain } = req.body;
+
+      if (!domain) {
+        return res.status(400).json({ error: "Domain is required" });
+      }
+
+      await storage.flagDomain(userId, domain);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/browsing/consent", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const { browsingMonitoringConsent, browsingHistoryEnabled, browsingDataRetentionDays } = req.body;
+
+      const preferences = await storage.getUserPreferences(userId);
+      
+      const updates: any = {};
+      if (browsingMonitoringConsent !== undefined) {
+        updates.browsingMonitoringConsent = browsingMonitoringConsent;
+      }
+      if (browsingHistoryEnabled !== undefined) {
+        updates.browsingHistoryEnabled = browsingHistoryEnabled;
+      }
+      if (browsingDataRetentionDays !== undefined) {
+        updates.browsingDataRetentionDays = browsingDataRetentionDays;
+      }
+
+      await storage.updateUserPreferences(userId, updates);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
