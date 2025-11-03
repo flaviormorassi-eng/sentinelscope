@@ -1346,6 +1346,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Browsing activity ingest endpoint (for external agents using API key)
+  app.post("/api/browsing/ingest", async (req, res) => {
+    try {
+      const apiKey = req.headers['x-api-key'] as string;
+      
+      if (!apiKey) {
+        return res.status(401).json({ error: "API key required" });
+      }
+
+      // Verify API key and get event source
+      const eventSource = await storage.verifyEventSourceApiKey(apiKey);
+      if (!eventSource) {
+        return res.status(401).json({ error: "Invalid API key" });
+      }
+
+      if (!eventSource.isActive) {
+        return res.status(403).json({ error: "Event source is not active" });
+      }
+
+      // Check if user has browsing monitoring enabled
+      const preferences = await storage.getUserPreferences(eventSource.userId);
+      if (!preferences?.browsingMonitoringEnabled) {
+        return res.status(403).json({ 
+          error: "Browsing monitoring not enabled for this user",
+          message: "User must enable browsing monitoring in Settings first"
+        });
+      }
+
+      // Validate request body
+      const schema = z.object({
+        events: z.array(z.object({
+          domain: z.string().min(1),
+          fullUrl: z.string().optional(),
+          ipAddress: z.string().optional(),
+          browser: z.string().min(1),
+          protocol: z.string().optional(),
+          detectedAt: z.string().optional(),
+        })).min(1).max(100), // Accept up to 100 events at once
+      });
+
+      const { events } = schema.parse(req.body);
+
+      // Create browsing activities
+      const results = await Promise.all(
+        events.map(event =>
+          storage.createBrowsingActivity({
+            userId: eventSource.userId,
+            sourceId: eventSource.id,
+            domain: event.domain,
+            fullUrl: event.fullUrl || null,
+            ipAddress: event.ipAddress || null,
+            browser: event.browser,
+            protocol: event.protocol || 'https',
+          })
+        )
+      );
+
+      // Update event source heartbeat
+      await storage.updateEventSourceHeartbeat(eventSource.id);
+
+      res.json({ 
+        success: true, 
+        received: events.length,
+        message: `Successfully ingested ${events.length} browsing event(s)`
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid request format",
+          details: error.errors 
+        });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+
+  // Get browsing activity (simplified endpoint)
+  app.get("/api/browsing", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const activities = await storage.getBrowsingActivity(userId, { limit: 1000 });
+      res.json(activities);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
