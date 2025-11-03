@@ -138,6 +138,19 @@ The platform is built with a clear separation between frontend and backend.
 
 ## Recent Changes
 
+### v1.8.0 (November 3, 2025) - Footer Pages & Enhanced Navigation
+- ✅ Created 8 comprehensive footer pages (About, Blog, Careers, Contact, Privacy Policy, Terms of Service, Security, Compliance Info)
+- ✅ Added routing for all footer pages in App.tsx
+- ✅ Updated Landing page footer with functional wouter Links to all pages
+- ✅ Added full bilingual support (EN/PT) for all footer pages with translations in i18n/locales
+- ✅ Fixed DOM validation warnings by correctly using Link component without nested anchor tags
+- ✅ Enhanced company presence with About page (mission, values, team sections)
+- ✅ Added Blog page with 6 featured cybersecurity articles
+- ✅ Created Careers page with 6 open positions and benefits
+- ✅ Built Contact page with form and multiple contact methods
+- ✅ Documented Privacy Policy, Terms of Service, Security practices, and Compliance certifications
+- ✅ Added "Contact Sales" CTA button linking to Contact page on Landing
+
 ### v1.7.0 (November 3, 2025) - SOC2/ISO 27001 Compliance & Deployment Safety
 - ✅ Implemented comprehensive security audit logging system
 - ✅ Created security_audit_logs table with event tracking (auth, data access, config changes, security events)

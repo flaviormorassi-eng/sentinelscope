@@ -361,26 +361,26 @@ export default function Landing() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#features" className="hover:text-foreground" data-testid="link-footer-features">Features</a></li>
                 <li><a href="#pricing" className="hover:text-foreground" data-testid="link-footer-pricing">Pricing</a></li>
-                <li><Link href="/security"><a className="hover:text-foreground" data-testid="link-footer-security">Security</a></Link></li>
-                <li><Link href="/install-guide"><a className="hover:text-foreground" data-testid="link-footer-integrations">Integrations</a></Link></li>
+                <li><Link href="/security" className="hover:text-foreground" data-testid="link-footer-security">Security</Link></li>
+                <li><Link href="/install-guide" className="hover:text-foreground" data-testid="link-footer-integrations">Integrations</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/about"><a className="hover:text-foreground" data-testid="link-footer-about">About</a></Link></li>
-                <li><Link href="/blog"><a className="hover:text-foreground" data-testid="link-footer-blog">Blog</a></Link></li>
-                <li><Link href="/careers"><a className="hover:text-foreground" data-testid="link-footer-careers">Careers</a></Link></li>
-                <li><Link href="/contact"><a className="hover:text-foreground" data-testid="link-footer-contact">Contact</a></Link></li>
+                <li><Link href="/about" className="hover:text-foreground" data-testid="link-footer-about">About</Link></li>
+                <li><Link href="/blog" className="hover:text-foreground" data-testid="link-footer-blog">Blog</Link></li>
+                <li><Link href="/careers" className="hover:text-foreground" data-testid="link-footer-careers">Careers</Link></li>
+                <li><Link href="/contact" className="hover:text-foreground" data-testid="link-footer-contact">Contact</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/privacy"><a className="hover:text-foreground" data-testid="link-footer-privacy">Privacy</a></Link></li>
-                <li><Link href="/terms"><a className="hover:text-foreground" data-testid="link-footer-terms">Terms</a></Link></li>
-                <li><Link href="/security"><a className="hover:text-foreground" data-testid="link-footer-security-legal">Security</a></Link></li>
-                <li><Link href="/compliance-info"><a className="hover:text-foreground" data-testid="link-footer-compliance">Compliance</a></Link></li>
+                <li><Link href="/privacy" className="hover:text-foreground" data-testid="link-footer-privacy">Privacy</Link></li>
+                <li><Link href="/terms" className="hover:text-foreground" data-testid="link-footer-terms">Terms</Link></li>
+                <li><Link href="/security" className="hover:text-foreground" data-testid="link-footer-security-legal">Security</Link></li>
+                <li><Link href="/compliance-info" className="hover:text-foreground" data-testid="link-footer-compliance">Compliance</Link></li>
               </ul>
             </div>
           </div>
