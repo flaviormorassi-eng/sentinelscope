@@ -112,6 +112,13 @@ export const userPreferences = pgTable("user_preferences", {
   monitoringMode: text("monitoring_mode").notNull().default("demo"),
   trialStartedAt: timestamp("trial_started_at"),
   trialExpiresAt: timestamp("trial_expires_at"),
+  browsingMonitoringEnabled: boolean("browsing_monitoring_enabled")
+    .notNull()
+    .default(false),
+  browsingHistoryEnabled: boolean("browsing_history_enabled")
+    .notNull()
+    .default(false),
+  browsingConsentGivenAt: timestamp("browsing_consent_given_at"),
 });
 
 // Admin audit log
@@ -364,6 +371,46 @@ export const agentRegistrations = pgTable(
   }),
 );
 
+// Browsing activity - Network activity and browser history monitoring
+export const browsingActivity = pgTable(
+  "browsing_activity",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id),
+    sourceId: varchar("source_id").references(() => eventSources.id),
+    detectedAt: timestamp("detected_at")
+      .notNull()
+      .default(sql`now()`),
+    domain: text("domain").notNull(),
+    fullUrl: text("full_url"),
+    urlHash: varchar("url_hash", { length: 64 }),
+    ipAddress: text("ip_address"),
+    port: integer("port"),
+    browser: text("browser"),
+    browserVersion: text("browser_version"),
+    protocol: text("protocol"),
+    category: text("category"),
+    isFlagged: boolean("is_flagged").notNull().default(false),
+    deviceName: text("device_name"),
+    metadata: jsonb("metadata"),
+  },
+  (table) => ({
+    userDetectedIdx: index("browsing_activity_user_detected_idx").on(
+      table.userId,
+      table.detectedAt,
+    ),
+    domainIdx: index("browsing_activity_domain_idx").on(table.domain),
+    isFlaggedIdx: index("browsing_activity_is_flagged_idx").on(
+      table.isFlagged,
+    ),
+    browserIdx: index("browsing_activity_browser_idx").on(table.browser),
+  }),
+);
+
 // Insert schemas for database operations
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -448,6 +495,13 @@ export const insertAgentRegistrationSchema = createInsertSchema(
   registeredAt: true,
 });
 
+export const insertBrowsingActivitySchema = createInsertSchema(
+  browsingActivity,
+).omit({
+  id: true,
+  detectedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -492,6 +546,11 @@ export type InsertIntelMatch = z.infer<typeof insertIntelMatchSchema>;
 export type AgentRegistration = typeof agentRegistrations.$inferSelect;
 export type InsertAgentRegistration = z.infer<
   typeof insertAgentRegistrationSchema
+>;
+
+export type BrowsingActivity = typeof browsingActivity.$inferSelect;
+export type InsertBrowsingActivity = z.infer<
+  typeof insertBrowsingActivitySchema
 >;
 
 // Subscription tiers
