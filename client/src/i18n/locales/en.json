@@ -41,7 +41,13 @@
     "threatTimeline": "24-Hour Threat Timeline",
     "viewAll": "View All",
     "noThreats": "No active threats detected",
-    "allSystemsOperational": "All systems operational"
+    "allSystemsOperational": "All systems operational",
+    "networkActivity": "Network Activity",
+    "totalVisits": "Total Visits",
+    "uniqueDomains": "Unique Domains",
+    "flaggedDomains": "Flagged Domains",
+    "topBrowser": "Top Browser",
+    "topVisitedDomains": "Top Visited Domains"
   },
   "threats": {
     "title": "Threat Activity Log",
@@ -196,6 +202,25 @@
       "low": "Low (All threats)",
       "medium": "Medium (High & Critical)",
       "high": "High (Critical only)"
+    },
+    "privacy": {
+      "title": "Privacy & Data Collection",
+      "description": "Control how we monitor and protect your network activity",
+      "browsingMonitoring": "Enable Network Monitoring",
+      "browsingMonitoringDesc": "Allow SentinelScope to monitor your network activity for threats (DNS queries, connections)",
+      "browsingHistory": "Include Browser History",
+      "browsingHistoryDesc": "Also collect browser history for comprehensive threat detection (requires explicit consent)",
+      "dataRetention": "Data Retention Period",
+      "dataRetentionDesc": "How long to keep browsing activity data",
+      "retentionDays": {
+        "7": "7 days",
+        "30": "30 days",
+        "90": "90 days"
+      },
+      "privacyNote": "Privacy Notice",
+      "privacyNoteText": "HTTPS sites: Only domain names are collected (not full URLs). All data is encrypted and used solely for threat detection. You can delete your data anytime.",
+      "consent": "User Consent",
+      "consentRequired": "By enabling browser history collection, you explicitly consent to the collection and processing of your browsing data in accordance with GDPR/LGPD regulations."
     }
   },
   "virustotal": {

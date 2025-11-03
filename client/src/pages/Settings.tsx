@@ -318,15 +318,15 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Privacy & Network Monitoring</CardTitle>
-          <CardDescription>Control how we collect and process your browsing activity data</CardDescription>
+          <CardTitle>{t('settings.privacy.title')}</CardTitle>
+          <CardDescription>{t('settings.privacy.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="browsing-monitoring">Network Activity Monitoring</Label>
+              <Label htmlFor="browsing-monitoring">{t('settings.privacy.browsingMonitoring')}</Label>
               <p className="text-sm text-muted-foreground">
-                Monitor DNS queries and network connections for security threats
+                {t('settings.privacy.browsingMonitoringDesc')}
               </p>
             </div>
             <Switch
@@ -343,9 +343,9 @@ export default function Settings() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="browsing-history">Full Browser History</Label>
+                  <Label htmlFor="browsing-history">{t('settings.privacy.browsingHistory')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Capture complete browsing history with URLs (HTTPS sites show domain only)
+                    {t('settings.privacy.browsingHistoryDesc')}
                   </p>
                 </div>
                 <Switch
@@ -358,16 +358,15 @@ export default function Settings() {
 
               <Alert className="border-blue-500/50 bg-blue-500/10">
                 <AlertCircle className="h-4 w-4 text-blue-500" />
-                <AlertTitle className="text-blue-500">Privacy Notice</AlertTitle>
+                <AlertTitle className="text-blue-500">{t('settings.privacy.privacyNote')}</AlertTitle>
                 <AlertDescription className="text-muted-foreground">
-                  Network monitoring data is encrypted and stored securely. You can delete your browsing history at any time. 
-                  We comply with GDPR and LGPD privacy regulations.
+                  {t('settings.privacy.privacyNoteText')}
                 </AlertDescription>
               </Alert>
 
               {preferences?.browsingConsentGivenAt && (
                 <p className="text-sm text-muted-foreground">
-                  Consent given on: {new Date(preferences.browsingConsentGivenAt).toLocaleDateString()}
+                  {t('settings.privacy.consent')}: {new Date(preferences.browsingConsentGivenAt).toLocaleDateString()}
                 </p>
               )}
             </>

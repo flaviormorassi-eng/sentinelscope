@@ -41,7 +41,13 @@
     "threatTimeline": "Linha do Tempo de 24 Horas",
     "viewAll": "Ver Tudo",
     "noThreats": "Nenhuma ameaça ativa detectada",
-    "allSystemsOperational": "Todos os sistemas operacionais"
+    "allSystemsOperational": "Todos os sistemas operacionais",
+    "networkActivity": "Atividade de Rede",
+    "totalVisits": "Total de Visitas",
+    "uniqueDomains": "Domínios Únicos",
+    "flaggedDomains": "Domínios Sinalizados",
+    "topBrowser": "Navegador Principal",
+    "topVisitedDomains": "Domínios Mais Visitados"
   },
   "threats": {
     "title": "Registro de Atividade de Ameaças",
@@ -196,6 +202,25 @@
       "low": "Baixo (Todas as ameaças)",
       "medium": "Médio (Alta e Crítica)",
       "high": "Alto (Somente críticas)"
+    },
+    "privacy": {
+      "title": "Privacidade e Coleta de Dados",
+      "description": "Controle como monitoramos e protegemos sua atividade de rede",
+      "browsingMonitoring": "Habilitar Monitoramento de Rede",
+      "browsingMonitoringDesc": "Permitir que o SentinelScope monitore sua atividade de rede para ameaças (consultas DNS, conexões)",
+      "browsingHistory": "Incluir Histórico do Navegador",
+      "browsingHistoryDesc": "Também coletar histórico do navegador para detecção abrangente de ameaças (requer consentimento explícito)",
+      "dataRetention": "Período de Retenção de Dados",
+      "dataRetentionDesc": "Por quanto tempo manter os dados de atividade de navegação",
+      "retentionDays": {
+        "7": "7 dias",
+        "30": "30 dias",
+        "90": "90 dias"
+      },
+      "privacyNote": "Aviso de Privacidade",
+      "privacyNoteText": "Sites HTTPS: Apenas nomes de domínio são coletados (não URLs completas). Todos os dados são criptografados e usados apenas para detecção de ameaças. Você pode excluir seus dados a qualquer momento.",
+      "consent": "Consentimento do Usuário",
+      "consentRequired": "Ao habilitar a coleta de histórico do navegador, você consente explicitamente com a coleta e processamento de seus dados de navegação de acordo com os regulamentos GDPR/LGPD."
     }
   },
   "virustotal": {

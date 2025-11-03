@@ -14,6 +14,30 @@ import { Threat, Alert } from '@shared/schema';
 import { format } from 'date-fns';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
+interface DashboardStats {
+  active: number;
+  blocked: number;
+  alerts: number;
+}
+
+interface BrowsingStats {
+  totalVisits: number;
+  uniqueDomains: number;
+  flaggedDomains: number;
+  browserBreakdown: Array<{ browser: string; count: number }>;
+  topDomains: Array<{ domain: string; count: number }>;
+}
+
+interface ChartDataPoint {
+  date: string;
+  count: number;
+}
+
+interface TypeDistribution {
+  name: string;
+  value: number;
+}
+
 const SEVERITY_COLORS = {
   critical: 'hsl(var(--destructive))',
   high: 'hsl(27 87% 52%)',
@@ -24,7 +48,7 @@ const SEVERITY_COLORS = {
 export default function Dashboard() {
   const { t } = useTranslation();
 
-  const { data: stats = { active: 0, blocked: 0, alerts: 0 }, isLoading: statsLoading } = useQuery({
+  const { data: stats = { active: 0, blocked: 0, alerts: 0 }, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['/api/stats'],
   });
 
@@ -36,15 +60,15 @@ export default function Dashboard() {
     queryKey: ['/api/alerts/recent'],
   });
 
-  const { data: chartData = [] } = useQuery({
+  const { data: chartData = [] } = useQuery<ChartDataPoint[]>({
     queryKey: ['/api/threats/timeline'],
   });
 
-  const { data: typeDistribution = [] } = useQuery({
+  const { data: typeDistribution = [] } = useQuery<TypeDistribution[]>({
     queryKey: ['/api/threats/by-type'],
   });
 
-  const { data: browsingStats } = useQuery({
+  const { data: browsingStats } = useQuery<BrowsingStats>({
     queryKey: ['/api/browsing/stats'],
   });
 
@@ -218,25 +242,25 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              Network Activity
+              {t('dashboard.networkActivity')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-4">
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Total Visits</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.totalVisits')}</p>
                 <p className="text-2xl font-bold" data-testid="stat-total-visits">{browsingStats.totalVisits.toLocaleString()}</p>
               </div>
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Unique Domains</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.uniqueDomains')}</p>
                 <p className="text-2xl font-bold" data-testid="stat-unique-domains">{browsingStats.uniqueDomains.toLocaleString()}</p>
               </div>
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Flagged Domains</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.flaggedDomains')}</p>
                 <p className="text-2xl font-bold text-destructive" data-testid="stat-flagged-domains">{browsingStats.flaggedDomains.toLocaleString()}</p>
               </div>
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Top Browser</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.topBrowser')}</p>
                 <p className="text-lg font-bold" data-testid="stat-top-browser">
                   {browsingStats.browserBreakdown?.[0]?.browser || 'N/A'}
                 </p>
@@ -244,7 +268,7 @@ export default function Dashboard() {
             </div>
             {browsingStats.topDomains && browsingStats.topDomains.length > 0 && (
               <div className="mt-6 space-y-2">
-                <p className="text-sm font-medium text-muted-foreground mb-3">Top Visited Domains</p>
+                <p className="text-sm font-medium text-muted-foreground mb-3">{t('dashboard.topVisitedDomains')}</p>
                 <div className="space-y-2">
                   {browsingStats.topDomains.slice(0, 5).map((domain: { domain: string; count: number }) => (
                     <div key={domain.domain} className="flex items-center justify-between text-sm">
