@@ -1173,6 +1173,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Compliance & Security Audit Routes
+  app.get("/api/compliance/audit-logs", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.query.userId as string | undefined;
+      const eventType = req.query.eventType as string | undefined;
+      const eventCategory = req.query.eventCategory as string | undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+
+      const logs = await storage.getSecurityAuditLogs({
+        userId,
+        eventType,
+        eventCategory,
+        startDate,
+        endDate,
+        limit,
+      });
+
+      res.json(logs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/compliance/report", authenticateUser, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+
+      const logs = await storage.getSecurityAuditLogs({
+        startDate,
+        endDate,
+        limit: 10000,
+      });
+
+      const stats = {
+        totalEvents: logs.length,
+        authEvents: logs.filter(l => l.eventCategory === 'authentication').length,
+        dataAccessEvents: logs.filter(l => l.eventCategory === 'data_access').length,
+        configChanges: logs.filter(l => l.eventCategory === 'configuration').length,
+        securityEvents: logs.filter(l => l.eventCategory === 'security').length,
+        failedEvents: logs.filter(l => l.status === 'failure').length,
+        criticalEvents: logs.filter(l => l.severity === 'critical').length,
+        warningEvents: logs.filter(l => l.severity === 'warning').length,
+        uniqueUsers: new Set(logs.filter(l => l.userId).map(l => l.userId)).size,
+      };
+
+      res.json({
+        period: { startDate, endDate },
+        stats,
+        recentEvents: logs.slice(0, 50),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/compliance/data-export", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+
+      const user = await storage.getUser(userId);
+      const preferences = await storage.getUserPreferences(userId);
+      const threats = await storage.getThreats(userId);
+      const alerts = await storage.getAlerts(userId);
+
+      const exportData = {
+        user: {
+          id: user?.id,
+          email: user?.email,
+          displayName: user?.displayName,
+          subscriptionTier: user?.subscriptionTier,
+          language: user?.language,
+          theme: user?.theme,
+          createdAt: user?.createdAt,
+        },
+        preferences,
+        threats,
+        alerts,
+        exportedAt: new Date().toISOString(),
+      };
+
+      res.json(exportData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

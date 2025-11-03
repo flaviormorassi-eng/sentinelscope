@@ -35,6 +35,7 @@ const adminMenuItems = [
   { title: 'nav.adminDashboard', url: '/admin', icon: ShieldCheck },
   { title: 'nav.userManagement', url: '/admin/users', icon: Users },
   { title: 'nav.systemAnalytics', url: '/admin/analytics', icon: Activity },
+  { title: 'nav.compliance', url: '/admin/compliance', icon: Shield },
 ];
 
 export function AppSidebar() {

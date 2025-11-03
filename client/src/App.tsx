@@ -26,6 +26,7 @@ import InstallGuide from "@/pages/InstallGuide";
 import AdminDashboard from "@/pages/AdminDashboard";
 import UserManagement from "@/pages/UserManagement";
 import SystemAnalytics from "@/pages/SystemAnalytics";
+import Compliance from "@/pages/Compliance";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -96,6 +97,9 @@ function Router() {
       </Route>
       <Route path="/admin/analytics">
         <ProtectedRoute component={SystemAnalytics} />
+      </Route>
+      <Route path="/admin/compliance">
+        <ProtectedRoute component={Compliance} />
       </Route>
       <Route component={NotFound} />
     </Switch>

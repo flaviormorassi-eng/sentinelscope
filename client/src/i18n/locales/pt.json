@@ -26,7 +26,8 @@
     "adminPanel": "Painel de Administração",
     "adminDashboard": "Painel do Admin",
     "userManagement": "Gerenciamento de Usuários",
-    "systemAnalytics": "Análises do Sistema"
+    "systemAnalytics": "Análises do Sistema",
+    "compliance": "Compliance e Auditoria"
   },
   "dashboard": {
     "title": "Painel de Segurança",

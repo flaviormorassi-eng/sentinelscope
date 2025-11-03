@@ -26,7 +26,8 @@
     "adminPanel": "Admin Panel",
     "adminDashboard": "Admin Dashboard",
     "userManagement": "User Management",
-    "systemAnalytics": "System Analytics"
+    "systemAnalytics": "System Analytics",
+    "compliance": "Compliance & Audit"
   },
   "dashboard": {
     "title": "Security Dashboard",

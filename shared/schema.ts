@@ -130,6 +130,51 @@ export const adminAuditLog = pgTable("admin_audit_log", {
     .default(sql`now()`),
 });
 
+// Security audit logs - Comprehensive logging for SOC2/ISO 27001 compliance
+export const securityAuditLogs = pgTable(
+  "security_audit_logs",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id),
+    eventType: text("event_type").notNull(),
+    eventCategory: text("event_category").notNull(),
+    action: text("action").notNull(),
+    resourceType: text("resource_type"),
+    resourceId: varchar("resource_id"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    status: text("status").notNull().default("success"),
+    severity: text("severity").notNull().default("info"),
+    details: jsonb("details"),
+    metadata: jsonb("metadata"),
+    timestamp: timestamp("timestamp")
+      .notNull()
+      .default(sql`now()`),
+  },
+  (table) => ({
+    userIdIdx: index("security_audit_logs_user_id_idx").on(table.userId),
+    timestampIdx: index("security_audit_logs_timestamp_idx").on(table.timestamp),
+    eventTypeIdx: index("security_audit_logs_event_type_idx").on(table.eventType),
+    categoryIdx: index("security_audit_logs_category_idx").on(table.eventCategory),
+  }),
+);
+
+// Data retention policies for compliance
+export const dataRetentionPolicies = pgTable("data_retention_policies", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  dataType: text("data_type").notNull().unique(),
+  retentionDays: integer("retention_days").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
+});
+
 // ========== REAL MONITORING SCHEMA ==========
 
 // Event sources - Track different monitoring data sources
@@ -354,6 +399,20 @@ export const insertThreatDecisionSchema = createInsertSchema(
   timestamp: true,
 });
 
+export const insertSecurityAuditLogSchema = createInsertSchema(
+  securityAuditLogs,
+).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertDataRetentionPolicySchema = createInsertSchema(
+  dataRetentionPolicies,
+).omit({
+  id: true,
+  updatedAt: true,
+});
+
 // Real monitoring insert schemas
 export const insertEventSourceSchema = createInsertSchema(eventSources).omit({
   id: true,
@@ -407,6 +466,12 @@ export type InsertAdminAuditLog = z.infer<typeof insertAdminAuditLogSchema>;
 
 export type ThreatDecision = typeof threatDecisions.$inferSelect;
 export type InsertThreatDecision = z.infer<typeof insertThreatDecisionSchema>;
+
+export type SecurityAuditLog = typeof securityAuditLogs.$inferSelect;
+export type InsertSecurityAuditLog = z.infer<typeof insertSecurityAuditLogSchema>;
+
+export type DataRetentionPolicy = typeof dataRetentionPolicies.$inferSelect;
+export type InsertDataRetentionPolicy = z.infer<typeof insertDataRetentionPolicySchema>;
 
 // Real monitoring types
 export type EventSource = typeof eventSources.$inferSelect;

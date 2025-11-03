@@ -11,6 +11,8 @@ import {
   type InsertAdminAuditLog,
   type ThreatDecision,
   type InsertThreatDecision,
+  type SecurityAuditLog,
+  type InsertSecurityAuditLog,
   type EventSource,
   type InsertEventSource,
   type RawEvent,
@@ -30,6 +32,7 @@ import {
   userPreferences,
   adminAuditLog,
   threatDecisions,
+  securityAuditLogs,
   eventSources,
   rawEvents,
   normalizedEvents,
@@ -143,6 +146,17 @@ export interface IStorage {
   getAgents(userId: string): Promise<AgentRegistration[]>;
   updateAgentHeartbeat(id: string): Promise<void>;
   verifyAgentApiKey(apiKey: string): Promise<AgentRegistration | undefined>;
+
+  // Security audit logs for compliance
+  createSecurityAuditLog(log: InsertSecurityAuditLog): Promise<SecurityAuditLog>;
+  getSecurityAuditLogs(options?: {
+    userId?: string;
+    eventType?: string;
+    eventCategory?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<SecurityAuditLog[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -287,6 +301,8 @@ export class MemStorage implements IStorage {
         pushNotifications: prefs.pushNotifications ?? true,
         alertThreshold: prefs.alertThreshold ?? 'medium',
         monitoringMode: prefs.monitoringMode ?? 'demo',
+        trialStartedAt: null,
+        trialExpiresAt: null,
       };
       this.preferences.set(id, newPrefs);
       return newPrefs;
@@ -314,7 +330,16 @@ export class MemStorage implements IStorage {
     if (stripeInfo.subscriptionTier && !['individual', 'smb', 'enterprise'].includes(stripeInfo.subscriptionTier)) {
       throw new Error(`Invalid subscription tier: ${stripeInfo.subscriptionTier}`);
     }
-    await this.updateUser(userId, stripeInfo);
+    // Convert null values to undefined for compatibility
+    const updates: Partial<User> = {
+      stripeCustomerId: stripeInfo.stripeCustomerId === null ? undefined : stripeInfo.stripeCustomerId,
+      stripeSubscriptionId: stripeInfo.stripeSubscriptionId === null ? undefined : stripeInfo.stripeSubscriptionId,
+      stripePriceId: stripeInfo.stripePriceId === null ? undefined : stripeInfo.stripePriceId,
+      subscriptionStatus: stripeInfo.subscriptionStatus === null ? undefined : stripeInfo.subscriptionStatus,
+      subscriptionTier: stripeInfo.subscriptionTier,
+      currentPeriodEnd: stripeInfo.currentPeriodEnd === null ? undefined : stripeInfo.currentPeriodEnd,
+    };
+    await this.updateUser(userId, updates);
   }
 
   async getUserByStripeCustomerId(customerId: string): Promise<User | undefined> {
@@ -459,6 +484,10 @@ export class MemStorage implements IStorage {
   async getAgents(): Promise<AgentRegistration[]> { return []; }
   async updateAgentHeartbeat(): Promise<void> { return; }
   async verifyAgentApiKey(): Promise<AgentRegistration | undefined> { return undefined; }
+  
+  // Security audit logs stubs
+  async createSecurityAuditLog(): Promise<SecurityAuditLog> { throw new Error("Security audit logs not supported in MemStorage"); }
+  async getSecurityAuditLogs(): Promise<SecurityAuditLog[]> { return []; }
 }
 
 // Database storage implementation using Drizzle ORM
@@ -956,6 +985,53 @@ export class DbStorage implements IStorage {
       .from(agentRegistrations)
       .where(and(eq(agentRegistrations.apiKeyHash, hashedKey), eq(agentRegistrations.isActive, true)));
     return result[0];
+  }
+
+  // Security audit logs for compliance
+  async createSecurityAuditLog(log: InsertSecurityAuditLog): Promise<SecurityAuditLog> {
+    const result = await this.db
+      .insert(securityAuditLogs)
+      .values(log)
+      .returning();
+    return result[0];
+  }
+
+  async getSecurityAuditLogs(options: {
+    userId?: string;
+    eventType?: string;
+    eventCategory?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  } = {}): Promise<SecurityAuditLog[]> {
+    const { userId, eventType, eventCategory, startDate, endDate, limit = 100 } = options;
+    
+    const conditions = [];
+    
+    if (userId) {
+      conditions.push(eq(securityAuditLogs.userId, userId));
+    }
+    if (eventType) {
+      conditions.push(eq(securityAuditLogs.eventType, eventType));
+    }
+    if (eventCategory) {
+      conditions.push(eq(securityAuditLogs.eventCategory, eventCategory));
+    }
+    if (startDate) {
+      conditions.push(sql`${securityAuditLogs.timestamp} >= ${startDate}`);
+    }
+    if (endDate) {
+      conditions.push(sql`${securityAuditLogs.timestamp} <= ${endDate}`);
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    return await this.db
+      .select()
+      .from(securityAuditLogs)
+      .where(whereClause)
+      .orderBy(desc(securityAuditLogs.timestamp))
+      .limit(limit);
   }
 }
 
