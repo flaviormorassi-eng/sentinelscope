@@ -27,6 +27,9 @@ interface UserPreferences {
   pushNotifications: boolean;
   alertThreshold: string;
   monitoringMode: string;
+  browsingMonitoringEnabled: boolean;
+  browsingHistoryEnabled: boolean;
+  browsingConsentGivenAt: string | null;
 }
 
 interface RealMonitoringAccess {
@@ -60,6 +63,8 @@ export default function Settings() {
   const [pushNotifications, setPushNotifications] = useState(preferences?.pushNotifications ?? true);
   const [alertThreshold, setAlertThreshold] = useState(preferences?.alertThreshold ?? 'medium');
   const [monitoringMode, setMonitoringMode] = useState(preferences?.monitoringMode ?? 'demo');
+  const [browsingMonitoringEnabled, setBrowsingMonitoringEnabled] = useState(preferences?.browsingMonitoringEnabled ?? false);
+  const [browsingHistoryEnabled, setBrowsingHistoryEnabled] = useState(preferences?.browsingHistoryEnabled ?? false);
 
   useEffect(() => {
     if (preferences) {
@@ -67,6 +72,8 @@ export default function Settings() {
       setPushNotifications(preferences.pushNotifications);
       setAlertThreshold(preferences.alertThreshold);
       setMonitoringMode(preferences.monitoringMode);
+      setBrowsingMonitoringEnabled(preferences.browsingMonitoringEnabled);
+      setBrowsingHistoryEnabled(preferences.browsingHistoryEnabled);
     }
   }, [preferences]);
 
@@ -104,6 +111,8 @@ export default function Settings() {
       pushNotifications,
       alertThreshold,
       monitoringMode,
+      browsingMonitoringEnabled,
+      browsingHistoryEnabled,
     });
   };
 
@@ -301,6 +310,65 @@ export default function Settings() {
                     Configure your data sources in the Event Sources page to start receiving real-time security events.
                   </p>
                 </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Privacy & Network Monitoring</CardTitle>
+          <CardDescription>Control how we collect and process your browsing activity data</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="browsing-monitoring">Network Activity Monitoring</Label>
+              <p className="text-sm text-muted-foreground">
+                Monitor DNS queries and network connections for security threats
+              </p>
+            </div>
+            <Switch
+              id="browsing-monitoring"
+              checked={browsingMonitoringEnabled}
+              onCheckedChange={setBrowsingMonitoringEnabled}
+              data-testid="switch-browsing-monitoring"
+            />
+          </div>
+
+          {browsingMonitoringEnabled && (
+            <>
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="browsing-history">Full Browser History</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Capture complete browsing history with URLs (HTTPS sites show domain only)
+                  </p>
+                </div>
+                <Switch
+                  id="browsing-history"
+                  checked={browsingHistoryEnabled}
+                  onCheckedChange={setBrowsingHistoryEnabled}
+                  data-testid="switch-browsing-history"
+                />
+              </div>
+
+              <Alert className="border-blue-500/50 bg-blue-500/10">
+                <AlertCircle className="h-4 w-4 text-blue-500" />
+                <AlertTitle className="text-blue-500">Privacy Notice</AlertTitle>
+                <AlertDescription className="text-muted-foreground">
+                  Network monitoring data is encrypted and stored securely. You can delete your browsing history at any time. 
+                  We comply with GDPR and LGPD privacy regulations.
+                </AlertDescription>
+              </Alert>
+
+              {preferences?.browsingConsentGivenAt && (
+                <p className="text-sm text-muted-foreground">
+                  Consent given on: {new Date(preferences.browsingConsentGivenAt).toLocaleDateString()}
+                </p>
               )}
             </>
           )}

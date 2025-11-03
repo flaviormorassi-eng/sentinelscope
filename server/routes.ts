@@ -65,6 +65,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           monitoringMode: 'demo',
           trialStartedAt: null,
           trialExpiresAt: null,
+          browsingMonitoringEnabled: false,
+          browsingHistoryEnabled: false,
+          browsingConsentGivenAt: null,
         };
       }
 
@@ -1317,22 +1320,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/browsing/consent", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
-      const { browsingMonitoringConsent, browsingHistoryEnabled, browsingDataRetentionDays } = req.body;
+      const { browsingMonitoringEnabled, browsingHistoryEnabled } = req.body;
 
       const preferences = await storage.getUserPreferences(userId);
       
-      const updates: any = {};
-      if (browsingMonitoringConsent !== undefined) {
-        updates.browsingMonitoringConsent = browsingMonitoringConsent;
+      const updates: any = {
+        userId,
+        ...preferences,
+      };
+
+      if (browsingMonitoringEnabled !== undefined) {
+        updates.browsingMonitoringEnabled = browsingMonitoringEnabled;
+        if (browsingMonitoringEnabled) {
+          updates.browsingConsentGivenAt = new Date();
+        }
       }
       if (browsingHistoryEnabled !== undefined) {
         updates.browsingHistoryEnabled = browsingHistoryEnabled;
       }
-      if (browsingDataRetentionDays !== undefined) {
-        updates.browsingDataRetentionDays = browsingDataRetentionDays;
-      }
 
-      await storage.updateUserPreferences(userId, updates);
+      await storage.upsertUserPreferences(updates);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
