@@ -17,6 +17,7 @@
     "threats": "Registro de Ameaças",
     "alerts": "Alertas",
     "map": "Mapa de Ameaças",
+    "networkActivity": "Atividade de Rede",
     "virustotal": "VirusTotal Scanner",
     "eventSources": "Fontes de Eventos",
     "installGuide": "Guia de Instalação",
@@ -652,5 +653,21 @@
     "rights": {
       "title": "Seus Direitos de Dados"
     }
+  },
+  "networkActivity": {
+    "title": "Atividade de Rede",
+    "description": "Monitore e revise seu histórico de navegação e atividade de rede",
+    "filters": "Filtros",
+    "filtersDescription": "Filtre seu histórico de navegação por domínio, navegador ou intervalo de datas",
+    "searchDomain": "Buscar Domínio",
+    "searchDomainPlaceholder": "ex: example.com",
+    "filterBrowser": "Navegador",
+    "allBrowsers": "Todos os Navegadores",
+    "clearFilters": "Limpar Filtros",
+    "browsingHistory": "Histórico de Navegação",
+    "recordsFound": "registros encontrados",
+    "noData": "Nenhuma atividade de navegação ainda",
+    "noDataDescription": "Habilite o monitoramento de rede nas Configurações para começar a coletar dados de atividade de navegação. Certifique-se de ter dado consentimento para coleta de dados.",
+    "flagged": "Sinalizado"
   }
 }

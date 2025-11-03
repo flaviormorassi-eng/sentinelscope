@@ -17,6 +17,7 @@
     "threats": "Threat Log",
     "alerts": "Alerts",
     "map": "Threat Map",
+    "networkActivity": "Network Activity",
     "virustotal": "VirusTotal Scan",
     "eventSources": "Event Sources",
     "installGuide": "Installation Guide",
@@ -652,5 +653,21 @@
     "rights": {
       "title": "Your Data Rights"
     }
+  },
+  "networkActivity": {
+    "title": "Network Activity",
+    "description": "Monitor and review your browsing history and network activity",
+    "filters": "Filters",
+    "filtersDescription": "Filter your browsing history by domain, browser, or date range",
+    "searchDomain": "Search Domain",
+    "searchDomainPlaceholder": "e.g., example.com",
+    "filterBrowser": "Browser",
+    "allBrowsers": "All Browsers",
+    "clearFilters": "Clear Filters",
+    "browsingHistory": "Browsing History",
+    "recordsFound": "records found",
+    "noData": "No browsing activity yet",
+    "noDataDescription": "Enable network monitoring in Settings to start collecting browsing activity data. Make sure you have given consent for data collection.",
+    "flagged": "Flagged"
   }
 }

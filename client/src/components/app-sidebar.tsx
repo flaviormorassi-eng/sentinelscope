@@ -1,4 +1,4 @@
-import { Shield, LayoutDashboard, AlertTriangle, Map, FileText, CreditCard, Settings, LogOut, Scan, Users, Activity, ShieldCheck, Database, BookOpen } from 'lucide-react';
+import { Shield, LayoutDashboard, AlertTriangle, Map, FileText, CreditCard, Settings, LogOut, Scan, Users, Activity, ShieldCheck, Database, BookOpen, Globe } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -23,6 +23,7 @@ const menuItems = [
   { title: 'nav.dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'nav.threats', url: '/threats', icon: AlertTriangle },
   { title: 'nav.map', url: '/map', icon: Map },
+  { title: 'nav.networkActivity', url: '/network-activity', icon: Globe },
   { title: 'nav.virustotal', url: '/virustotal', icon: Scan },
   { title: 'nav.eventSources', url: '/event-sources', icon: Database },
   { title: 'nav.installGuide', url: '/install-guide', icon: BookOpen },

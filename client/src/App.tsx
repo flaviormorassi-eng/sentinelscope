@@ -23,6 +23,7 @@ import Settings from "@/pages/Settings";
 import VirusTotalScan from "@/pages/VirusTotalScan";
 import EventSources from "@/pages/EventSources";
 import InstallGuide from "@/pages/InstallGuide";
+import NetworkActivity from "@/pages/NetworkActivity";
 import AdminDashboard from "@/pages/AdminDashboard";
 import UserManagement from "@/pages/UserManagement";
 import SystemAnalytics from "@/pages/SystemAnalytics";
@@ -104,6 +105,9 @@ function Router() {
       </Route>
       <Route path="/install-guide">
         <ProtectedRoute component={InstallGuide} />
+      </Route>
+      <Route path="/network-activity">
+        <ProtectedRoute component={NetworkActivity} />
       </Route>
       <Route path="/admin">
         <ProtectedRoute component={AdminDashboard} />
