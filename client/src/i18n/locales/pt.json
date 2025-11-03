@@ -384,6 +384,248 @@
     "back": "Voltar",
     "next": "Próximo",
     "optional": "opcional",
-    "copied": "Copiado"
+    "copied": "Copiado",
+    "getStarted": "Começar"
+  },
+  "about": {
+    "hero": {
+      "title": "Protegendo Ativos Digitais Desde 2024",
+      "description": "SentinelScope é uma plataforma de monitoramento de cibersegurança de nova geração projetada para detectar, analisar e neutralizar ameaças em tempo real. Nossa missão é tornar a segurança de nível empresarial acessível a organizações de todos os tamanhos."
+    },
+    "mission": {
+      "title": "Nossa Missão",
+      "content": "Acreditamos que toda organização merece acesso a ferramentas de cibersegurança de classe mundial. SentinelScope democratiza a inteligência de ameaças de nível empresarial fornecendo monitoramento em tempo real, análises avançadas e insights acionáveis a um preço acessível. Nossa plataforma combina tecnologia de ponta com design intuitivo, capacitando equipes de segurança a ficarem à frente das ameaças cibernéticas em evolução."
+    },
+    "values": {
+      "title": "Nossos Valores",
+      "security": {
+        "title": "Segurança em Primeiro Lugar",
+        "description": "Priorizamos a segurança e privacidade dos seus dados acima de tudo, implementando criptografia e práticas de segurança líderes do setor."
+      },
+      "customer": {
+        "title": "Foco no Cliente",
+        "description": "Nossos clientes estão no centro de tudo o que fazemos. Construímos soluções que resolvem desafios reais de cibersegurança."
+      },
+      "innovation": {
+        "title": "Inovação",
+        "description": "Inovamos continuamente para ficar à frente das ameaças emergentes e fornecer inteligência de ameaças de ponta."
+      },
+      "excellence": {
+        "title": "Excelência",
+        "description": "Buscamos excelência em todos os aspectos de nossa plataforma, desde detecção de ameaças até suporte ao cliente."
+      }
+    },
+    "team": {
+      "title": "Nossa Equipe",
+      "security": "Especialistas em Inteligência de Ameaças",
+      "securityDesc": "Ex-pesquisadores de segurança de empresas líderes em cibersegurança com décadas de experiência combinada.",
+      "engineering": "Engenheiros Full-Stack",
+      "engineeringDesc": "Construindo sistemas escaláveis de monitoramento em tempo real que processam milhões de eventos por dia.",
+      "support": "Suporte ao Cliente 24/7",
+      "supportDesc": "Profissionais de suporte dedicados prontos para ajudá-lo a proteger seus ativos digitais 24 horas por dia."
+    },
+    "cta": {
+      "title": "Pronto para Proteger Seus Ativos Digitais?",
+      "description": "Junte-se a milhares de organizações protegendo sua infraestrutura com SentinelScope.",
+      "contactSales": "Contatar Vendas"
+    }
+  },
+  "blog": {
+    "hero": {
+      "title": "Blog SentinelScope",
+      "description": "Insights, tutoriais e melhores práticas para profissionais de cibersegurança."
+    },
+    "post1": {
+      "title": "10 Melhores Práticas Essenciais de Cibersegurança para 2025",
+      "excerpt": "Aprenda as medidas de segurança críticas que toda organização deve implementar para se proteger contra ameaças cibernéticas modernas."
+    },
+    "post2": {
+      "title": "Entendendo a Detecção de Ameaças em Tempo Real",
+      "excerpt": "Como o monitoramento em tempo real pode ajudá-lo a detectar e responder a ameaças antes que causem danos à sua infraestrutura."
+    },
+    "post3": {
+      "title": "Conformidade SOC2 Simplificada",
+      "excerpt": "Um guia completo para alcançar a conformidade SOC2 com o registro de auditoria e relatórios integrados do SentinelScope."
+    },
+    "post4": {
+      "title": "Estudo de Caso: Bloqueando 10.000 Ameaças em Uma Semana",
+      "excerpt": "Como uma empresa de médio porte usou o SentinelScope para identificar e neutralizar uma campanha de ataque coordenada."
+    },
+    "post5": {
+      "title": "Integração VirusTotal: Aproveitando Inteligência Global de Ameaças",
+      "excerpt": "Descubra como a integração VirusTotal do SentinelScope fornece análise instantânea de malware para arquivos, URLs e IPs."
+    },
+    "post6": {
+      "title": "Gerenciamento de Fontes de Eventos: Monitoramento de Segurança Unificado",
+      "excerpt": "Aprenda como consolidar logs de syslog, REST APIs, agentes e webhooks em um único painel de monitoramento."
+    },
+    "readMore": "Ler Mais",
+    "newsletter": {
+      "title": "Mantenha-se Atualizado",
+      "description": "Inscreva-se em nossa newsletter para receber os últimos insights de cibersegurança e atualizações de produtos.",
+      "placeholder": "Digite seu email",
+      "subscribe": "Inscrever-se"
+    }
+  },
+  "careers": {
+    "hero": {
+      "title": "Junte-se à Nossa Missão de Proteger o Mundo Digital",
+      "description": "Estamos construindo o futuro do monitoramento de cibersegurança. Junte-se a uma equipe de engenheiros, designers e especialistas em segurança apaixonados, tornando a internet mais segura para todos."
+    },
+    "benefits": {
+      "title": "Por Que Trabalhar Conosco?",
+      "health": "Seguro de saúde, dental e visão abrangente",
+      "remote": "Ambiente de trabalho remoto primeiro",
+      "pto": "Férias ilimitadas e horários de trabalho flexíveis",
+      "equity": "Pacotes salariais e de participação acionária competitivos",
+      "learning": "Orçamento para desenvolvimento profissional",
+      "equipment": "Equipamentos e ferramentas de tecnologia mais recentes"
+    },
+    "openings": {
+      "title": "Vagas Abertas"
+    },
+    "jobs": {
+      "security": {
+        "description": "Construa e mantenha algoritmos de detecção de ameaças e infraestrutura de segurança."
+      },
+      "fullstack": {
+        "description": "Desenvolva aplicações web escaláveis com React, TypeScript e Node.js."
+      },
+      "analyst": {
+        "description": "Monitore ameaças, investigue incidentes e forneça suporte ao cliente."
+      },
+      "designer": {
+        "description": "Projete interfaces intuitivas para ferramentas complexas de monitoramento de segurança."
+      },
+      "devops": {
+        "description": "Gerencie infraestrutura, pipelines CI/CD e automação de implantação."
+      },
+      "csm": {
+        "description": "Ajude os clientes a maximizar o valor do SentinelScope e alcançar seus objetivos de segurança."
+      }
+    },
+    "apply": "Candidatar-se Agora",
+    "cta": {
+      "title": "Não Encontrou uma Vaga Perfeita?",
+      "description": "Estamos sempre procurando indivíduos talentosos. Envie-nos seu currículo e conte-nos como você pode contribuir.",
+      "button": "Entrar em Contato"
+    }
+  },
+  "contact": {
+    "hero": {
+      "title": "Entre em Contato",
+      "description": "Tem dúvidas sobre o SentinelScope? Nossa equipe está aqui para ajudá-lo a proteger seus ativos digitais."
+    },
+    "form": {
+      "title": "Envie-nos uma Mensagem",
+      "name": "Nome",
+      "email": "Email",
+      "subject": "Assunto",
+      "message": "Mensagem",
+      "submit": "Enviar Mensagem",
+      "success": "Mensagem Enviada!",
+      "successDesc": "Retornaremos em até 24 horas."
+    },
+    "methods": {
+      "title": "Outras Formas de Nos Contatar",
+      "email": {
+        "title": "Suporte por Email",
+        "action": "Enviar Email"
+      },
+      "chat": {
+        "title": "Chat ao Vivo",
+        "description": "Disponível 24/7 para questões urgentes",
+        "action": "Iniciar Chat"
+      },
+      "phone": {
+        "title": "Suporte Telefônico",
+        "description": "Apenas clientes Enterprise",
+        "action": "Ligar"
+      }
+    },
+    "office": {
+      "title": "Sede",
+      "address": "Empresa remoto-primeiro",
+      "global": "Equipe distribuída globalmente"
+    }
+  },
+  "privacy": {
+    "title": "Política de Privacidade",
+    "updated": "Última Atualização: Janeiro de 2025"
+  },
+  "terms": {
+    "title": "Termos de Serviço",
+    "updated": "Última Atualização: Janeiro de 2025"
+  },
+  "security": {
+    "hero": {
+      "badge": "Segurança de Nível Empresarial",
+      "title": "Segurança no Nosso Núcleo",
+      "description": "Levamos a segurança a sério. SentinelScope implementa práticas de segurança líderes do setor para proteger seus dados e garantir a integridade de nossa plataforma de monitoramento de ameaças."
+    },
+    "features": {
+      "title": "Infraestrutura de Segurança",
+      "https": {
+        "title": "Criptografia HTTPS",
+        "description": "Todos os dados transmitidos entre seu navegador e nossos servidores são criptografados usando TLS 1.3, o padrão mais recente do setor."
+      },
+      "auth": {
+        "title": "Autenticação Segura",
+        "description": "Autenticação Firebase com Google OAuth 2.0 fornece verificação de identidade segura e padrão do setor."
+      },
+      "database": {
+        "title": "Segurança do Banco de Dados",
+        "description": "PostgreSQL com criptografia em repouso, hospedado na infraestrutura compatível com SOC2 da Neon com backups automáticos."
+      },
+      "audit": {
+        "title": "Registro de Auditoria",
+        "description": "Registro abrangente de todos os eventos de segurança, acesso a dados e mudanças de configuração para conformidade e forense."
+      },
+      "hashing": {
+        "title": "Hash de Chave de API",
+        "description": "Todas as chaves de API são hasheadas usando SHA-256 e verificadas com comparação timing-safe para prevenir ataques de timing."
+      },
+      "secrets": {
+        "title": "Gerenciamento de Segredos",
+        "description": "Variáveis de ambiente gerenciadas com segurança via Replit Secrets, nunca expostas em código ou controle de versão."
+      }
+    },
+    "practices": {
+      "title": "Melhores Práticas de Segurança"
+    },
+    "incident": {
+      "title": "Resposta a Incidentes de Segurança"
+    },
+    "disclosure": {
+      "title": "Divulgação Responsável"
+    }
+  },
+  "compliance": {
+    "hero": {
+      "badge": "Conformidade SOC2 & ISO 27001",
+      "title": "Conformidade de Nível Empresarial",
+      "description": "SentinelScope é construído com conformidade em mente. Implementamos controles de segurança rigorosos e procedimentos de auditoria para atender aos padrões mais rigorosos do setor."
+    },
+    "certifications": {
+      "title": "Certificações e Padrões",
+      "soc2": {
+        "status": "Pronto"
+      },
+      "iso": {
+        "status": "Conforme"
+      },
+      "gdpr": {
+        "status": "Conforme"
+      }
+    },
+    "controls": {
+      "title": "Controles de Segurança"
+    },
+    "features": {
+      "title": "Recursos de Conformidade"
+    },
+    "rights": {
+      "title": "Seus Direitos de Dados"
+    }
   }
 }
