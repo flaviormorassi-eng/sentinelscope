@@ -27,6 +27,14 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import UserManagement from "@/pages/UserManagement";
 import SystemAnalytics from "@/pages/SystemAnalytics";
 import Compliance from "@/pages/Compliance";
+import About from "@/pages/About";
+import Blog from "@/pages/Blog";
+import Careers from "@/pages/Careers";
+import Contact from "@/pages/Contact";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+import SecurityPage from "@/pages/SecurityPage";
+import CompliancePage from "@/pages/CompliancePage";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -59,6 +67,14 @@ function Router() {
       <Route path="/login">
         {user ? <Redirect to="/dashboard" /> : <Login />}
       </Route>
+      <Route path="/about" component={About} />
+      <Route path="/blog" component={Blog} />
+      <Route path="/careers" component={Careers} />
+      <Route path="/contact" component={Contact} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/security" component={SecurityPage} />
+      <Route path="/compliance-info" component={CompliancePage} />
       <Route path="/dashboard">
         <ProtectedRoute component={Dashboard} />
       </Route>
