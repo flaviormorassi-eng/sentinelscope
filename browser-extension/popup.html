@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SentinelScope Monitor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 360px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .header h1 {
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+    
+    .header p {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    .status {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    
+    .status-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    
+    .badge.active {
+      background: #22c55e;
+      color: white;
+    }
+    
+    .badge.inactive {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .config {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .config h2 {
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    
+    .form-group {
+      margin-bottom: 12px;
+    }
+    
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+    
+    label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+      opacity: 0.9;
+    }
+    
+    input {
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #1f2937;
+    }
+    
+    input:focus {
+      outline: 2px solid white;
+      outline-offset: 2px;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    input[type="checkbox"] {
+      width: auto;
+      cursor: pointer;
+    }
+    
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+    
+    button:last-child {
+      margin-bottom: 0;
+    }
+    
+    .btn-primary {
+      background: white;
+      color: #667eea;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .btn-success {
+      background: #22c55e;
+      color: white;
+    }
+    
+    .links {
+      text-align: center;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .links a {
+      color: white;
+      text-decoration: none;
+      font-size: 12px;
+      opacity: 0.9;
+      transition: opacity 0.2s;
+    }
+    
+    .links a:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    
+    .message {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 12px;
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+    
+    .message.error {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+    
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🛡️ SentinelScope</h1>
+    <p>Monitor de Navegação</p>
+  </div>
+  
+  <div class="status">
+    <div class="status-item">
+      <span>Status:</span>
+      <span class="badge inactive" id="statusBadge">Inativo</span>
+    </div>
+    <div class="status-item">
+      <span>Configurado:</span>
+      <span id="configStatus">Não</span>
+    </div>
+    <div class="status-item">
+      <span>Fila:</span>
+      <span id="queueSize">0 eventos</span>
+    </div>
+  </div>
+  
+  <div id="message" class="message hidden"></div>
+  
+  <div class="config">
+    <h2>⚙️ Configuração</h2>
+    
+    <div class="form-group">
+      <label for="apiUrl">URL do SentinelScope:</label>
+      <input 
+        type="text" 
+        id="apiUrl" 
+        placeholder="https://seu-app.replit.app"
+        data-testid="input-api-url"
+      />
+    </div>
+    
+    <div class="form-group">
+      <label for="apiKey">API Key (do Event Source):</label>
+      <input 
+        type="password" 
+        id="apiKey" 
+        placeholder="Cole sua API Key aqui"
+        data-testid="input-api-key"
+      />
+    </div>
+    
+    <div class="form-group">
+      <div class="checkbox-group">
+        <input 
+          type="checkbox" 
+          id="isEnabled"
+          data-testid="checkbox-enabled"
+        />
+        <label for="isEnabled" style="margin: 0;">Ativar monitoramento</label>
+      </div>
+    </div>
+  </div>
+  
+  <button class="btn-primary" id="saveBtn" data-testid="button-save">💾 Salvar Configuração</button>
+  <button class="btn-success" id="sendNowBtn" data-testid="button-send-now">📤 Enviar Agora</button>
+  <button class="btn-secondary" id="openDashboardBtn" data-testid="button-dashboard">📊 Abrir Dashboard</button>
+  
+  <div class="links">
+    <a href="#" id="helpLink" data-testid="link-help">📖 Como Configurar</a>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

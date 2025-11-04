@@ -4,9 +4,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
-import { Monitor, Terminal, Download, Key, CheckCircle, AlertCircle, Copy } from "lucide-react";
+import { Monitor, Terminal, Download, Key, CheckCircle, AlertCircle, Copy, Chrome, Globe } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 export default function InstallGuide() {
   const { t } = useTranslation();
@@ -68,6 +69,127 @@ export default function InstallGuide() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/50 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Chrome className="w-5 h-5 text-primary" />
+              🚀 Extensão de Navegador (Recomendado)
+            </CardTitle>
+            <CardDescription>Captura automaticamente seu histórico de navegação em tempo real</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm">
+              A forma <strong>mais fácil</strong> de monitorar sua navegação! Instale a extensão e ela captura automaticamente todas as páginas que você visitar.
+            </p>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <Badge variant="default" className="mt-1">1</Badge>
+                <div className="flex-1">
+                  <p className="font-medium mb-2">Habilitar Monitoramento</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Vá em <Link href="/settings" className="text-primary hover:underline">Settings</Link> → Privacy & Data Collection
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Ative: ✅ Browsing Monitoring Consent e ✅ Enable Browsing History Tracking
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Badge variant="default" className="mt-1">2</Badge>
+                <div className="flex-1">
+                  <p className="font-medium mb-2">Criar Event Source</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Vá em <Link href="/event-sources" className="text-primary hover:underline">Event Sources</Link> → Create New Source
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Type: "Agent" → Copie a API Key (mostrada apenas uma vez!)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Badge variant="default" className="mt-1">3</Badge>
+                <div className="flex-1">
+                  <p className="font-medium mb-2">Instalar a Extensão</p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      <strong>Chrome/Edge/Brave:</strong> Digite <code className="bg-muted px-2 py-0.5 rounded">chrome://extensions/</code>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      → Ative "Modo do desenvolvedor" → "Carregar sem compactação" → Selecione a pasta <code className="bg-muted px-2 py-0.5 rounded">browser-extension</code>
+                    </p>
+                    <Alert>
+                      <Download className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Baixe a extensão:</strong> Acesse o repositório do projeto e copie a pasta <code>browser-extension</code> para seu computador.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Badge variant="default" className="mt-1">4</Badge>
+                <div className="flex-1">
+                  <p className="font-medium mb-2">Configurar a Extensão</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Clique no ícone 🛡️ da extensão na barra de ferramentas
+                  </p>
+                  <div className="bg-muted p-3 rounded-md space-y-2 text-sm">
+                    <p><strong>URL do SentinelScope:</strong> {window.location.origin}</p>
+                    <p><strong>API Key:</strong> Cole a chave do passo 2</p>
+                    <p>✅ Marque "Ativar monitoramento"</p>
+                    <p>Clique em "💾 Salvar Configuração"</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Alert className="bg-primary/10 border-primary/30">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              <AlertDescription>
+                <strong>Pronto!</strong> A partir de agora, todas as páginas que você visitar aparecerão em{' '}
+                <Link href="/network-activity" className="text-primary hover:underline font-medium">Network Activity</Link> automaticamente!
+              </AlertDescription>
+            </Alert>
+
+            <div className="flex gap-2">
+              <Button asChild variant="default" className="flex-1" data-testid="button-goto-settings">
+                <Link href="/settings">
+                  <Key className="w-4 h-4 mr-2" />
+                  1. Habilitar Monitoramento
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="flex-1" data-testid="button-goto-event-sources">
+                <Link href="/event-sources">
+                  <Globe className="w-4 h-4 mr-2" />
+                  2. Criar Event Source
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Terminal className="w-5 h-5 text-primary" />
+              Agentes de Sistema (Avançado)
+            </CardTitle>
+            <CardDescription>Para captura de ameaças de rede e monitoramento do sistema</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Se você precisa monitorar ameaças de rede (não apenas navegação), use os agentes de sistema abaixo.
+            </p>
+            <p className="text-sm text-muted-foreground font-medium">
+              Para monitorar apenas navegação, use a extensão acima! É muito mais fácil ✨
+            </p>
           </CardContent>
         </Card>
 
