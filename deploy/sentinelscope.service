@@ -1,0 +1,16 @@
+[Unit]
+Description=SentinelScope Service
+After=network.target
+
+[Service]
+Type=simple
+Environment=NODE_ENV=production
+Environment=PORT=3001
+WorkingDirectory=/opt/sentinelscope
+ExecStart=/usr/bin/node /opt/sentinelscope/dist/index.js
+Restart=always
+RestartSec=5
+User=sentinel
+
+[Install]
+WantedBy=multi-user.target

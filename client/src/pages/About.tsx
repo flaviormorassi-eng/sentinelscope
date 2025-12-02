@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'wouter';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/button'; // Ensure Button is imported
 import { Card, CardContent } from '@/components/ui/card';
 import { Shield, Users, Target, Award, ArrowLeft } from 'lucide-react';
 

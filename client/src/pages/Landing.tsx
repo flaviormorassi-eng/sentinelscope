@@ -359,10 +359,10 @@ export default function Landing() {
             <div>
               <h4 className="font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#features" className="hover:text-foreground" data-testid="link-footer-features">Features</a></li>
-                <li><a href="#pricing" className="hover:text-foreground" data-testid="link-footer-pricing">Pricing</a></li>
-                <li><Link href="/security" className="hover:text-foreground" data-testid="link-footer-security">Security</Link></li>
-                <li><Link href="/install-guide" className="hover:text-foreground" data-testid="link-footer-integrations">Integrations</Link></li>
+                <li><a href="#features" className="hover:text-foreground" data-testid="link-footer-features">{t('nav.features')}</a></li>
+                <li><a href="#pricing" className="hover:text-foreground" data-testid="link-footer-pricing">{t('nav.pricing')}</a></li>
+                <li><Link href="/security" className="hover:text-foreground" data-testid="link-footer-security">{t('nav.security')}</Link></li>
+                <li><Link href="/install-guide" className="hover:text-foreground" data-testid="link-footer-integrations">{t('nav.installGuide')}</Link></li>
               </ul>
             </div>
             <div>
@@ -370,8 +370,8 @@ export default function Landing() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link href="/about" className="hover:text-foreground" data-testid="link-footer-about">About</Link></li>
                 <li><Link href="/blog" className="hover:text-foreground" data-testid="link-footer-blog">Blog</Link></li>
-                <li><Link href="/careers" className="hover:text-foreground" data-testid="link-footer-careers">Careers</Link></li>
-                <li><Link href="/contact" className="hover:text-foreground" data-testid="link-footer-contact">Contact</Link></li>
+                <li><Link href="/careers" className="hover:text-foreground" data-testid="link-footer-careers">{t('nav.careers')}</Link></li>
+                <li><Link href="/contact" className="hover:text-foreground" data-testid="link-footer-contact">{t('nav.contact')}</Link></li>
               </ul>
             </div>
             <div>
@@ -380,7 +380,7 @@ export default function Landing() {
                 <li><Link href="/privacy" className="hover:text-foreground" data-testid="link-footer-privacy">Privacy</Link></li>
                 <li><Link href="/terms" className="hover:text-foreground" data-testid="link-footer-terms">Terms</Link></li>
                 <li><Link href="/security" className="hover:text-foreground" data-testid="link-footer-security-legal">Security</Link></li>
-                <li><Link href="/compliance-info" className="hover:text-foreground" data-testid="link-footer-compliance">Compliance</Link></li>
+                <li><Link href="/compliance" className="hover:text-foreground" data-testid="link-footer-compliance">{t('nav.compliance')}</Link></li>
               </ul>
             </div>
           </div>

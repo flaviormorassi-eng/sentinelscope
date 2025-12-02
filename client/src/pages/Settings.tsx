@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,13 +14,34 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import { Save, AlertCircle, Clock, CreditCard } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
+import { Save, AlertCircle, Clock, CreditCard, Phone, Shield, Loader2 } from 'lucide-react';
+import MfaSettings from '@/components/settings/MfaSettings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'wouter';
+import { Eye, EyeOff } from 'lucide-react';
+import {
+  getMultiFactorResolver,
+  PhoneAuthProvider,
+  PhoneMultiFactorGenerator,
+  RecaptchaVerifier,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { Badge } from '@/components/ui/badge';
 
 interface UserPreferences {
   emailNotifications: boolean;
@@ -42,12 +63,34 @@ interface RealMonitoringAccess {
   };
 }
 
+// Extend FirebaseUser type to include multiFactor for local use
+type UserWithMultiFactor = {
+  multiFactor?: {
+    enrolledFactors: { phoneNumber?: string }[];
+    enroll: (assertion: any, displayName?: string | null) => Promise<void>;
+  };
+  reload: () => Promise<void>;
+  uid: string;
+  displayName?: string | null;
+  email?: string | null;
+  photoURL?: string | null;
+};
+
 export default function Settings() {
   const { t, i18n } = useTranslation();
-  const { user } = useAuth();
+  const { user: rawUser, loading: authLoading, deleteAccount } = useAuth();
+  const user = rawUser as UserWithMultiFactor | null;
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
+  const [isMfaDialogOpen, setIsMfaDialogOpen] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
   const [language, setLanguage] = useState(i18n.language);
   const [selectedTheme, setSelectedTheme] = useState(theme);
 
@@ -58,6 +101,8 @@ export default function Settings() {
   const { data: realMonitoringAccess } = useQuery<RealMonitoringAccess>({
     queryKey: ['/api/user/real-monitoring-access'],
   });
+
+  const mfaEnrolled = !!(user && user.multiFactor && user.multiFactor.enrolledFactors && user.multiFactor.enrolledFactors.length > 0);
 
   const [emailNotifications, setEmailNotifications] = useState(preferences?.emailNotifications ?? true);
   const [pushNotifications, setPushNotifications] = useState(preferences?.pushNotifications ?? true);
@@ -88,12 +133,16 @@ export default function Settings() {
         description: "Your settings have been updated successfully",
       });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update settings",
-        variant: "destructive",
-      });
+    onError: (error: any, variables: any) => {
+      // If switching to real mode failed (e.g., trial expired), revert UI to demo
+      if (variables?.monitoringMode === 'real') {
+        setMonitoringMode('demo');
+      }
+      const msg = String(error?.message || 'Failed to update settings');
+      const friendly = msg.includes('Real monitoring access denied')
+        ? 'Real monitoring access denied or trial expired. Please upgrade to continue.'
+        : msg;
+      toast({ title: 'Error', description: friendly, variant: 'destructive' });
     },
   });
 
@@ -113,8 +162,65 @@ export default function Settings() {
       monitoringMode,
       browsingMonitoringEnabled,
       browsingHistoryEnabled,
+    }, {
+      onError: (error) => {
+        // Additional UI hint near the Monitoring section can be added later
+      }
     });
   };
+
+  const handleSendVerificationCode = async () => {
+    if (!user) return;
+    try {
+      const phoneProvider = new PhoneAuthProvider(auth);
+      const verifier = window.recaptchaVerifier;
+        const verificationId = await phoneProvider.verifyPhoneNumber(
+          phoneNumber,
+          verifier
+        );
+      setVerificationId(verificationId);
+      toast({ title: 'Code Sent', description: 'A verification code has been sent to your phone.' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleVerifyAndEnroll = async () => {
+    if (!user || !verificationId) return;
+    try {
+      const cred = PhoneAuthProvider.credential(verificationId, verificationCode);
+      const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(cred);
+      if (user && user.multiFactor) {
+        await user.multiFactor.enroll(multiFactorAssertion, phoneNumber);
+      }
+      
+      // Force a refresh of the user object to get new MFA state
+      await user.reload();
+      queryClient.invalidateQueries({ queryKey: [`/api/user/${user.uid}`] });
+
+      setIsMfaDialogOpen(false);
+      setPhoneNumber('');
+      setVerificationId(null);
+      setVerificationCode('');
+      toast({ title: 'Success', description: '2FA has been enabled successfully.' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleMfaDialogClose = () => {
+    setIsMfaDialogOpen(false);
+    setVerificationId(null);
+  };
+
+  const handleDeleteAccount = async () => {
+    const success = await deleteAccount(deletePassword);
+    if (success) {
+      setIsDeleteDialogOpen(false);
+      setDeletePassword('');
+    }
+  };
+
 
   return (
     <div className="space-y-6 p-6">
@@ -237,6 +343,8 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <MfaSettings />
 
       <Card>
         <CardHeader>
@@ -374,6 +482,64 @@ export default function Settings() {
         </CardContent>
       </Card>
 
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle className="text-destructive">{t('settings.deleteAccount.title')}</CardTitle>
+          <CardDescription>{t('settings.deleteAccount.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="destructive" data-testid="button-delete-account">
+                {t('settings.deleteAccount.button')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('settings.deleteAccount.dialogTitle')}</DialogTitle>
+                <DialogDescription>
+                  {t('settings.deleteAccount.dialogDescription')}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor="delete-password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="delete-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Enter your password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAccount}
+                  disabled={authLoading || !deletePassword}
+                >
+                  {authLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {t('settings.deleteAccount.confirmButton')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end">
         <Button
           onClick={handleSave}
@@ -388,3 +554,5 @@ export default function Settings() {
     </div>
   );
 }
+
+declare global { interface Window { recaptchaVerifier: RecaptchaVerifier; } }

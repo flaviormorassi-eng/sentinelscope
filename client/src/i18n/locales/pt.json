@@ -3,6 +3,21 @@
     "name": "SentinelScope",
     "tagline": "Monitoramento Avançado de Cibersegurança"
   },
+  "authFailures": {
+    "title": "Falhas de Autenticação",
+    "description": "Eventos recentes de autenticação e chaves de API com falha (somente admin).",
+    "unauthorized": "Você não tem permissão para ver logs de auditoria de autenticação.",
+    "empty": "Nenhuma falha registrada.",
+    "loading": "Carregando…",
+    "showingSome": "Mostrando as primeiras {{shown}} de {{total}} falhas.",
+    "headers": {
+      "time": "Hora",
+      "action": "Ação",
+      "ip": "IP",
+      "severity": "Gravidade",
+      "resource": "Recurso"
+    }
+  },
   "auth": {
     "login": "Entrar",
     "logout": "Sair",
@@ -10,10 +25,21 @@
     "welcome": "Bem-vindo ao SentinelScope",
     "welcomeMessage": "Monitore e proteja seus sistemas em tempo real",
     "loggingIn": "Entrando...",
-    "loginError": "Falha na autenticação. Por favor, tente novamente."
+    "loginError": "Falha na autenticação. Por favor, tente novamente.",
+    "email": "E-mail",
+    "password": "Senha",
+    "signUp": "Cadastre-se",
+    "noAccount": "Não tem uma conta?",
+    "haveAccount": "Já tem uma conta?",
+    "mfaRequired": "Autenticação de Dois Fatores Necessária",
+    "forgotPassword": "Esqueceu a senha?",
+    "resetPassword": "Redefinir Senha",
+    "resetPasswordInstructions": "Digite seu e-mail para receber um link de redefinição de senha.",
+    "resetPasswordSuccess": "E-mail de redefinição de senha enviado. Por favor, verifique sua caixa de entrada."
   },
   "nav": {
     "dashboard": "Painel",
+    "securityCenter": "Central de Segurança",
     "threats": "Registro de Ameaças",
     "alerts": "Alertas",
     "map": "Mapa de Ameaças",
@@ -22,13 +48,20 @@
     "eventSources": "Fontes de Eventos",
     "installGuide": "Guia de Instalação",
     "reports": "Relatórios",
+    "features": "Funcionalidades",
+    "pricing": "Preços",
     "subscription": "Assinatura",
+    "security": "Segurança",
     "settings": "Configurações",
     "adminPanel": "Painel de Administração",
     "adminDashboard": "Painel do Admin",
     "userManagement": "Gerenciamento de Usuários",
     "systemAnalytics": "Análises do Sistema",
+    "ipBlocklist": "Lista de Bloqueio de IP",
     "compliance": "Compliance e Auditoria"
+  },
+  "securityCenter": {
+    "subtitle": "Una seus Alertas e Registro de Ameaças em um só lugar."
   },
   "dashboard": {
     "title": "Painel de Segurança",
@@ -40,12 +73,15 @@
     "recentAlerts": "Alertas Recentes",
     "threatsByType": "Ameaças por Tipo",
     "threatTimeline": "Linha do Tempo de 24 Horas",
+    "lastUpdated": "Última atualização",
     "viewAll": "Ver Tudo",
     "noThreats": "Nenhuma ameaça ativa detectada",
     "allSystemsOperational": "Todos os sistemas operacionais",
     "networkActivity": "Atividade de Rede",
     "totalVisits": "Total de Visitas",
     "uniqueDomains": "Domínios Únicos",
+    "recentlyBlockedIps": "IPs Bloqueados Recentemente",
+    "noBlockedIps": "Nenhum IP bloqueado recentemente",
     "flaggedDomains": "Domínios Sinalizados",
     "topBrowser": "Navegador Principal",
     "topVisitedDomains": "Domínios Mais Visitados"
@@ -96,8 +132,14 @@
   "alerts": {
     "title": "Alertas de Segurança",
     "markAllRead": "Marcar Tudo como Lido",
+    "clearAll": "Limpar Tudo",
     "noAlerts": "Nenhum alerta no momento",
-    "newAlert": "Novo Alerta"
+    "newAlert": "Novo Alerta",
+    "clearAllConfirmation": {
+      "title": "Tem certeza de que deseja limpar todos os alertas?",
+      "description": "Esta ação não pode ser desfeita. Todos os alertas, lidos e não lidos, serão excluídos permanentemente.",
+      "confirm": "Sim, Limpar Tudo"
+    }
   },
   "map": {
     "title": "Mapa Global de Ameaças",
@@ -204,6 +246,82 @@
       "medium": "Médio (Alta e Crítica)",
       "high": "Alto (Somente críticas)"
     },
+    "mfa": {
+      "title": "Autenticação de Múltiplos Fatores",
+      "description": "Adicione uma camada extra de segurança à sua conta.",
+  "phoneTitle": "Número de Telefone",
+  "webauthn": {
+        "title": "Chaves de Segurança (WebAuthn)",
+        "description": "Registre uma chave de hardware ou autenticador da plataforma.",
+        "registeredCount": "Registradas: {{count}}",
+        "unsupported": "WebAuthn requer contexto seguro (https) e navegador compatível.",
+        "addKeyButton": "Adicionar chave de segurança",
+        "verifyButton": "Verificar com chave",
+        "listTitle": "Chaves Registradas",
+        "listEmpty": "Nenhuma chave de segurança registrada ainda.",
+        "listLoading": "Carregando...",
+        "deleteButton": "Excluir",
+        "renamePlaceholder": "Nome da chave",
+        "renameSave": "Salvar",
+    "credentialUnnamed": "Chave sem nome",
+        "warningSignCount": "Possível autenticador clonado detectado (anomalia de sign count)."
+  },
+  "phoneDescription": "Receba códigos de verificação por SMS.",
+      "notEnrolled": "Não cadastrado",
+      "enrolled": "Cadastrado",
+      "addPhone": "Adicionar Telefone",
+      "enrollTitle": "Cadastrar Número de Telefone",
+      "enrollDescription": "Digite seu número de telefone para receber um código de verificação.",
+      "phoneNumber": "Número de Telefone (ex: +5511912345678)",
+      "sendCode": "Enviar Código",
+      "verifyCode": "Verificar Código",
+      "loadingStatus": "Carregando status do MFA...",
+      "status": {
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "locked": "Bloqueado"
+      },
+      "totp": {
+        "title": "Autenticador (TOTP)",
+        "description": "Use um app autenticador (ex.: 1Password, Authy, Google Authenticator) para segurança MFA reforçada.",
+        "notConfigured": "Nenhum autenticador configurado.",
+        "startEnrollment": "Iniciar Cadastro",
+        "scanInstruction": "Escaneie este QR code com seu app autenticador e depois digite o código de 6 dígitos.",
+        "codeLabel": "Código de 6 dígitos",
+        "codePlaceholder": "123456",
+        "verifyEnable": "Verificar e Ativar"
+      },
+      "recovery": {
+        "title": "Códigos de Recuperação",
+        "description": "Guarde estes códigos em um gerenciador de senhas seguro. Cada código pode ser usado uma única vez caso você perca o acesso ao autenticador.",
+        "initialOnly": "Os códigos gerados na verificação inicial são mostrados apenas uma vez.",
+        "regenLabel": "Código TOTP atual (para regenerar)",
+        "regenButton": "Regenerar Códigos"
+      },
+      "disable": {
+        "title": "Desativar TOTP",
+        "description": "Digite um código TOTP atual OU um código de recuperação válido e não utilizado para desativar.",
+        "totpPlaceholder": "Código TOTP",
+        "recoveryPlaceholder": "Código de recuperação",
+        "button": "Desativar MFA"
+      },
+      "lockedNotice": "Muitas tentativas falhas. Bloqueado até {{time}}.",
+      "footerNote": "Segredos do autenticador são criptografados em repouso. Bloqueio após 5 tentativas falhas por 5 minutos."
+      ,"phoneComingSoon": "Fator Telefone/SMS em breve (feature flag ativada)."
+      ,"phone": {
+        "enabledBadge": "MFA por Telefone Ativado",
+        "disabledBadge": "MFA por Telefone Desativado",
+        "inputLabel": "Número de Telefone",
+        "inputPlaceholder": "+5511912345678",
+        "totpLabel": "Código TOTP Atual",
+        "requestButton": "Solicitar Código SMS",
+        "codeLabel": "Código de Verificação SMS",
+        "codePlaceholder": "123456",
+        "verifyButton": "Verificar e Ativar",
+        "disableButton": "Desativar MFA por Telefone",
+        "disableTotpPlaceholder": "Código TOTP"
+      }
+    },
     "privacy": {
       "title": "Privacidade e Coleta de Dados",
       "description": "Controle como monitoramos e protegemos sua atividade de rede",
@@ -222,6 +340,85 @@
       "privacyNoteText": "Sites HTTPS: Apenas nomes de domínio são coletados (não URLs completas). Todos os dados são criptografados e usados apenas para detecção de ameaças. Você pode excluir seus dados a qualquer momento.",
       "consent": "Consentimento do Usuário",
       "consentRequired": "Ao habilitar a coleta de histórico do navegador, você consente explicitamente com a coleta e processamento de seus dados de navegação de acordo com os regulamentos GDPR/LGPD."
+    },
+    "deleteAccount": {
+      "title": "Excluir Conta",
+      "description": "Exclua permanentemente sua conta e todos os dados associados. Esta ação não pode ser desfeita.",
+      "button": "Excluir Minha Conta",
+      "dialogTitle": "Você tem certeza absoluta?",
+      "dialogDescription": "Isso excluirá permanentemente sua conta, assinatura e todos os dados associados. Para confirmar, digite sua senha.",
+      "confirmButton": "Excluir Conta Permanentemente"
+    }
+  },
+  "mfa": {
+    "challenge": {
+      "enterTotp": "Digite o código de 6 dígitos do seu app autenticador.",
+      "enterRecovery": "Digite um código de recuperação ainda não utilizado.",
+      "locked": "Muitas tentativas falhas. Bloqueado até {{time}}.",
+      "totpLabel": "Código TOTP",
+      "useRecoveryInstead": "Usar código de recuperação em vez disso",
+      "recoveryLabel": "Código de Recuperação",
+      "recoveryPlaceholder": "xxxxx-xxxxx",
+      "backToTotp": "Voltar para código TOTP",
+      "verify": "Verificar",
+      "useRecovery": "Usar Código de Recuperação"
+    },
+    "toast": {
+      "enrollStarted": {
+        "title": "Cadastro TOTP Iniciado",
+        "desc": "Escaneie o QR com seu app autenticador."
+      },
+      "verifySuccess": {
+        "title": "MFA Verificado",
+        "withCodes": "Guarde seus códigos de recuperação com segurança.",
+        "noCodes": "TOTP verificado."
+      },
+      "regenerated": {
+        "title": "Códigos de Recuperação Regenerados",
+        "desc": "Guarde os novos códigos com segurança."
+      },
+      "disabled": {
+        "title": "TOTP Desativado",
+        "desc": "A autenticação multifator foi desativada."
+      },
+      "recoveryUsed": {
+        "title": "Código de Recuperação Utilizado",
+        "desc": "Desafio de MFA satisfeito via código de recuperação."
+      },
+      "error": {
+        "enroll": "Erro no Cadastro",
+        "verify": "Falha na Verificação",
+        "regenerate": "Falha na Regeneração",
+        "disable": "Falha ao Desativar",
+        "recovery": "Falha no Código de Recuperação",
+        "phoneRequest": "Falha ao Solicitar SMS",
+        "phoneVerify": "Falha na Verificação SMS",
+        "phoneDisable": "Falha ao Desativar MFA por Telefone"
+        ,"webauthnDelete": "Falha ao excluir chave de segurança",
+        "webauthnRename": "Falha ao renomear chave de segurança"
+      },
+      "replaySuccess": {
+        "title": "Requisições Reexecutadas",
+        "desc": "Reexecutadas automaticamente {{success}} de {{total}} requisição(ões) protegidas."
+      }
+      ,"phone": {
+        "requestSent": {
+          "title": "SMS Enviado",
+          "desc": "Código de verificação enviado. Expira às {{time}}"
+        },
+        "verifySuccess": {
+          "title": "Telefone Verificado",
+          "desc": "Fator SMS ativado com sucesso."
+        },
+        "disabled": {
+          "title": "MFA por Telefone Desativado",
+          "desc": "Fator SMS foi desativado."
+        }
+      }
+      ,"webauthn": {
+        "deleted": { "title": "Chave Excluída", "desc": "Chave removida com sucesso." },
+        "renamed": { "title": "Chave Renomeada", "desc": "Nome atualizado." }
+      }
     }
   },
   "virustotal": {
@@ -282,6 +479,7 @@
     "totalAlerts": "Total de Alertas",
     "estimatedRevenue": "Receita Estimada",
     "threatTrends": "Tendências de Ameaças ao Longo do Tempo",
+    "help": "Ajuda",
     "recentAuditLogs": "Registros de Auditoria Recentes",
     "noAuditLogs": "Nenhum registro de auditoria disponível",
     "noData": "Nenhum dado disponível",
@@ -328,9 +526,17 @@
     "allowThreat": "Permitir Ameaça",
     "blockThreat": "Bloquear Ameaça",
     "unblockThreat": "Desbloquear",
+  "markNotThreat": "Não é uma ameaça",
     "decisionRecorded": "Decisão Registrada",
-    "threatDecisionSuccess": "Sua decisão sobre a ameaça foi registrada com sucesso",
-    "threatDecisionError": "Falha ao registrar decisão sobre a ameaça",
+  "threatDecisionSuccess": "Sua decisão sobre a ameaça foi registrada com sucesso",
+  "threatDecisionError": "Falha ao registrar decisão sobre a ameaça",
+  "threatAllowed": "Marcado como não é uma ameaça.",
+    "addIp": "Adicionar IP",
+    "bulkImport": "Importação em Massa",
+    "bulkImportDescription": "Envie um arquivo CSV para adicionar múltiplos IPs à lista de bloqueio de uma vez.",
+    "csvFormatInstructions": "O arquivo CSV deve ter as colunas 'ip_address' e 'reason'. A linha de cabeçalho é obrigatória.",
+    "csvFile": "Arquivo CSV",
+    "import": "Importar",
     "history": "Histórico",
     "decisionHistory": "Histórico de Decisões",
     "decisionHistoryDescription": "Visualize todas as decisões administrativas tomadas para esta ameaça",
@@ -613,7 +819,7 @@
       },
       "secrets": {
         "title": "Gerenciamento de Segredos",
-        "description": "Variáveis de ambiente gerenciadas com segurança via Replit Secrets, nunca expostas em código ou controle de versão."
+  "description": "Variáveis de ambiente gerenciadas com segurança via configuração do ambiente (por exemplo, .env), nunca expostas em código ou controle de versão."
       }
     },
     "practices": {
@@ -668,10 +874,26 @@
     "dateFrom": "Data Inicial",
     "dateTo": "Data Final",
     "clearFilters": "Limpar Filtros",
+    "networkFlow": "Fluxo de Rede",
+    "networkFlowDescription": "Eventos normalizados recentes (fluxo de rede em tempo real).",
+    "protocol": "Protocolo",
+    "timeWindow": "Janela de tempo",
+    "severityDistribution": "Distribuição por gravidade",
+    "protocolDistribution": "Distribuição por protocolo",
+    "topSources": "IPs de origem principais",
+    "timeline": "Linha do tempo de eventos",
+    "noFlowData": "Sem dados de fluxo",
+    "noFlowDataDescription": "Nenhum evento normalizado foi registrado ainda.",
     "browsingHistory": "Histórico de Navegação",
     "recordsFound": "registros encontrados",
     "noData": "Nenhuma atividade de navegação ainda",
     "noDataDescription": "Habilite o monitoramento de rede nas Configurações para começar a coletar dados de atividade de navegação. Certifique-se de ter dado consentimento para coleta de dados.",
-    "flagged": "Sinalizado"
+    "flagged": "Sinalizado",
+    "flaggedOnly": "Apenas sinalizados",
+    "flaggedOnlyTooltip": "Mostrar apenas entradas sinalizadas. Esta preferência é salva na sua conta.",
+    "flaggedTooltip": "Este domínio está sinalizado. Sinalizar destaca e conta para as estatísticas de sinalizados.",
+    "flagDomain": "Sinalizar domínio",
+    "flagging": "Sinalizando...",
+    "flagDomainTooltip": "Marque este domínio como sinalizado para destacá-lo e incluí-lo nas estatísticas de sinalizados."
   }
 }

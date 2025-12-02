@@ -1,0 +1,8 @@
+{
+  "_meta": { "language": "it", "note": "Locale italiano iniziale. Da tradurre completamente." },
+  "app": {"name": "SentinelScope", "tagline": "Monitoraggio avanzato di cybersecurity"},
+  "authFailures": {"title": "Errori di Autenticazione", "description": "Eventi di autenticazione/API falliti recenti (solo admin)", "unauthorized": "Non hai permesso", "empty": "Nessun errore", "loading": "Caricamento…", "headers": {"time": "Ora", "action": "Azione", "ip": "IP", "severity": "Gravità", "resource": "Risorsa"}},
+  "threats": {"title": "Registro Minacce", "severityLevels": {"critical": "Critica", "high": "Alta", "medium": "Media", "low": "Bassa"}},
+  "common": {"loading": "Caricamento…", "error": "Errore", "retry": "Riprova", "close": "Chiudi", "save": "Salva", "cancel": "Annulla"},
+  "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "it": "Italiano"}}
+}

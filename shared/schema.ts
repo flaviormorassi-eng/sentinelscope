@@ -1,3 +1,15 @@
+// IP Blocklist table
+export const ipBlocklist = pgTable("ip_blocklist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ipAddress: text("ip_address").notNull(),
+  reason: text("reason"),
+  addedBy: varchar("added_by"),
+  countryCode: text("country_code"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export type IpBlocklistEntry = typeof ipBlocklist.$inferSelect;
+export type InsertIpBlocklistEntry = typeof ipBlocklist.$inferInsert;
 import { sql } from "drizzle-orm";
 import {
   pgTable,
@@ -119,6 +131,8 @@ export const userPreferences = pgTable("user_preferences", {
     .notNull()
     .default(false),
   browsingConsentGivenAt: timestamp("browsing_consent_given_at"),
+  // UI defaults persisted server-side
+  flaggedOnlyDefault: boolean("flagged_only_default").notNull().default(false),
 });
 
 // Admin audit log
@@ -198,6 +212,10 @@ export const eventSources = pgTable(
     sourceType: text("source_type").notNull(),
     description: text("description"),
     apiKeyHash: varchar("api_key_hash", { length: 64 }).notNull().unique(),
+    // Dual-key rotation window: during rotation we keep the old key hash here
+    secondaryApiKeyHash: varchar("secondary_api_key_hash", { length: 64 }),
+    // When the dual-key window expires, the secondary key is no longer valid
+    rotationExpiresAt: timestamp("rotation_expires_at"),
     isActive: boolean("is_active").notNull().default(true),
     lastHeartbeat: timestamp("last_heartbeat"),
     metadata: jsonb("metadata"),
@@ -410,6 +428,84 @@ export const browsingActivity = pgTable(
     browserIdx: index("browsing_activity_browser_idx").on(table.browser),
   }),
 );
+
+// ================= MFA (Multi-Factor Authentication) =================
+// We prefer TOTP over SMS for stronger security (resistant to SIM swap, SS7 attacks).
+// Phone/SMS may be added later as secondary option; recovery codes provide account fallback.
+export const userMfa = pgTable(
+  "user_mfa",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id)
+      .unique(), // one MFA profile per user
+    // Factor enabled flags & metadata
+    totpEnabled: boolean("totp_enabled").notNull().default(false),
+    phoneEnabled: boolean("phone_enabled").notNull().default(false),
+    // Hashed / encrypted secret material (never store raw TOTP secret)
+    totpSecretHash: varchar("totp_secret_hash", { length: 128 }),
+    // For future encryption rotation; track algorithm/version used
+    secretAlgo: text("secret_algo"),
+    secretVersion: integer("secret_version"),
+    phoneNumber: text("phone_number"),
+    phoneVerifiedAt: timestamp("phone_verified_at"),
+    totpEnabledAt: timestamp("totp_enabled_at"),
+    lastVerifiedAt: timestamp("last_verified_at"),
+    disabledAt: timestamp("disabled_at"),
+  mfaLastResetAt: timestamp("mfa_last_reset_at"),
+  // Phone/SMS verification workflow (ephemeral state before enabling)
+  phonePendingNumber: text("phone_pending_number"),
+  phoneVerificationCodeHash: varchar("phone_verification_code_hash", { length: 128 }),
+  phoneVerificationExpiresAt: timestamp("phone_verification_expires_at"),
+  phoneVerificationAttempts: integer("phone_verification_attempts").notNull().default(0),
+    // Recovery codes (array of SHA-256 hashes). Null until generated.
+    recoveryCodeHashes: jsonb("recovery_code_hashes"),
+    recoveryCodesGeneratedAt: timestamp("recovery_codes_generated_at"),
+    // Rate limiting / security counters
+    failedAttempts: integer("failed_attempts").notNull().default(0),
+    lockedUntil: timestamp("locked_until"),
+    createdAt: timestamp("created_at").notNull().default(sql`now()`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  },
+  (table) => ({
+    userIdx: index("user_mfa_user_id_idx").on(table.userId),
+    totpIdx: index("user_mfa_totp_enabled_idx").on(table.totpEnabled),
+  }),
+);
+
+// Types for MFA
+export type UserMfa = typeof userMfa.$inferSelect;
+export type InsertUserMfa = typeof userMfa.$inferInsert;
+
+// ================= WebAuthn Credentials =================
+export const webauthnCredentials = pgTable(
+  'webauthn_credentials',
+  {
+    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar('user_id').notNull().references(() => users.id),
+    credentialId: varchar('credential_id', { length: 256 }).notNull().unique(), // base64url
+    publicKey: text('public_key').notNull(), // base64url-encoded COSE key
+    signCount: integer('sign_count').notNull().default(0),
+    transports: jsonb('transports'), // array of transports
+    backupEligible: boolean('backup_eligible').notNull().default(false),
+    backupState: boolean('backup_state').notNull().default(false),
+    aaguid: varchar('aaguid', { length: 64 }),
+    algorithm: integer('algorithm'),
+    name: varchar('name', { length: 128 }), // user-friendly label
+  compromised: boolean('compromised').notNull().default(false),
+    createdAt: timestamp('created_at').notNull().default(sql`now()`),
+    updatedAt: timestamp('updated_at').notNull().default(sql`now()`),
+  },
+  (table) => ({
+    userIdx: index('webauthn_user_idx').on(table.userId),
+    credIdx: index('webauthn_credential_idx').on(table.credentialId),
+  })
+);
+
+export type WebAuthnCredential = typeof webauthnCredentials.$inferSelect;
+export type InsertWebAuthnCredential = typeof webauthnCredentials.$inferInsert;
+
 
 // Insert schemas for database operations
 export const insertUserSchema = createInsertSchema(users).omit({

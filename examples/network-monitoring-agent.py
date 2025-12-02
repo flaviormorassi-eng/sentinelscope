@@ -18,14 +18,19 @@ import argparse
 import json
 import time
 import requests
+import psutil
 import socket
+import os
+import re
 from datetime import datetime
 from urllib.parse import urlparse
 
 # Configuração
-API_URL = "https://seu-dominio.replit.app/api/browsing/ingest"
+API_URL = "http://localhost:3001/api/browsing/ingest"
 BATCH_SIZE = 50  # Envia dados em lotes de 50 eventos
 CHECK_INTERVAL = 60  # Verifica a cada 60 segundos
+
+API_KEY = None
 
 class NetworkMonitorAgent:
     def __init__(self, api_key, api_url=API_URL):
@@ -77,43 +82,18 @@ class NetworkMonitorAgent:
             
         self.event_queue.append(event)
         
-    def send_events(self):
+    def send_events(self, events, event_type):
         """Envia eventos em lote para a API"""
-        if not self.event_queue:
-            return
-        
-        # Envia em lotes
-        while self.event_queue:
-            batch = self.event_queue[:BATCH_SIZE]
-            self.event_queue = self.event_queue[BATCH_SIZE:]
-            
+        for event in events:
+            payload = {
+                "event_type": event_type,
+                "event": event,
+            }
             try:
-                response = requests.post(
-                    self.api_url,
-                    headers={
-                        "X-API-Key": self.api_key,
-                        "Content-Type": "application/json"
-                    },
-                    json={"events": batch},
-                    timeout=10
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    print(f"✓ Enviados {result.get('received', 0)} eventos com sucesso")
-                elif response.status_code == 403:
-                    error = response.json()
-                    print(f"✗ Erro: {error.get('message', 'Permissão negada')}")
-                    print("  → Ative o monitoramento de rede nas Configurações do SentinelScope")
-                else:
-                    print(f"✗ Erro HTTP {response.status_code}: {response.text}")
-                    
+                requests.post(self.api_url, json=payload, headers={"Authorization": f"Bearer {self.api_key}"})
             except Exception as e:
-                print(f"✗ Erro ao enviar eventos: {e}")
-                # Re-adiciona eventos à fila para tentar novamente
-                self.event_queue = batch + self.event_queue
-                break
-    
+                print(f"Falha ao enviar evento: {e}")
+
     def simulate_browsing_data(self):
         """Gera dados de exemplo para teste"""
         example_sites = [
@@ -125,6 +105,49 @@ class NetworkMonitorAgent:
         
         for domain, ip, protocol in example_sites:
             self.capture_browsing_event(domain, None, ip, protocol)
+    
+    def collect_network_events(self):
+        """Coleta eventos de rede usando psutil"""
+        events = []
+        for conn in psutil.net_connections(kind='inet'):
+            event = {
+                "local_address": f"{conn.laddr.ip}:{conn.laddr.port}" if conn.laddr else None,
+                "remote_address": f"{conn.raddr.ip}:{conn.raddr.port}" if conn.raddr else None,
+                "status": conn.status,
+                "pid": conn.pid,
+                "type": str(conn.type),
+                "family": str(conn.family),
+            }
+            events.append(event)
+        return events
+    
+    def collect_process_events(self):
+        """Coleta eventos de processo usando psutil"""
+        events = []
+        for proc in psutil.process_iter(['pid', 'name', 'username', 'status', 'create_time']):
+            try:
+                event = proc.info
+                events.append(event)
+            except Exception:
+                continue
+        return events
+    
+    def collect_url_connections(self):
+        urls = set()
+        ips = set()
+        # Tenta analisar a saída do lsof para conexões estabelecidas
+        try:
+            stream = os.popen("lsof -i -nP | grep ESTABLISHED")
+            for line in stream:
+                # Linha de exemplo: python3   12345 user   10u  IPv4 0x...  TCP 127.0.0.1:5432->192.168.1.1:12345 (ESTABLISHED)
+                match = re.search(r"TCP (\S+):(\d+)->(\S+):(\d+)", line)
+                if match:
+                    local_ip, local_port, remote_ip, remote_port = match.groups()
+                    ips.add(remote_ip)
+                    urls.add(f"{remote_ip}:{remote_port}")
+        except Exception as e:
+            print(f"Falha ao analisar a saída do lsof: {e}")
+        return list(urls), list(ips)
     
     def run(self, simulation_mode=False):
         """Executa o agente de monitoramento"""
@@ -140,10 +163,17 @@ class NetworkMonitorAgent:
                     self.simulate_browsing_data()
                     print(f"📊 Gerados {len(self.event_queue)} eventos de teste")
                 else:
-                    # Modo real: monitora tráfego de rede
-                    # NOTA: Implementação real requer permissões e bibliotecas especializadas
-                    print("⚠️  Monitoramento real ainda não implementado neste exemplo")
-                    print("   Use --simulate para testar com dados de exemplo")
+                    # Modo real: monitora tráfego de rede e processos
+                    net_events = self.collect_network_events()
+                    self.send_events(net_events, "network")
+                    proc_events = self.collect_process_events()
+                    self.send_events(proc_events, "process")
+                    url_list, ip_list = self.collect_url_connections()
+                    for url in url_list:
+                        self.send_events([{"url": url}], "url_connection")
+                    for ip in ip_list:
+                        self.send_events([{"ip": ip}], "ip_connection")
+                    time.sleep(CHECK_INTERVAL)  # Coleta a cada 60 segundos
                     break
                 
                 # Envia eventos coletados

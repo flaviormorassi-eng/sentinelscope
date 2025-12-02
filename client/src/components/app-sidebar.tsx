@@ -1,14 +1,23 @@
-import { Shield, LayoutDashboard, AlertTriangle, Map, FileText, CreditCard, Settings, LogOut, Scan, Users, Activity, ShieldCheck, Database, BookOpen, Globe } from 'lucide-react';
+import { Shield, LayoutDashboard, AlertTriangle, Map, FileText, CreditCard, Settings, LogOut, Scan, Users, Activity, ShieldCheck, Database, BookOpen, Globe, Bell, Ban } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
+  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInput,
+  SidebarInset,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarFooter,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuBadge,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { useLocation } from 'wouter';
@@ -17,11 +26,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useQuery } from '@tanstack/react-query';
-import { User } from '@shared/schema';
+import type { User } from '../../../shared/schema';
 
 const menuItems = [
   { title: 'nav.dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'nav.threats', url: '/threats', icon: AlertTriangle },
+  { title: 'nav.securityCenter', url: '/security-center', icon: Shield },
   { title: 'nav.map', url: '/map', icon: Map },
   { title: 'nav.networkActivity', url: '/network-activity', icon: Globe },
   { title: 'nav.virustotal', url: '/virustotal', icon: Scan },
@@ -29,13 +38,14 @@ const menuItems = [
   { title: 'nav.installGuide', url: '/install-guide', icon: BookOpen },
   { title: 'nav.reports', url: '/reports', icon: FileText },
   { title: 'nav.subscription', url: '/subscription', icon: CreditCard },
-  { title: 'nav.settings', url: '/settings', icon: Settings },
+  { title: 'nav.settings', url: '/settings', icon: Settings, testId: 'sidebar-nav-settings' },
 ];
 
 const adminMenuItems = [
   { title: 'nav.adminDashboard', url: '/admin', icon: ShieldCheck },
   { title: 'nav.userManagement', url: '/admin/users', icon: Users },
   { title: 'nav.systemAnalytics', url: '/admin/analytics', icon: Activity },
+  { title: 'nav.ipBlocklist', url: '/admin/ip-blocklist', icon: Ban },
   { title: 'nav.compliance', url: '/admin/compliance', icon: Shield },
 ];
 
@@ -47,6 +57,11 @@ export function AppSidebar() {
   const { data: currentUser } = useQuery<User>({
     queryKey: [`/api/user/${user?.uid}`],
     enabled: !!user?.uid,
+  });
+
+  const { data: unreadAlerts } = useQuery<{ count: number }>({
+    queryKey: ['/api/alerts/unread-count'],
+    enabled: !!user,
   });
 
   const isAdmin = currentUser?.isAdmin || false;
@@ -71,12 +86,44 @@ export function AppSidebar() {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
-                    onClick={() => setLocation(item.url)}
-                    isActive={location === item.url}
-                    data-testid={`nav-${item.url === '/' ? 'dashboard' : item.url.slice(1)}`}
+                    onClick={(e: React.MouseEvent) => {
+                      // If Ctrl/Cmd is pressed, open in new tab
+                      if (e.ctrlKey || e.metaKey) {
+                        window.open(item.url, '_blank');
+                      } else {
+                        setLocation(item.url);
+                      }
+                    }}
+                    onAuxClick={(e: React.MouseEvent) => {
+                      // Middle click opens in new tab
+                      if (e.button === 1) {
+                        window.open(item.url, '_blank');
+                      }
+                    }}
+                    onContextMenu={(e: React.MouseEvent) => {
+                      // Right click shows browser's context menu
+                      // which includes "Open in new tab/window" options
+                      e.preventDefault();
+                      const a = document.createElement('a');
+                      a.href = item.url;
+                      a.dispatchEvent(new MouseEvent('contextmenu', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window,
+                        button: 2,
+                        buttons: 2,
+                        clientX: e.clientX,
+                        clientY: e.clientY
+                      }));
+                    }}
+                    isActive={location === item.url}                    
+                    data-testid={item.testId || `nav-${item.url === '/' ? 'dashboard' : item.url.slice(1)}`}
                   >
                     <item.icon className="h-4 w-4" />
                     <span>{t(item.title)}</span>
+                    {item.url === '/alerts' && unreadAlerts && unreadAlerts.count > 0 && (
+                      <SidebarMenuBadge>{unreadAlerts.count}</SidebarMenuBadge>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -89,12 +136,37 @@ export function AppSidebar() {
             <SidebarSeparator />
             <SidebarGroup>
               <SidebarGroupLabel>{t('nav.adminPanel')}</SidebarGroupLabel>
-              <SidebarGroupContent>
+                            <SidebarGroupContent>
                 <SidebarMenu>
                   {adminMenuItems.map((item) => (
                     <SidebarMenuItem key={item.url}>
                       <SidebarMenuButton
-                        onClick={() => setLocation(item.url)}
+                        onClick={(e: React.MouseEvent) => {
+                          if (e.ctrlKey || e.metaKey) {
+                            window.open(item.url, '_blank');
+                          } else {
+                            setLocation(item.url);
+                          }
+                        }}
+                        onAuxClick={(e: React.MouseEvent) => {
+                          if (e.button === 1) {
+                            window.open(item.url, '_blank');
+                          }
+                        }}
+                        onContextMenu={(e: React.MouseEvent) => {
+                          e.preventDefault();
+                          const a = document.createElement('a');
+                          a.href = item.url;
+                          a.dispatchEvent(new MouseEvent('contextmenu', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            button: 2,
+                            buttons: 2,
+                            clientX: e.clientX,
+                            clientY: e.clientY
+                          }));
+                        }}
                         isActive={location === item.url}
                         data-testid={`nav-${item.url.replace('/admin', 'admin').replace('/', '-')}`}
                       >

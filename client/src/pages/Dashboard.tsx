@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -8,11 +8,24 @@ import {
   ShieldCheck, 
   Bell,
   TrendingUp,
-  Activity
+  Activity,
+  Ban,
+  ShieldOff
 } from 'lucide-react';
-import { Threat, Alert } from '@shared/schema';
+import { useAuth } from '@/contexts/AuthContext';
+import { Threat, Alert, ThreatEvent, UserPreferences, IpBlocklistEntry } from '@shared/schema';
 import { format } from 'date-fns';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import SecurityKpiStrip from '@/components/security/SecurityKpiStrip';
+import SeverityDistributionBar from '@/components/security/SeverityDistributionBar';
+import SeverityDonutChart from '@/components/security/SeverityDonutChart';
+import ThreatFiltersBar, { Severity as FilterSeverity } from '@/components/security/ThreatFiltersBar';
+import { useFilteredThreats } from '@/hooks/useFilteredThreats';
+import { useThreatFilters } from '@/hooks/useThreatFilters';
+import AuthFailuresPanel from '@/components/security/AuthFailuresPanel';
+import { useEffect, useMemo, useState } from 'react';
+import { Redirect } from 'wouter';
+import { useToast } from '@/hooks/use-toast';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 interface DashboardStats {
   active: number;
@@ -28,12 +41,12 @@ interface BrowsingStats {
   topDomains: Array<{ domain: string; count: number }>;
 }
 
-interface ChartDataPoint {
-  date: string;
-  count: number;
+interface TimelineDataPoint {
+  time: string;
+  threats: number;
 }
 
-interface TypeDistribution {
+interface PieChartDataPoint {
   name: string;
   value: number;
 }
@@ -45,31 +58,97 @@ const SEVERITY_COLORS = {
   low: 'hsl(173 58% 39%)',
 };
 
+
+type Severity = FilterSeverity;
 export default function Dashboard() {
+  const { toast } = useToast();
   const { t } = useTranslation();
+  const { user, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
+  // Tour removed: no onboarding logic
+  const enabled = !!user;
+  // Integrated expansion state for live threat feed card
+  const [feedExpanded, setFeedExpanded] = useState(false);
+
+  const { data: preferences } = useQuery<UserPreferences>({
+    queryKey: ['/api/user/preferences'],
+    enabled,
+  });
+
+  // Tour removed: previously auto-started tour based on preferences
+
+
+  const monitoringMode = preferences?.monitoringMode || 'demo';
 
   const { data: stats = { active: 0, blocked: 0, alerts: 0 }, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['/api/stats'],
+    enabled: enabled && !!preferences, // Depend on preferences to know the mode
   });
 
-  const { data: threats = [], isLoading: threatsLoading } = useQuery<Threat[]>({
+  const { 
+    data: recentThreats = [], 
+    isLoading: threatsLoading,
+    dataUpdatedAt: threatsUpdatedAt,
+    isFetching: threatsFetching
+  } = useQuery<(Threat | ThreatEvent)[]>({
     queryKey: ['/api/threats/recent'],
+    enabled: enabled && !!preferences,
   });
+
+  // Centralized filter state & persistence
+  const {
+    severityFilter,
+    setSeverityFilter,
+    typeFilter,
+    setTypeFilter,
+    typeFilterEffective,
+    sourceInput,
+    setSourceInput,
+    sourceQuery,
+    clearFilters,
+    resetUrl,
+    perTabScope,
+    toggleScope,
+  } = useThreatFilters(user?.uid);
+
+  const typeOptions = useMemo(() => {
+    const list = (recentThreats || []).map((th: any) => ('threatType' in th ? th.threatType : th.type)).filter(Boolean);
+    return Array.from(new Set(list));
+  }, [recentThreats]);
+
+  // (Legacy inline filter state removed in favor of useThreatFilters)
+
+  // Memoized filtered threats (used for both count badge and list rendering)
+  const { filtered: filteredThreats, count: filteredThreatsCount } = useFilteredThreats(recentThreats, {
+    severity: severityFilter,
+    type: typeFilterEffective,
+    sourceQuery,
+  });
+  const displayedThreats = useMemo(() => filteredThreats.slice(0, feedExpanded ? 40 : 10), [filteredThreats, feedExpanded]);
 
   const { data: alerts = [], isLoading: alertsLoading } = useQuery<Alert[]>({
     queryKey: ['/api/alerts/recent'],
+    enabled: enabled && !!preferences,
   });
 
-  const { data: chartData = [] } = useQuery<ChartDataPoint[]>({
+  const { data: timelineData = [] } = useQuery<TimelineDataPoint[]>({
     queryKey: ['/api/threats/timeline'],
+    enabled: enabled && !!preferences,
   });
 
-  const { data: typeDistribution = [] } = useQuery<TypeDistribution[]>({
+  const { data: typeDistribution = [] } = useQuery<PieChartDataPoint[]>({
     queryKey: ['/api/threats/by-type'],
+    enabled: enabled && !!preferences,
   });
 
   const { data: browsingStats } = useQuery<BrowsingStats>({
-    queryKey: ['/api/browsing/stats'],
+    queryKey: ['api/browsing/stats'],
+    enabled,
+  });
+
+  const { data: recentlyBlockedIps = [], isLoading: blockedIpsLoading } = useQuery<IpBlocklistEntry[]>({
+    queryKey: ['/api/ip-blocklist/recent'],
+    enabled: enabled && monitoringMode === 'real',
   });
 
   const getSeverityBadgeVariant = (severity: string) => {
@@ -117,8 +196,16 @@ export default function Dashboard() {
     },
   ];
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">{t('common.loading')}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6" id="dashboard-page">
       <div>
         <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
         <p className="text-muted-foreground mt-2">
@@ -126,34 +213,23 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => (
-          <Card key={stat.title} data-testid={stat.testId}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <div className={`h-8 w-8 rounded-md ${stat.bgColor} flex items-center justify-center`}>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className={`${stat.isText ? 'text-xl' : 'text-3xl'} font-bold`}>
-                {stat.value}
-              </div>
-              {!stat.isText && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  <TrendingUp className="inline h-3 w-3 mr-1" />
-                  Real-time monitoring
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+      {/* KPI strip & severity distribution */}
+      <div className="space-y-4">
+        <SecurityKpiStrip />
+        <div className="grid gap-4 md:grid-cols-2" aria-label="severity-overview">
+          {/* Reordered: Donut first for quick proportional scan, bar second for detailed percentages */}
+          <SeverityDonutChart selectedSeverity={severityFilter} onSelectSeverity={setSeverityFilter} />
+          <SeverityDistributionBar selectedSeverity={severityFilter} onSelectSeverity={setSeverityFilter} />
+        </div>
+      </div>
+
+      {/* Authentication failures panel (admin only; shows empty if unauthorized) */}
+      <div>
+        <AuthFailuresPanel />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+        <Card id="threat-feed-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
@@ -161,9 +237,9 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {chartData.length > 0 ? (
+            {timelineData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={chartData}>
+                <AreaChart data={timelineData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis 
                     dataKey="time" 
@@ -246,7 +322,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-6 md:grid-cols-4">
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">{t('dashboard.totalVisits')}</p>
                 <p className="text-2xl font-bold" data-testid="stat-total-visits">{browsingStats.totalVisits.toLocaleString()}</p>
@@ -283,33 +359,83 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2 items-stretch">
+        <Card id="threat-feed-card" className={`flex flex-col transition-all ${feedExpanded ? 'md:col-span-2 h-[70vh]' : ''}`}>        
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-destructive" />
-              {t('dashboard.threatFeed')}
-              <Badge variant="destructive" className="ml-auto">
-                <span className="h-2 w-2 rounded-full bg-white animate-pulse mr-1.5" />
-                Live
-              </Badge>
+            <CardTitle className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 w-full">
+                <Activity className="h-5 w-5 text-destructive" />
+                {t('dashboard.threatFeed')}
+                <Badge variant="secondary" className="ml-auto" title="Filtered results shown">
+                  {filteredThreatsCount}
+                </Badge>
+                <Badge variant="destructive">
+                  <span className="h-2 w-2 rounded-full bg-white animate-pulse mr-1.5" />
+                  Live
+                </Badge>
+                <button
+                  type="button"
+                  onClick={() => setFeedExpanded(e => !e)}
+                  className="ml-2 text-xs px-2 py-1 rounded border bg-background hover:bg-muted"
+                >
+                  {feedExpanded ? 'Collapse' : 'Expand'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  {t('dashboard.lastUpdated')}: {threatsLoading ? t('common.loading') : format(new Date(threatsUpdatedAt), 'HH:mm:ss')}
+                </span>
+                {threatsFetching && !threatsLoading && (
+                  <span className="flex items-center gap-1" title="Fetching latest threats">
+                    <span className="h-2 w-2 rounded-full bg-primary animate-ping" />
+                    {t('common.loading')}
+                  </span>
+                )}
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+          <CardContent className={`flex flex-col flex-1 overflow-hidden ${feedExpanded ? 'min-h-0' : ''}`}>
+            <ThreatFiltersBar
+              className="mb-3"
+              typeOptions={typeOptions}
+              selectedType={typeFilter}
+              onSelectType={setTypeFilter}
+              sourceQuery={sourceInput}
+              onSourceQueryChange={setSourceInput}
+              selectedSeverity={severityFilter}
+              onSelectSeverity={setSeverityFilter}
+              onClearAll={clearFilters}
+              onCopyLink={() => {
+                try {
+                  const url = window.location.href;
+                  navigator.clipboard.writeText(url);
+                  toast({ title: 'Link copied', description: 'Current filters have been copied to your clipboard.' });
+                } catch {}
+              }}
+              onResetDefaults={resetUrl}
+              perTabScope={perTabScope}
+              onToggleScope={toggleScope}
+            />
+            <div className="space-y-3 flex-1 overflow-y-auto">
               {threatsLoading ? (
                 <p className="text-muted-foreground text-center py-8">{t('common.loading')}</p>
-              ) : threats.length > 0 ? (
-                threats.slice(0, 10).map((threat) => (
-                  <div
+              ) : filteredThreats.length > 0 ? (
+                displayedThreats.map((threat) => {
+                  const isRealThreat = 'threatType' in threat;
+                  const timestamp = isRealThreat ? (threat as ThreatEvent).createdAt : (threat as Threat).timestamp;
+                  const description = isRealThreat ? `[${threat.threatType}] ${threat.sourceURL || threat.deviceName || 'Unknown source'}` : threat.description;
+                  const sourceIP = isRealThreat ? (threat as any).sourceIP || 'N/A' : (threat as Threat).sourceIP;
+                  const targetIP = isRealThreat ? (threat as any).destinationIP || 'N/A' : (threat as Threat).targetIP;
+
+                  return (<div
                     key={threat.id}
                     className="flex items-start gap-3 p-3 rounded-lg border hover-elevate"
                     data-testid={`threat-${threat.id}`}
                   >
                     <div className={`h-2 w-2 rounded-full mt-2 ${
                       threat.severity === 'critical' ? 'bg-destructive' :
-                      threat.severity === 'high' ? 'bg-chart-5' :
-                      threat.severity === 'medium' ? 'bg-chart-4' : 'bg-chart-3'
+                      threat.severity === 'high' ? SEVERITY_COLORS.high :
+                      threat.severity === 'medium' ? SEVERITY_COLORS.medium : SEVERITY_COLORS.low
                     }`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -317,32 +443,77 @@ export default function Dashboard() {
                           {t(`threats.severityLevels.${threat.severity}`)}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(threat.timestamp), 'HH:mm:ss')}
+                          {format(new Date(timestamp), 'HH:mm:ss')}
                         </span>
                       </div>
-                      <p className="text-sm font-medium">{threat.description}</p>
+                      <p className="text-sm font-medium truncate">{description}</p>
                       <p className="text-xs text-muted-foreground font-mono mt-1">
-                        {threat.sourceIP} → {threat.targetIP}
+                        {sourceIP} → {targetIP}
                       </p>
                     </div>
-                  </div>
-                ))
+                  </div>)
+                })
               ) : (
                 <p className="text-muted-foreground text-center py-8">{t('dashboard.noThreats')}</p>
               )}
             </div>
           </CardContent>
-        </Card>
+  </Card>
 
-        <Card>
+        {monitoringMode === 'real' && (
+          <Card className="flex flex-col">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Ban className="h-5 w-5" />
+                {t('dashboard.recentlyBlockedIps')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col flex-1 overflow-hidden">
+              <div className="space-y-3 flex-1 overflow-y-auto">
+                {blockedIpsLoading ? (
+                  <p className="text-muted-foreground text-center py-8">{t('common.loading')}</p>
+                ) : recentlyBlockedIps.length > 0 ? (
+                  recentlyBlockedIps.map((ip) => (
+                    <div
+                      key={ip.id}
+                      className="flex items-center justify-between gap-3 p-3 rounded-lg border"
+                      data-testid={`blocked-ip-${ip.id}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          {ip.countryCode && (
+                            <img src={`https://flagcdn.com/w20/${ip.countryCode.toLowerCase()}.png`} alt={ip.countryCode} className="h-4 rounded-sm" />
+                          )}
+                          <p className="text-sm font-medium font-mono">{ip.ipAddress}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate" title={ip.reason || ''}>
+                          {ip.reason}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {format(new Date(ip.createdAt), 'HH:mm')}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">
+                    {t('dashboard.noBlockedIps')}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
               {t('dashboard.recentAlerts')}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+          <CardContent className="flex flex-col flex-1 overflow-hidden">
+            <div className="space-y-3 flex-1 overflow-y-auto">
               {alertsLoading ? (
                 <p className="text-muted-foreground text-center py-8">{t('common.loading')}</p>
               ) : alerts.length > 0 ? (
@@ -368,6 +539,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+      {/* Removed separate ExpandedThreatFeed component; integrated expansion into main card */}
     </div>
   );
 }

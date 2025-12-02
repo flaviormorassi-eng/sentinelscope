@@ -43,7 +43,7 @@ pip install requests
 # Executar em modo de teste
 python network-monitoring-agent.py \
   --api-key SUA_API_KEY_AQUI \
-  --api-url https://seu-app.replit.app/api/browsing/ingest \
+   --api-url http://localhost:3001/api/browsing/ingest \
   --simulate
 
 # Executar em modo de produção (requer implementação completa)
@@ -59,7 +59,7 @@ npm install axios
 # Executar em modo de teste
 node network-monitoring-agent.js \
   --api-key SUA_API_KEY_AQUI \
-  --api-url https://seu-app.replit.app/api/browsing/ingest \
+   --api-url http://localhost:3001/api/browsing/ingest \
   --simulate
 
 # Executar em modo de produção (requer implementação completa)
@@ -175,7 +175,7 @@ Para criar um agente personalizado, implemente:
    
    def send_events(api_key, events):
        response = requests.post(
-           "https://seu-app.replit.app/api/browsing/ingest",
+           "http://localhost:3001/api/browsing/ingest",
            headers={"X-API-Key": api_key},
            json={"events": events}
        )

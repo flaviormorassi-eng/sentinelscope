@@ -1,0 +1,45 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinelscope
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://sentinel:sentinel@db:5432/sentinelscope
+      SESSION_SECRET: change_me
+      PUBLIC_BASE_URL: http://localhost:3001
+      STRIPE_SECRET_KEY: sk_test_placeholder
+      VITE_STRIPE_PUBLIC_KEY: pk_test_placeholder
+      # Make local quickstart smoother
+      PORT: 3001
+      NODE_ENV: production
+      JWT_SECRET: devsecret
+      REAL_MONITORING_ALWAYS_ON: "true"
+      ALLOW_LEGACY_X_USER_ID: "true"
+      DISABLE_RATE_LIMIT: "1"
+      SKIP_SCHEMA_CHECKS: "false"
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3001/readyz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+volumes:
+  db_data:

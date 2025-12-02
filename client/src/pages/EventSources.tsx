@@ -59,6 +59,8 @@ interface EventSource {
   isActive: boolean;
   lastHeartbeat: string | null;
   createdAt: string;
+  rotationExpiresAt?: string | null;
+  secondaryApiKeyHash?: string | null; // presence implies rotation window active until expiry
 }
 
 const sourceTypeIcons = {
@@ -67,6 +69,29 @@ const sourceTypeIcons = {
   agent: Activity,
   webhook: Globe,
 };
+
+function RotationStatus({ sources }: { sources: EventSource[] }) {
+  // Find sources with active rotation window
+  const activeRotations = sources.filter(s => s.secondaryApiKeyHash && s.rotationExpiresAt && new Date(s.rotationExpiresAt) > new Date());
+  if (activeRotations.length === 0) return null;
+  return (
+    <div className="mt-4 space-y-2">
+      {activeRotations.map(src => {
+        const expires = new Date(src.rotationExpiresAt!);
+        const remainingMs = expires.getTime() - Date.now();
+        const remainingHours = remainingMs / 3600_000;
+        const remainingStr = remainingHours > 1 ? `${remainingHours.toFixed(1)}h` : `${Math.max(0, Math.floor(remainingMs / 60000))}m`;
+        return (
+          <div key={src.id} className="text-xs flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-300/50 dark:border-amber-700/40 rounded px-3 py-2">
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+            <span className="font-medium">API key rotation in progress for "{src.name}"</span>
+            <span className="text-amber-700 dark:text-amber-400">(expires in {remainingStr})</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function EventSources() {
   const { t } = useTranslation();
@@ -155,6 +180,37 @@ export default function EventSources() {
     },
   });
 
+  const rotateMutation = useMutation({
+    mutationFn: async ({ id, graceSeconds }: { id: string; graceSeconds?: number }) => {
+      return await apiRequest('POST', `/api/event-sources/${id}/rotate`, graceSeconds != null ? { graceSeconds } : {});
+    },
+    onSuccess: (data: any) => {
+      // Show the newly generated API key once
+      if (data?.apiKey) {
+        setNewApiKey(data.apiKey);
+        setApiKeyDialogOpen(true);
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/event-sources'] });
+      toast({ title: t('eventSources.updated'), description: 'API key rotated successfully.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to rotate API key', variant: 'destructive' });
+    },
+  });
+
+  const forceExpireMutation = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      return await apiRequest('POST', `/api/event-sources/${id}/rotation/expire`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/event-sources'] });
+      toast({ title: t('eventSources.updated'), description: 'Rotation window force-expired.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to force-expire rotation', variant: 'destructive' });
+    },
+  });
+
   const handleCopyApiKey = () => {
     navigator.clipboard.writeText(newApiKey);
     setCopiedKey(true);
@@ -204,6 +260,7 @@ export default function EventSources() {
           <p className="text-muted-foreground mt-2" data-testid="text-page-description">
             {t('eventSources.description')}
           </p>
+          <RotationStatus sources={sources} />
         </div>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -455,14 +512,36 @@ export default function EventSources() {
                         data-testid={`switch-active-${source.id}`}
                       />
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleteSourceId(source.id)}
-                      data-testid={`button-delete-${source.id}`}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => rotateMutation.mutate({ id: source.id })}
+                        disabled={rotateMutation.isPending}
+                        data-testid={`button-rotate-${source.id}`}
+                      >
+                        {t('eventSources.rotateKey')}
+                      </Button>
+                      {source.secondaryApiKeyHash && source.rotationExpiresAt && new Date(source.rotationExpiresAt) > new Date() && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => forceExpireMutation.mutate({ id: source.id })}
+                          disabled={forceExpireMutation.isPending}
+                          data-testid={`button-force-expire-${source.id}`}
+                        >
+                          {t('eventSources.forceExpire')}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteSourceId(source.id)}
+                        data-testid={`button-delete-${source.id}`}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="text-xs text-muted-foreground space-y-1">
                     <p data-testid={`text-created-${source.id}`}>
@@ -472,6 +551,12 @@ export default function EventSources() {
                       <p className="flex items-center gap-1" data-testid={`text-heartbeat-${source.id}`}>
                         <Activity className="w-3 h-3" />
                         Last seen: {formatDate(source.lastHeartbeat)}
+                      </p>
+                    )}
+                    {source.secondaryApiKeyHash && source.rotationExpiresAt && new Date(source.rotationExpiresAt) > new Date() && (
+                      <p className="flex items-center gap-1" data-testid={`text-rotation-${source.id}`}>
+                        <AlertCircle className="w-3 h-3 text-amber-600" />
+                        Rotating keys – expires {new Date(source.rotationExpiresAt).toLocaleTimeString()} ({Math.max(0, Math.floor((new Date(source.rotationExpiresAt).getTime() - Date.now())/60000))}m remaining)
                       </p>
                     )}
                   </div>

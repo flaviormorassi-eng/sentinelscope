@@ -31,7 +31,8 @@ export type AuditEventType =
   | "api_key_generated"
   | "subscription_changed"
   | "compliance_report_generated"
-  | "audit_log_accessed";
+  | "audit_log_accessed"
+  | "security_alert"; // added for WebAuthn sign count anomaly events
 
 export type AuditSeverity = "info" | "warning" | "error" | "critical";
 
@@ -65,9 +66,13 @@ export async function logSecurityEvent(params: AuditLogParams): Promise<void> {
       details: params.details ?? undefined,
       metadata: params.metadata ?? undefined,
     };
-
     await storage.createSecurityAuditLog(auditLog);
-  } catch (error) {
+  } catch (error: any) {
+    // Silence unsupported audit log errors in test/memory environments to avoid noisy output
+    const msg = String(error?.message || '').toLowerCase();
+    if (process.env.NODE_ENV === 'test' && msg.includes('not supported')) {
+      return; // swallow silently
+    }
     console.error("Failed to log security event:", error);
   }
 }

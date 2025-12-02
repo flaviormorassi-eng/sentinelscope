@@ -1,0 +1,8 @@
+{
+  "_meta": { "language": "es", "note": "Initial Spanish locale. Many strings copied from English; TODO translate." },
+  "app": {"name": "SentinelScope", "tagline": "Supervisión avanzada de ciberseguridad"},
+  "authFailures": {"title": "Fallos de Autenticación", "description": "Eventos recientes fallidos (solo admin)", "unauthorized": "No tienes permiso", "empty": "Sin fallos", "loading": "Cargando…", "headers": {"time": "Hora", "action": "Acción", "ip": "IP", "severity": "Severidad", "resource": "Recurso"}},
+  "threats": {"title": "Registro de Amenazas", "severityLevels": {"critical": "Crítica", "high": "Alta", "medium": "Media", "low": "Baja"}},
+  "common": {"loading": "Cargando…", "error": "Error", "retry": "Reintentar", "close": "Cerrar", "save": "Guardar", "cancel": "Cancelar"},
+  "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "es": "Español"}}
+}

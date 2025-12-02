@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Threat } from '@shared/schema';
+import { Threat, ThreatEvent, UserPreferences } from '@shared/schema';
 import { format } from 'date-fns';
 import 'leaflet/dist/leaflet.css';
 
@@ -47,14 +47,31 @@ const createThreatIcon = (severity: string) => {
   });
 };
 
-function MapUpdater({ threats }: { threats: Threat[] }) {
+type MapThreat = (Threat | ThreatEvent) & { threatType?: string };
+type MapThreatWithLocation = MapThreat & {
+  sourceLat: string;
+  sourceLon: string;
+  sourceIP?: string;
+  sourceCity?: string;
+  sourceCountry?: string;
+  description?: string;
+  targetIP?: string;
+  type?: string;
+  timestamp?: any;
+};
+
+function hasLocation(t: MapThreat): t is MapThreatWithLocation {
+  return typeof (t as any).sourceLat === 'string' && typeof (t as any).sourceLon === 'string';
+}
+
+function MapUpdater({ threats }: { threats: MapThreat[] }) {
   const map = useMap();
 
   useEffect(() => {
     if (threats.length > 0) {
       const bounds = threats
-        .filter(t => t.sourceLat && t.sourceLon)
-        .map(t => [parseFloat(t.sourceLat!), parseFloat(t.sourceLon!)] as [number, number]);
+        .filter(hasLocation)
+        .map(t => [parseFloat(t.sourceLat), parseFloat(t.sourceLon)] as [number, number]);
       
       if (bounds.length > 0) {
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 6 });
@@ -69,13 +86,21 @@ export default function ThreatMap() {
   const { t } = useTranslation();
   const mapRef = useRef(null);
 
-  const { data: threats = [], isLoading } = useQuery<Threat[]>({
-    queryKey: ['/api/threats/map'],
+  const { data: preferences } = useQuery<UserPreferences>({
+    queryKey: ['/api/user/preferences'],
   });
 
-  const threatsWithLocation = threats.filter(
-    (threat) => threat.sourceLat && threat.sourceLon
-  );
+  // Server decides data based on monitoring mode; single endpoint keeps client simple
+  const mapQueryKey = '/api/threats/map';
+
+  const { data: threats = [], isLoading } = useQuery<MapThreat[]>({
+    queryKey: [mapQueryKey],
+    enabled: !!preferences,
+  });
+
+  const threatsWithLocation = (threats as MapThreat[])
+    .filter((t: any) => t.sourceLat && t.sourceLon)
+    .map(t => t as MapThreatWithLocation);
 
   const getSeverityBadgeVariant = (severity: string) => {
     switch (severity) {
@@ -129,23 +154,23 @@ export default function ThreatMap() {
                     icon={createThreatIcon(threat.severity)}
                   >
                     <Popup>
-                      <div className="p-2 min-w-[250px]">
+                      <div className="p-1 min-w-[250px]">
                         <div className="flex items-center gap-2 mb-2">
                           <Badge variant={getSeverityBadgeVariant(threat.severity)}>
                             {t(`threats.severityLevels.${threat.severity}`)}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            {format(new Date(threat.timestamp), 'HH:mm:ss')}
+                            {format(new Date((threat as any).timestamp), 'HH:mm:ss')}
                           </span>
                         </div>
-                        <p className="font-medium mb-1">{threat.description}</p>
+                        <p className="font-medium mb-1">{(threat as any).description}</p>
                         <p className="text-xs text-muted-foreground mb-1">
-                          {t(`threats.types.${threat.type}`)}
+                          {t(`threats.types.${(threat as any).type}`)}
                         </p>
                         <div className="text-xs font-mono space-y-1 mt-2 pt-2 border-t">
                           <p><strong>Source:</strong> {threat.sourceIP}</p>
                           <p><strong>Location:</strong> {threat.sourceCity}, {threat.sourceCountry}</p>
-                          <p><strong>Target:</strong> {threat.targetIP}</p>
+                          <p><strong>Target:</strong> {(threat as any).targetIP}</p>
                         </div>
                       </div>
                     </Popup>

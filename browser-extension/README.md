@@ -48,7 +48,7 @@ Extensão de navegador que captura **automaticamente** seu histórico de navega�
 
 1. Clique no ícone da extensão **🛡️ SentinelScope** na barra de ferramentas
 2. Preencha:
-   - **URL do SentinelScope**: `https://seu-app.replit.app`
+   - **URL do SentinelScope**: sua URL base (ex: `http://localhost:3001` em desenvolvimento ou o domínio de produção)
    - **API Key**: Cole a chave que você copiou no Passo 2
 3. Marque **✓ Ativar monitoramento**
 4. Clique em **💾 Salvar Configuração**

@@ -1,0 +1,3 @@
+# Minimal gitleaks config. Using built-in rules; customize allowlists as needed.
+# To suppress false positives, add entries under [[rules]] with "regex" and "path" exclusions.
+# Reference: https://github.com/gitleaks/gitleaks

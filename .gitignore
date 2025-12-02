@@ -4,3 +4,23 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Build outputs
+/build/
+/.turbo/
+/.next/
+
+# Test coverage
+/coverage/
+
+# Local environment & secrets
+.env*
+/.local/
+nohup.out
+
+# Editor caches
+/.vite/
+*.log
+*.swp
+*.swo
+*.pid

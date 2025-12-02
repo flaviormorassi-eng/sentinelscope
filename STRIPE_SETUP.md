@@ -1,170 +1,117 @@
-# Stripe Product Setup Guide for SentinelScope
+# Stripe Subscription Setup (Platform-agnostic)
 
-This guide will help you create the subscription products and prices in your Stripe Dashboard to enable payments for SentinelScope.
+Configures products, prices, webhooks, and env variables for SentinelScope subscription billing.
 
-## Prerequisites
-- A Stripe account (sign up at https://stripe.com if you don't have one)
-- Access to your Stripe Dashboard (https://dashboard.stripe.com)
+## 1. Create Products & Prices
 
-## Step 1: Create Products
+In Stripe Dashboard (Test mode first):
 
-1. **Go to Products Page**
-   - Visit https://dashboard.stripe.com/products
-   - Click "+ Add product" button
+| Plan | Name | Monthly Price | Notes |
+|------|------|---------------|-------|
+| Individual | SentinelScope Individual | 5.00 USD | Up to 3 devices |
+| Small Business | SentinelScope Small Business | 49.99 USD | Up to 50 devices |
+| Enterprise | SentinelScope Enterprise | 199.99 USD | Unlimited devices |
 
-2. **Create Individual Plan**
-   - Name: `SentinelScope Individual`
-   - Description: `Real-time cybersecurity monitoring for personal use - up to 3 devices`
-   - Pricing model: `Recurring`
-   - Price: `$5.00 USD`
-   - Billing period: `Monthly`
-   - Click "Save product"
-   - **Important**: Copy the Price ID (starts with `price_...`) - you'll need this later
+Steps:
+1. Products → Add product
+2. Set Name, Description, Recurring monthly price
+3. Save and copy the Price ID (`price_...`)
+4. Repeat for all tiers
 
-3. **Create Small Business Plan**
-   - Name: `SentinelScope Small Business`
-   - Description: `Advanced threat intelligence for growing teams - up to 50 devices`
-   - Pricing model: `Recurring`
-   - Price: `$49.99 USD`
-   - Billing period: `Monthly`
-   - Click "Save product"
-   - **Important**: Copy the Price ID (starts with `price_...`)
+## 2. Configure Price IDs
 
-4. **Create Enterprise Plan**
-   - Name: `SentinelScope Enterprise`
-   - Description: `Comprehensive security solution for large organizations - unlimited devices`
-   - Pricing model: `Recurring`
-   - Price: `$199.99 USD`
-   - Billing period: `Monthly`
-   - Click "Save product"
-   - **Important**: Copy the Price ID (starts with `price_...`)
-
-## Step 2: Configure Price IDs in Application
-
-You'll need to add the Price IDs to your application. There are two approaches:
-
-### Option A: Environment Variables (Recommended for Production)
-Add these to your Replit Secrets or `.env` file:
+Preferred: set in `.env` (never hardcode in production):
 ```
-STRIPE_PRICE_INDIVIDUAL=price_xxxxxxxxxxxxx
-STRIPE_PRICE_SMB=price_xxxxxxxxxxxxx
-STRIPE_PRICE_ENTERPRISE=price_xxxxxxxxxxxxx
+STRIPE_PRICE_INDIVIDUAL=price_xxxxxxxxx
+STRIPE_PRICE_SMB=price_xxxxxxxxx
+STRIPE_PRICE_ENTERPRISE=price_xxxxxxxxx
 ```
 
-### Option B: Hardcode in Schema (Quick Testing)
-Update `shared/schema.ts` to add the Price IDs directly to the subscription tiers:
-```typescript
-export const SUBSCRIPTION_TIERS = {
-  individual: {
-    name: "Individual",
-    price: 5,
-    stripePriceId: "price_xxxxxxxxxxxxx", // Your Individual Price ID
-    features: [...]
-  },
-  smb: {
-    name: "Small Business",
-    price: 49.99,
-    stripePriceId: "price_xxxxxxxxxxxxx", // Your SMB Price ID
-    features: [...]
-  },
-  enterprise: {
-    name: "Enterprise",
-    price: 199.99,
-    stripePriceId: "price_xxxxxxxxxxxxx", // Your Enterprise Price ID
-    features: [...]
-  },
-};
+Fallback for quick testing: update `SUBSCRIPTION_TIERS` in `shared/schema.ts` with the `stripePriceId` fields.
+
+## 3. Environment Variables
+
+Server:
+```
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxx
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxx   # optional but recommended
+```
+Client (Vite):
+```
+VITE_STRIPE_PUBLIC_KEY=pk_test_xxxxxxxxx
 ```
 
-## Step 3: Configure Webhooks (Important!)
+## 4. Webhook Setup
 
-Webhooks allow Stripe to notify your application about subscription events (payments, cancellations, etc.).
+Stripe Dashboard → Developers → Webhooks → Add endpoint:
+```
+Endpoint URL: https://YOUR_DOMAIN/api/stripe/webhook
+Events: 
+  customer.subscription.created
+  customer.subscription.updated
+  customer.subscription.deleted
+  invoice.payment_succeeded
+  invoice.payment_failed
+```
+Reveal signing secret → set `STRIPE_WEBHOOK_SECRET` in `.env`.
 
-1. **Go to Webhooks Page**
-   - Visit https://dashboard.stripe.com/webhooks
-   - Click "+ Add endpoint"
+Local testing:
+```bash
+stripe listen --forward-to http://localhost:3001/api/stripe/webhook
+```
 
-2. **Configure Webhook**
-   - Endpoint URL: `https://your-replit-url.replit.dev/api/stripe/webhook`
-   - Description: `SentinelScope subscription events`
-   - Events to send:
-     - `customer.subscription.created`
-     - `customer.subscription.updated`
-     - `customer.subscription.deleted`
-     - `invoice.payment_succeeded`
-     - `invoice.payment_failed`
-   - Click "Add endpoint"
+## 5. Test Flow
 
-3. **Get Webhook Secret** (Optional but recommended for production)
-   - After creating the endpoint, click "Reveal" under "Signing secret"
-   - Copy the secret (starts with `whsec_...`)
-   - Add to Replit Secrets: `STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx`
+1. Start app: `npm run dev`
+2. Go to Subscription page
+3. Choose plan → Checkout session opens
+4. Use test card `4242 4242 4242 4242` (any future exp, any CVC)
+5. After success, verify subscription active in Stripe Dashboard → Subscriptions
+6. Confirm user record updated (Stripe customer & subscription IDs).
 
-## Step 4: Test Your Setup
+## 6. Going Live
 
-### Using Test Mode
-1. Make sure you're using **test keys** (pk_test_ and sk_test_)
-2. Use test card number: `4242 4242 4242 4242`
-3. Use any future expiry date (e.g., 12/25)
-4. Use any 3-digit CVC (e.g., 123)
-5. Use any ZIP code (e.g., 12345)
+1. Switch Dashboard to Live mode
+2. Recreate products, gather live Price IDs
+3. Replace test keys with live keys in `.env`
+4. Add live webhook endpoint & signing secret
+5. Ensure `PUBLIC_BASE_URL` points to production domain
 
-### Test the Full Flow
-1. Navigate to the Subscription page in your app
-2. Click "Choose Plan" for any tier
-3. Complete the checkout with test card
-4. Verify subscription appears as "active" in Stripe Dashboard
-5. Check that your user's subscription status updates in the app
+## 7. Troubleshooting
 
-## Step 5: Going Live
+| Problem | Likely Cause | Fix |
+|---------|-------------|-----|
+| "No client secret" | Missing Price IDs | Set env or update schema |
+| 400 from webhook | Wrong signing secret | Re-copy `whsec_...` value |
+| Payment form not loading | Bad publishable key | Verify `VITE_STRIPE_PUBLIC_KEY` starts with `pk_test_` or `pk_live_` |
+| Subscription not updating | Webhook not configured or failing | Check Stripe webhook logs & server logs |
+| Declines during test | Wrong test card or forced failure card | Use valid test card list from Stripe docs |
 
-When you're ready to accept real payments:
+## 8. Useful Test Cards
 
-1. **Activate Your Stripe Account**
-   - Complete business verification in Stripe Dashboard
-   - Add bank account for payouts
+| Scenario | Number |
+|----------|--------|
+| Standard success | 4242 4242 4242 4242 |
+| Generic decline | 4000 0000 0000 0002 |
+| Insufficient funds | 4000 0000 0000 9995 |
+| Expired card | 4000 0000 0000 0069 |
+| Incorrect CVC | 4000 0000 0000 0127 |
 
-2. **Switch to Live Keys**
-   - Replace test keys with live keys in Replit Secrets
-   - `VITE_STRIPE_PUBLIC_KEY=pk_live_xxxxxxxxxxxxx`
-   - `STRIPE_SECRET_KEY=sk_live_xxxxxxxxxxxxx`
+## 9. Checklist
 
-3. **Create Live Products**
-   - Toggle to "Live mode" in Stripe Dashboard
-   - Repeat Step 1 to create products in live mode
-   - Update Price IDs with live Price IDs
+- [ ] Products created with correct pricing
+- [ ] Price IDs stored (env)
+- [ ] Keys in `.env` (secret & publishable)
+- [ ] Webhook endpoint added & secret stored
+- [ ] Test payment succeeds
+- [ ] Subscription active & stored in user record
+- [ ] Billing portal accessible
+- [ ] Webhook events processed
+- [ ] Live mode prepared (final step only when ready)
 
-4. **Update Webhook**
-   - Create a new webhook endpoint in live mode
-   - Use the same URL and events as test mode
+## 10. References
 
-## Troubleshooting
-
-### Payment Not Processing
-- Verify Stripe keys are correctly set
-- Check browser console for errors
-- Ensure Price IDs match your Stripe products
-
-### Subscription Not Updating
-- Check webhook is configured correctly
-- View webhook logs in Stripe Dashboard
-- Ensure webhook URL is publicly accessible
-
-### Test Payments Failing
-- Make sure you're using test card: 4242 4242 4242 4242
-- Verify you're in test mode (keys start with pk_test_/sk_test_)
-- Check for declined test card scenarios: https://stripe.com/docs/testing
-
-## Additional Resources
-
-- **Stripe Dashboard**: https://dashboard.stripe.com
-- **Stripe Testing Docs**: https://stripe.com/docs/testing
-- **Stripe Webhooks Guide**: https://stripe.com/docs/webhooks
-- **Stripe Billing Docs**: https://stripe.com/docs/billing
-
-## Support
-
-If you encounter issues:
-1. Check Stripe Dashboard logs for detailed error messages
-2. Review webhook event logs for subscription updates
-3. Contact Stripe support if payment processing fails
+- Stripe Docs: https://stripe.com/docs
+- Testing Cards: https://stripe.com/docs/testing
+- Webhooks: https://stripe.com/docs/webhooks
+- Billing Portal: https://stripe.com/docs/billing/subscriptions/integrating-customer-portal

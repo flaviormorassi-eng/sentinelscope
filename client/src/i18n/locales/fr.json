@@ -1,0 +1,8 @@
+{
+  "_meta": { "language": "fr", "note": "Locale français initial. Traductions partielles." },
+  "app": {"name": "SentinelScope", "tagline": "Surveillance cybersécurité avancée"},
+  "authFailures": {"title": "Échecs d'authentification", "description": "Événements récents échoués (admin seul)", "unauthorized": "Accès refusé", "empty": "Aucun échec", "loading": "Chargement…", "headers": {"time": "Heure", "action": "Action", "ip": "IP", "severity": "Gravité", "resource": "Ressource"}},
+  "threats": {"title": "Journal des menaces", "severityLevels": {"critical": "Critique", "high": "Élevée", "medium": "Moyenne", "low": "Faible"}},
+  "common": {"loading": "Chargement…", "error": "Erreur", "retry": "Réessayer", "close": "Fermer", "save": "Enregistrer", "cancel": "Annuler"},
+  "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "fr": "Français"}}
+}

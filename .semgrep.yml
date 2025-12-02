@@ -1,0 +1,6 @@
+# Semgrep configuration - start with the recommended CI policy pack.
+# You can add project-specific ignores or rule overrides here.
+# Docs: https://semgrep.dev/docs/
+
+# Example: exclude generated directories
+# exclude: ["dist", "node_modules"]

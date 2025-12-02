@@ -1,0 +1,8 @@
+{
+  "_meta": { "language": "ru", "note": "Начальная русская локализация. Требуется полная проверка." },
+  "app": {"name": "SentinelScope", "tagline": "Расширенный мониторинг кибербезопасности"},
+  "authFailures": {"title": "Ошибки аутентификации", "description": "Недавние неудачные события (только админ)", "unauthorized": "Нет доступа", "empty": "Нет ошибок", "loading": "Загрузка…", "headers": {"time": "Время", "action": "Действие", "ip": "IP", "severity": "Степень", "resource": "Ресурс"}},
+  "threats": {"title": "Журнал угроз", "severityLevels": {"critical": "Критическая", "high": "Высокая", "medium": "Средняя", "low": "Низкая"}},
+  "common": {"loading": "Загрузка…", "error": "Ошибка", "retry": "Повторить", "close": "Закрыть", "save": "Сохранить", "cancel": "Отмена"},
+  "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "ru": "Русский"}}
+}

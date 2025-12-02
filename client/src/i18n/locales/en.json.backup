@@ -1,0 +1,744 @@
+{
+  "app": {
+    "name": "SentinelScope",
+    "tagline": "Advanced Cybersecurity Monitoring"
+  },
+  "auth": {
+    "login": "Sign In",
+    "logout": "Sign Out",
+    "loginWithGoogle": "Continue with Google",
+    "welcome": "Welcome to SentinelScope",
+    "welcomeMessage": "Monitor and protect your systems in real-time",
+    "loggingIn": "Signing in...",
+    "loginError": "Authentication failed. Please try again.",
+    "email": "Email",
+    "threatUnblocked": "Threat has been unblocked successfully",
+    "signUp": "Sign Up",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "mfaRequired": "Two-Factor Authentication Required",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "resetPasswordInstructions": "Enter your email to receive a password reset link.",
+    "resetPasswordSuccess": "Password reset email sent. Please check your inbox."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "threats": "Threat Log",
+    "alerts": "Alerts",
+    "map": "Threat Map",
+    "networkActivity": "Network Activity",
+    "virustotal": "VirusTotal Scan",
+    "eventSources": "Event Sources",
+    "installGuide": "Installation Guide",
+    "reports": "Reports",
+    "features": "Features",
+    "pricing": "Pricing",
+    "subscription": "Subscription",
+    "security": "Security",
+    "settings": "Settings",
+    "adminPanel": "Admin Panel",
+    "adminDashboard": "Admin Dashboard",
+    "userManagement": "User Management",
+    "systemAnalytics": "System Analytics",
+    "ipBlocklist": "IP Blocklist",
+    "compliance": "Compliance & Audit",
+    "careers": "Careers",
+    "contact": "Contact"
+  },
+  "dashboard": {
+    "title": "Security Dashboard",
+    "activeThreats": "Active Threats",
+    "threatsBlocked": "Threats Blocked",
+    "alertsToday": "Alerts Today",
+    "systemStatus": "System Status",
+    "threatFeed": "Live Threat Feed",
+    "recentAlerts": "Recent Alerts",
+    "threatsByType": "Threats by Type",
+    "threatTimeline": "24-Hour Threat Timeline",
+    "viewAll": "View All",
+    "noThreats": "No active threats detected",
+    "allSystemsOperational": "All systems operational",
+    "networkActivity": "Network Activity",
+    "totalVisits": "Total Visits",
+    "uniqueDomains": "Unique Domains",
+    "recentlyBlockedIps": "Recently Blocked IPs",
+    "noBlockedIps": "No IPs recently blocked",
+    "flaggedDomains": "Flagged Domains",
+    "topBrowser": "Top Browser",
+    "topVisitedDomains": "Top Visited Domains"
+  },
+  "threats": {
+    "title": "Threat Activity Log",
+    "timestamp": "Timestamp",
+    "severity": "Severity",
+    "type": "Type",
+    "source": "Source IP",
+    "target": "Target",
+    "device": "Device",
+    "vector": "Vector",
+    "sourceURL": "Source URL",
+    "status": "Status",
+    "actions": "Actions",
+    "filter": "Filter",
+    "search": "Search threats...",
+    "export": "Export",
+    "noThreats": "No threats found",
+    "severityLevels": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "statuses": {
+      "detected": "Detected",
+      "pending_review": "Pending Review",
+      "blocked": "Blocked",
+      "allowed": "Allowed",
+      "unblocked": "Unblocked",
+      "analyzing": "Analyzing",
+      "resolved": "Resolved"
+    },
+    "threatUnblocked": "Threat has been unblocked successfully",
+    "types": {
+      "malware": "Malware",
+      "phishing": "Phishing",
+      "ddos": "DDoS Attack",
+      "bruteforce": "Brute Force",
+      "injection": "SQL Injection",
+      "xss": "XSS Attack",
+      "ransomware": "Ransomware",
+      "botnet": "Botnet Activity"
+    }
+  },
+  "alerts": {
+    "title": "Security Alerts",
+    "markAllRead": "Mark All as Read",
+    "clearAll": "Clear All",
+    "noAlerts": "No alerts at this time",
+    "newAlert": "New Alert",
+    "clearAllConfirmation": {
+      "title": "Are you sure you want to clear all alerts?",
+      "description": "This action cannot be undone. All alerts, both read and unread, will be permanently deleted.",
+      "confirm": "Yes, Clear All"
+    }
+  },
+  "map": {
+    "title": "Global Threat Map",
+    "liveIndicator": "Live",
+    "legend": "Legend",
+    "attackOrigins": "Attack Origins",
+    "noData": "No threat location data available"
+  },
+  "reports": {
+    "title": "Security Reports",
+    "generate": "Generate Report",
+    "download": "Download",
+    "type": "Report Type",
+    "period": "Period",
+    "format": "Format",
+    "generating": "Generating report...",
+    "types": {
+      "summary": "Security Summary",
+      "detailed": "Detailed Analysis",
+      "compliance": "Compliance Report"
+    },
+    "periods": {
+      "day": "Last 24 Hours",
+      "week": "Last Week",
+      "month": "Last Month",
+      "custom": "Custom Range"
+    }
+  },
+  "subscription": {
+    "title": "Subscription Plans",
+    "current": "Current Plan",
+    "upgrade": "Upgrade",
+    "downgrade": "Downgrade",
+    "mostPopular": "Most Popular",
+    "perMonth": "/month",
+    "month": "month",
+    "choosePlan": "Choose Plan",
+    "currentPlan": "Current Plan",
+    "manageBilling": "Manage Billing",
+    "renewsOn": "Renews on",
+    "loading": "Loading...",
+    "active": {
+      "message": "You have an active subscription. Manage your billing, update payment method, or cancel anytime."
+    },
+    "success": {
+      "title": "Payment Successful!",
+      "description": "Your subscription is now active. Welcome to SentinelScope!"
+    },
+    "error": {
+      "title": "Error",
+      "billingPortal": "Failed to open billing portal. Please try again."
+    },
+    "tiers": {
+      "individual": "Individual",
+      "smb": "Small Business",
+      "enterprise": "Enterprise"
+    }
+  },
+  "checkout": {
+    "title": "Complete Your Subscription",
+    "subtitle": "Secure checkout powered by Stripe",
+    "cardTitle": "Payment Details",
+    "cardDescription": "Enter your payment information to activate your subscription",
+    "plan": "Plan",
+    "price": "Price",
+    "pay": "Pay",
+    "processing": "Processing...",
+    "cancel": "Cancel",
+    "secure": "Secure payment powered by Stripe",
+    "terms": "By confirming your subscription, you allow SentinelScope to charge your card for this payment and future payments in accordance with our terms. You can cancel at any time.",
+    "loading": "Preparing checkout...",
+    "backToPlans": "Back to Plans",
+    "features": {
+      "title": "Included in your plan"
+    },
+    "error": {
+      "title": "Payment Failed",
+      "payment": "Payment failed. Please check your card details and try again.",
+      "init": "Failed to initialize checkout. Please try again or contact support."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "preferences": "Preferences",
+    "notifications": "Notifications",
+    "language": "Language",
+    "theme": "Theme",
+    "emailNotifications": "Email Notifications",
+    "pushNotifications": "Push Notifications",
+    "alertThreshold": "Alert Threshold",
+    "save": "Save Changes",
+    "saved": "Settings saved successfully",
+    "languages": {
+      "en": "English",
+      "pt": "Português (Brasil)"
+    },
+    "themes": {
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "thresholds": {
+      "low": "Low (All threats)",
+      "medium": "Medium (High & Critical)",
+      "high": "High (Critical only)"
+    },
+    "mfa": {
+      "title": "Multi-Factor Authentication",
+      "description": "Add an extra layer of security to your account.",
+      "phoneTitle": "Phone Number",
+      "phoneDescription": "Receive verification codes via SMS.",
+      "notEnrolled": "Not enrolled",
+      "enrolled": "Enrolled",
+      "addPhone": "Add Phone Number",
+      "enrollTitle": "Enroll Phone Number",
+      "enrollDescription": "Enter your phone number to receive a verification code.",
+      "phoneNumber": "Phone Number (e.g., +15551234567)",
+      "sendCode": "Send Code",
+      "verifyCode": "Verify Code"
+    },
+    "privacy": {
+      "title": "Privacy & Data Collection",
+      "description": "Control how we monitor and protect your network activity",
+      "browsingMonitoring": "Enable Network Monitoring",
+      "browsingMonitoringDesc": "Allow SentinelScope to monitor your network activity for threats (DNS queries, connections)",
+      "browsingHistory": "Include Browser History",
+      "browsingHistoryDesc": "Also collect browser history for comprehensive threat detection (requires explicit consent)",
+      "dataRetention": "Data Retention Period",
+      "dataRetentionDesc": "How long to keep browsing activity data",
+      "retentionDays": {
+        "7": "7 days",
+        "30": "30 days",
+        "90": "90 days"
+      },
+      "privacyNote": "Privacy Notice",
+      "privacyNoteText": "HTTPS sites: Only domain names are collected (not full URLs). All data is encrypted and used solely for threat detection. You can delete your data anytime.",
+      "consent": "User Consent",
+      "consentRequired": "By enabling browser history collection, you explicitly consent to the collection and processing of your browsing data in accordance with GDPR/LGPD regulations.",
+      "deleteAccount": {
+        "title": "Delete Account",
+        "description": "Permanently delete your account and all associated data. This action cannot be undone.",
+        "button": "Delete My Account",
+        "dialogTitle": "Are you absolutely sure?",
+        "dialogDescription": "This will permanently delete your account, subscription, and all associated data. To confirm, please enter your password.",
+        "confirmButton": "Delete Account Permanently"
+      }
+    }
+  },
+  "virustotal": {
+    "title": "VirusTotal Scanner",
+    "description": "Scan files, URLs, and IP addresses for malware",
+    "tabs": {
+      "hash": "File Hash",
+      "url": "URL",
+      "ip": "IP Address"
+    },
+    "scan": {
+      "hashTitle": "Check File Hash",
+      "hashDescription": "Enter a file hash (MD5, SHA-1, or SHA-256) to check against VirusTotal database",
+      "hashLabel": "File Hash",
+      "hashPlaceholder": "e.g., 44d88612fea8a8f36de82e1278abb02f",
+      "hashButton": "Scan Hash",
+      "urlTitle": "Check URL",
+      "urlDescription": "Enter a URL to check for malicious content or phishing",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com",
+      "urlButton": "Scan URL",
+      "ipTitle": "Check IP Address",
+      "ipDescription": "Enter an IP address to check its reputation",
+      "ipLabel": "IP Address",
+      "ipPlaceholder": "8.8.8.8",
+      "ipButton": "Scan IP"
+    },
+    "results": {
+      "title": "Scan Results",
+      "malicious": "Malicious",
+      "suspicious": "Suspicious",
+      "harmless": "Harmless",
+      "undetected": "Undetected",
+      "totalEngines": "Total Engines",
+      "lastAnalysis": "Last Analysis",
+      "viewReport": "View Full Report on VirusTotal"
+    },
+    "toast": {
+      "scanComplete": "Scan Complete",
+      "scanFailed": "Scan Failed",
+      "hashAnalyzed": "File hash analyzed: {{status}}",
+      "urlAnalyzed": "URL analyzed: {{status}}",
+      "ipAnalyzed": "IP address analyzed: {{status}}"
+    },
+    "status": {
+      "clean": "CLEAN",
+      "malicious": "MALICIOUS",
+      "suspicious": "SUSPICIOUS",
+      "undetected": "UNDETECTED",
+      "error": "ERROR"
+    }
+  },
+  "admin": {
+    "dashboard": "Admin Dashboard",
+    "systemOverview": "System-wide overview and metrics",
+    "totalUsers": "Total Users",
+    "totalThreats": "Total Threats",
+    "totalAlerts": "Total Alerts",
+    "estimatedRevenue": "Estimated Revenue",
+    "threatTrends": "Threat Trends Over Time",
+    "help": "Help",
+    "recentAuditLogs": "Recent Audit Logs",
+    "noAuditLogs": "No audit logs available",
+    "noData": "No data available",
+    "timestamp": "Timestamp",
+    "admin": "Admin",
+    "action": "Action",
+    "targetUser": "Target User",
+    "details": "Details",
+    "userManagement": "User Management",
+    "manageUsers": "Manage all users and their subscriptions",
+    "searchUsers": "Search users...",
+    "usersFound": "users found",
+    "email": "Email",
+    "displayName": "Display Name",
+    "subscription": "Subscription",
+    "adminStatus": "Admin Status",
+    "createdAt": "Created At",
+    "actions": "Actions",
+    "noUsers": "No users found",
+    "editUser": "Edit User",
+    "editUserDescription": "Update user subscription and admin status",
+    "grantAdminAccess": "Grant admin access to this user",
+    "userUpdated": "User Updated",
+    "userUpdatedSuccess": "User has been updated successfully",
+    "systemAnalytics": "System Analytics",
+    "threatAnalytics": "System-wide threat analytics and insights",
+    "totalThreatsAnalyzed": "Total Threats Analyzed",
+    "uniqueCountries": "Unique Countries",
+    "criticalThreats": "Critical Threats",
+    "threatTypes": "Threat Types",
+    "threatsByType": "Threats by Type",
+    "threatsBySeverity": "Threats by Severity",
+    "topCountries": "Top Countries by Threat Origin",
+    "recentThreats": "Recent Threats (All Users)",
+    "noThreats": "No threats found",
+    "country": "Country",
+    "pendingThreats": "Pending Threats",
+    "pendingThreatsReview": "Pending Threats - Review Required",
+    "review": "Review",
+    "reviewThreat": "Review Threat",
+    "reviewThreatDescription": "Decide whether to block or allow this threat. Your decision will be logged for audit purposes.",
+    "decisionReason": "Decision Reason",
+    "decisionReasonPlaceholder": "Enter reason for this decision (optional)...",
+    "allowThreat": "Allow Threat",
+    "blockThreat": "Block Threat",
+    "unblockThreat": "Unblock",
+    "decisionRecorded": "Decision Recorded",
+    "threatDecisionSuccess": "Your threat decision has been recorded successfully",
+    "threatDecisionError": "Failed to record threat decision",
+    "addIp": "Add IP",
+    "bulkImport": "Bulk Import",
+    "bulkImportDescription": "Upload a CSV file to add multiple IPs to the blocklist at once.",
+    "csvFormatInstructions": "The CSV file must have 'ip_address' and 'reason' columns. The header row is required.",
+    "csvFile": "CSV File",
+    "import": "Import",
+    "history": "History",
+    "decisionHistory": "Decision History",
+    "decisionHistoryDescription": "View all administrative decisions made for this threat",
+    "decision": "Decision",
+    "reason": "Reason",
+    "noDecisionHistory": "No decision history available for this threat"
+  },
+  "eventSources": {
+    "title": "Event Sources",
+    "description": "Configure security event data sources for real-time monitoring",
+    "createNew": "Create Event Source",
+    "createDescription": "Add a new event source to collect security events from your infrastructure",
+    "created": "Event Source Created",
+    "updated": "Event Source Updated",
+    "deleted": "Event Source Deleted",
+    "noSources": "No Event Sources",
+    "noSourcesDescription": "Create your first event source to start receiving real-time security events"
+  },
+  "install": {
+    "title": "Installation Guide",
+    "description": "Step-by-step instructions to install and configure SentinelScope monitoring agents on your systems",
+    "beforeYouBegin": "Before You Begin",
+    "step1Title": "Create an account and subscribe",
+    "step1Description": "Sign up for SentinelScope and choose a subscription plan that fits your needs",
+    "step2Title": "Create an Event Source",
+    "step2Description": "Navigate to Event Sources and create a new source to get your API key",
+    "step3Title": "Install the monitoring agent",
+    "step3Description": "Follow the instructions below for your operating system",
+    "getApiKey": "Get Your API Key",
+    "apiKeyDescription": "You'll need an API key to connect your monitoring agents to SentinelScope",
+    "apiStep1": "Navigate to the Event Sources page from the sidebar",
+    "apiStep2": "Click 'Create Event Source' and choose 'Agent' as the source type",
+    "apiStep3": "Give your source a descriptive name (e.g., 'Office Laptop' or 'Production Server')",
+    "apiStep4": "Copy the API key displayed after creation (shown only once!)",
+    "apiKeyWarning": "Important: Copy and save your API key securely. It will only be shown once during creation.",
+    "installationSteps": "Installation Steps",
+    "installationDescription": "Choose your operating system and follow the step-by-step instructions",
+    "windowsTitle": "Install on Windows",
+    "windowsDescription": "Open PowerShell as Administrator and run the following commands:",
+    "macTitle": "Install on macOS",
+    "macDescription": "Open Terminal and run the following commands:",
+    "linuxTitle": "Install on Linux",
+    "linuxDescription": "Open Terminal and run the following commands:",
+    "step": "Step",
+    "downloadAgent": "Download the monitoring agent",
+    "configureAgent": "Configure the agent with your API key",
+    "startAgent": "Start the monitoring service",
+    "makeExecutable": "Make the agent executable",
+    "installSystemd": "Install and start the systemd service",
+    "verifyInstallation": "Verify Installation",
+    "verifyDescription": "After installation, verify that your agent is sending data:",
+    "verifyStep1": "Wait 2-3 minutes for the agent to start collecting data",
+    "verifyStep2": "Navigate to the Event Sources page and check the 'Last Heartbeat' status",
+    "verifyStep3": "Go to the Threat Log page to see detected security events",
+    "troubleshooting": "Troubleshooting",
+    "troubleNoEvents": "Agent installed but not seeing events?",
+    "troubleCheckApiKey": "Double-check that your API key is correct",
+    "troubleCheckFirewall": "Verify your firewall allows outbound HTTPS connections",
+    "troubleCheckService": "Check that the agent service is running",
+    "troublePermission": "Permission denied errors?",
+    "troubleRunAsAdmin": "Make sure you're running commands as Administrator/root",
+    "troubleCheckPermissions": "Check file permissions on the agent executable",
+    "commandCopied": "Command copied to clipboard"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "close": "Close",
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "back": "Back",
+    "next": "Next",
+    "optional": "optional",
+    "copied": "Copied",
+    "getStarted": "Get Started"
+  },
+  "about": {
+    "hero": {
+      "title": "Protecting Digital Assets Since 2024",
+      "description": "SentinelScope is a next-generation cybersecurity monitoring platform designed to detect, analyze, and neutralize threats in real-time. Our mission is to make enterprise-grade security accessible to organizations of all sizes."
+    },
+    "mission": {
+      "title": "Our Mission",
+      "content": "We believe that every organization deserves access to world-class cybersecurity tools. SentinelScope democratizes enterprise-grade threat intelligence by providing real-time monitoring, advanced analytics, and actionable insights at an affordable price. Our platform combines cutting-edge technology with intuitive design, empowering security teams to stay ahead of evolving cyber threats."
+    },
+    "values": {
+      "title": "Our Values",
+      "security": {
+        "title": "Security First",
+        "description": "We prioritize the security and privacy of your data above all else, implementing industry-leading encryption and security practices."
+      },
+      "customer": {
+        "title": "Customer-Centric",
+        "description": "Our customers are at the heart of everything we do. We build solutions that solve real-world cybersecurity challenges."
+      },
+      "innovation": {
+        "title": "Innovation",
+        "description": "We continuously innovate to stay ahead of emerging threats and provide cutting-edge threat intelligence."
+      },
+      "excellence": {
+        "title": "Excellence",
+        "description": "We strive for excellence in every aspect of our platform, from threat detection to customer support."
+      }
+    },
+    "team": {
+      "title": "Our Team",
+      "security": "Threat Intelligence Experts",
+      "securityDesc": "Former security researchers from leading cybersecurity firms with decades of combined experience.",
+      "engineering": "Full-Stack Engineers",
+      "engineeringDesc": "Building scalable, real-time monitoring systems that process millions of events per day.",
+      "support": "24/7 Customer Support",
+      "supportDesc": "Dedicated support professionals ready to help you protect your digital assets around the clock."
+    },
+    "cta": {
+      "title": "Ready to Secure Your Digital Assets?",
+      "description": "Join thousands of organizations protecting their infrastructure with SentinelScope.",
+      "contactSales": "Contact Sales"
+    }
+  },
+  "blog": {
+    "hero": {
+      "title": "SentinelScope Blog",
+      "description": "Insights, tutorials, and best practices for cybersecurity professionals."
+    },
+    "post1": {
+      "title": "10 Essential Cybersecurity Best Practices for 2025",
+      "excerpt": "Learn the critical security measures every organization should implement to protect against modern cyber threats."
+    },
+    "post2": {
+      "title": "Understanding Real-Time Threat Detection",
+      "excerpt": "How real-time monitoring can help you detect and respond to threats before they cause damage to your infrastructure."
+    },
+    "post3": {
+      "title": "SOC2 Compliance Made Simple",
+      "excerpt": "A comprehensive guide to achieving SOC2 compliance with SentinelScope's built-in audit logging and reporting."
+    },
+    "post4": {
+      "title": "Case Study: Blocking 10,000 Threats in One Week",
+      "excerpt": "How a mid-sized enterprise used SentinelScope to identify and neutralize a coordinated attack campaign."
+    },
+    "post5": {
+      "title": "VirusTotal Integration: Leveraging Global Threat Intelligence",
+      "excerpt": "Discover how SentinelScope's VirusTotal integration provides instant malware analysis for files, URLs, and IPs."
+    },
+    "post6": {
+      "title": "Event Source Management: Unified Security Monitoring",
+      "excerpt": "Learn how to consolidate logs from syslog, REST APIs, agents, and webhooks into a single monitoring dashboard."
+    },
+    "readMore": "Read More",
+    "newsletter": {
+      "title": "Stay Updated",
+      "description": "Subscribe to our newsletter for the latest cybersecurity insights and product updates.",
+      "placeholder": "Enter your email",
+      "subscribe": "Subscribe"
+    }
+  },
+  "careers": {
+    "hero": {
+      "title": "Join Our Mission to Secure the Digital World",
+      "description": "We're building the future of cybersecurity monitoring. Join a team of passionate engineers, designers, and security experts making the internet safer for everyone."
+    },
+    "benefits": {
+      "title": "Why Work With Us?",
+      "health": "Comprehensive health, dental, and vision insurance",
+      "remote": "Remote-first work environment",
+      "pto": "Unlimited PTO and flexible working hours",
+      "equity": "Competitive salary and equity packages",
+      "learning": "Professional development budget",
+      "equipment": "Latest tech equipment and tools"
+    },
+    "openings": {
+      "title": "Open Positions"
+    },
+    "jobs": {
+      "security": {
+        "description": "Build and maintain threat detection algorithms and security infrastructure."
+      },
+      "fullstack": {
+        "description": "Develop scalable web applications with React, TypeScript, and Node.js."
+      },
+      "analyst": {
+        "description": "Monitor threats, investigate incidents, and provide customer support."
+      },
+      "designer": {
+        "description": "Design intuitive interfaces for complex security monitoring tools."
+      },
+      "devops": {
+        "description": "Manage infrastructure, CI/CD pipelines, and deployment automation."
+      },
+      "csm": {
+        "description": "Help customers maximize value from SentinelScope and achieve their security goals."
+      }
+    },
+    "apply": "Apply Now",
+    "cta": {
+      "title": "Don't See a Perfect Fit?",
+      "description": "We're always looking for talented individuals. Send us your resume and tell us how you can contribute.",
+      "button": "Get in Touch"
+    }
+  },
+  "contact": {
+    "hero": {
+      "title": "Get in Touch",
+      "description": "Have questions about SentinelScope? Our team is here to help you secure your digital assets."
+    },
+    "form": {
+      "title": "Send Us a Message",
+      "name": "Name",
+      "email": "Email",
+      "subject": "Subject",
+      "message": "Message",
+      "submit": "Send Message",
+      "success": "Message Sent!",
+      "successDesc": "We'll get back to you within 24 hours."
+    },
+    "methods": {
+      "title": "Other Ways to Reach Us",
+      "email": {
+        "title": "Email Support",
+        "action": "Send Email"
+      },
+      "chat": {
+        "title": "Live Chat",
+        "description": "Available 24/7 for urgent issues",
+        "action": "Start Chat"
+      },
+      "phone": {
+        "title": "Phone Support",
+        "description": "Enterprise customers only",
+        "action": "Call Us"
+      }
+    },
+    "office": {
+      "title": "Headquarters",
+      "address": "Remote-first company",
+      "global": "Team distributed globally"
+    }
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "updated": "Last Updated: January 2025"
+  },
+  "security": {
+    "hero": {
+      "badge": "Enterprise-Grade Security",
+      "title": "Security at Our Core",
+      "description": "We take security seriously. SentinelScope implements industry-leading security practices to protect your data and ensure the integrity of our threat monitoring platform."
+    },
+    "features": {
+      "title": "Security Infrastructure",
+      "https": {
+        "title": "HTTPS Encryption",
+        "description": "All data transmitted between your browser and our servers is encrypted using TLS 1.3, the latest industry standard."
+      },
+      "auth": {
+        "title": "Secure Authentication",
+        "description": "Firebase Authentication with Google OAuth 2.0 provides secure, industry-standard identity verification."
+      },
+      "database": {
+        "title": "Database Security",
+        "description": "PostgreSQL with encryption at rest, hosted on Neon's SOC2-compliant infrastructure with automatic backups."
+      },
+      "audit": {
+        "title": "Audit Logging",
+        "description": "Comprehensive logging of all security events, data access, and configuration changes for compliance and forensics."
+      },
+      "hashing": {
+        "title": "API Key Hashing",
+        "description": "All API keys are hashed using SHA-256 and verified with timing-safe comparison to prevent timing attacks."
+      },
+      "secrets": {
+        "title": "Secret Management",
+        "description": "Environment variables managed securely via Replit Secrets, never exposed in code or version control."
+      }
+    },
+    "practices": {
+      "title": "Security Best Practices"
+    },
+    "incident": {
+      "title": "Security Incident Response"
+    },
+    "disclosure": {
+      "title": "Responsible Disclosure"
+    }
+  },
+  "compliance": {
+    "hero": {
+      "badge": "SOC2 & ISO 27001 Compliant",
+      "title": "Enterprise-Grade Compliance",
+      "description": "SentinelScope is built with compliance in mind. We implement rigorous security controls and audit procedures to meet the strictest industry standards."
+    },
+    "certifications": {
+      "title": "Certifications & Standards",
+      "soc2": {
+        "status": "Ready"
+      },
+      "iso": {
+        "status": "Compliant"
+      },
+      "gdpr": {
+        "status": "Compliant"
+      }
+    },
+    "controls": {
+      "title": "Security Controls"
+    },
+    "features": {
+      "title": "Compliance Features"
+    },
+    "rights": {
+      "title": "Your Data Rights"
+    }
+  },
+  "networkActivity": {
+    "title": "Network Activity",
+    "description": "Monitor and review your browsing history and network activity",
+    "filters": "Filters",
+    "filtersDescription": "Filter your browsing history by domain, IP, browser, or date range",
+    "searchDomain": "Search Domain",
+    "searchDomainPlaceholder": "e.g., example.com",
+    "searchIp": "Search IP Address",
+    "searchIpPlaceholder": "e.g., 192.168.1.1",
+    "filterBrowser": "Browser",
+    "allBrowsers": "All Browsers",
+    "dateFrom": "Date From",
+    "dateTo": "Date To",
+    "clearFilters": "Clear Filters",
+    "browsingHistory": "Browsing History",
+    "recordsFound": "records found",
+    "noData": "No browsing activity yet",
+    "noDataDescription": "Enable network monitoring in Settings to start collecting browsing activity data. Make sure you have given consent for data collection.",
+    "flagged": "Flagged"
+  },
+  "tour": {
+    "step1": {
+      "title": "Key Metrics",
+      "content": "This is your command center. Quickly see active threats, blocked attacks, and recent alerts at a glance."
+    },
+    "step2": {
+      "title": "Live Threat Feed",
+      "content": "Watch threats as they're detected in real-time. Click on any threat for more details."
+    },
+    "step3": {
+      "title": "Threat Timeline",
+      "content": "Visualize threat activity over the last 24 hours to spot trends and patterns."
+    },
+    "step4": {
+      "title": "Customize Your Experience",
+      "content": "Finally, head to Settings to switch to real-time monitoring, manage notifications, and more."
+    }
+  }
+}

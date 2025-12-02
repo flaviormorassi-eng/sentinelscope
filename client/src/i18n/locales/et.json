@@ -1,0 +1,8 @@
+{
+  "_meta": { "language": "et", "note": "Algne eesti keele lokaliseerimine. Vajab täielikku tõlget." },
+  "app": {"name": "SentinelScope", "tagline": "Täiustatud küberjulgeoleku jälgimine"},
+  "authFailures": {"title": "Autentimise tõrked", "description": "Hiljutised ebaõnnestunud sündmused (ainult admin)", "unauthorized": "Puudub luba", "empty": "Tõrkeid pole", "loading": "Laadin…", "headers": {"time": "Aeg", "action": "Tegevus", "ip": "IP", "severity": "Tõsidus", "resource": "Ressurss"}},
+  "threats": {"title": "Ohtude logi", "severityLevels": {"critical": "Kriitiline", "high": "Kõrge", "medium": "Keskmine", "low": "Madal"}},
+  "common": {"loading": "Laadin…", "error": "Viga", "retry": "Proovi uuesti", "close": "Sulge", "save": "Salvesta", "cancel": "Loobu"},
+  "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "et": "Eesti"}}
+}

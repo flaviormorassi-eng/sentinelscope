@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -33,10 +41,14 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
-import { Activity, TrendingUp, Globe } from 'lucide-react';
-import { Threat, User } from '@shared/schema';
+import { Activity, TrendingUp, Globe, PlusCircle, Trash2, Loader2 } from 'lucide-react';
+import { Threat, User, IpBlocklistEntry } from '@shared/schema';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 const SEVERITY_COLORS = {
   critical: 'hsl(var(--destructive))',
@@ -59,6 +71,9 @@ export default function SystemAnalytics() {
   const { user } = useAuth();
   const [limitFilter, setLimitFilter] = useState('100');
 
+  const [isAddIpDialogOpen, setIsAddIpDialogOpen] = useState(false);
+  const [newIpAddress, setNewIpAddress] = useState('');
+  const [newIpReason, setNewIpReason] = useState('');
   const { data: currentUser, isLoading: userLoading } = useQuery<User>({
     queryKey: [`/api/user/${user?.uid}`],
     enabled: !!user?.uid,
@@ -74,6 +89,43 @@ export default function SystemAnalytics() {
     queryKey: [`/api/admin/threats?limit=${limitFilter}`],
     enabled: currentUser?.isAdmin === true,
   });
+
+  const { data: ipBlocklist = [], isLoading: blocklistLoading } = useQuery<IpBlocklistEntry[]>({
+    queryKey: ['/api/admin/ip-blocklist'],
+    enabled: currentUser?.isAdmin === true,
+  });
+
+  const addIpMutation = useMutation({
+    mutationFn: async (data: { ipAddress: string; reason?: string }) => {
+      return apiRequest('POST', '/api/admin/ip-blocklist', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/ip-blocklist'] });
+      setIsAddIpDialogOpen(false);
+      setNewIpAddress('');
+      setNewIpReason('');
+    },
+    onError: (error: any) => {
+      // You would typically use a toast notification here
+      console.error("Failed to add IP to blocklist:", error.message);
+    },
+  });
+
+  const removeIpMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest('DELETE', `/api/admin/ip-blocklist/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/ip-blocklist'] });
+    },
+  });
+
+  const handleAddIp = () => {
+
+    if (newIpAddress) {
+      addIpMutation.mutate({ ipAddress: newIpAddress, reason: newIpReason });
+    }
+  }
 
   if (userLoading || !currentUser) {
     return (
@@ -440,6 +492,91 @@ export default function SystemAnalytics() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>IP Blocklist Management</CardTitle>
+          <Button size="sm" onClick={() => setIsAddIpDialogOpen(true)}>
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add IP
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {blocklistLoading ? (
+            <Skeleton className="h-[200px] w-full" />
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>IP Address</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Added By</TableHead>
+                    <TableHead>Added At</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ipBlocklist.length > 0 ? (
+                    ipBlocklist.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="font-mono">{entry.ipAddress}</TableCell>
+                        <TableCell>{entry.reason || '-'}</TableCell>
+                        <TableCell className="text-xs">{entry.addedBy?.slice(0, 8)}...</TableCell>
+                        <TableCell className="text-xs">{format(new Date(entry.createdAt), 'yyyy-MM-dd HH:mm')}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeIpMutation.mutate(entry.id)}
+                            disabled={removeIpMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        No IPs on the blocklist.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={isAddIpDialogOpen} onOpenChange={setIsAddIpDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add IP to Blocklist</DialogTitle>
+            <DialogDescription>
+              This IP will be flagged as a high-severity threat if detected.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="ip-address">IP Address</Label>
+              <Input id="ip-address" value={newIpAddress} onChange={(e) => setNewIpAddress(e.target.value)} placeholder="e.g., 103.27.108.83" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason (optional)</Label>
+              <Input id="reason" value={newIpReason} onChange={(e) => setNewIpReason(e.target.value)} placeholder="e.g., Known C2 Server" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddIpDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddIp} disabled={addIpMutation.isPending}>
+              {addIpMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Add to Blocklist
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

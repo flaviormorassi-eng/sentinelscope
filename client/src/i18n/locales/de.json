@@ -1,0 +1,8 @@
+{
+  "_meta": { "language": "de", "note": "Initial German locale. Many strings copied; TODO translate fully." },
+  "app": {"name": "SentinelScope", "tagline": "Erweiterte Cybersecurity-Überwachung"},
+  "authFailures": {"title": "Authentifizierungsfehler", "description": "Letzte fehlgeschlagene Ereignisse (nur Admin)", "unauthorized": "Keine Berechtigung", "empty": "Keine Fehler", "loading": "Lädt…", "headers": {"time": "Zeit", "action": "Aktion", "ip": "IP", "severity": "Schwere", "resource": "Ressource"}},
+  "threats": {"title": "Bedrohungsprotokoll", "severityLevels": {"critical": "Kritisch", "high": "Hoch", "medium": "Mittel", "low": "Niedrig"}},
+  "common": {"loading": "Lädt…", "error": "Fehler", "retry": "Erneut versuchen", "close": "Schließen", "save": "Speichern", "cancel": "Abbrechen"},
+  "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "de": "Deutsch"}}
+}

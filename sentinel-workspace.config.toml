@@ -1,0 +1,54 @@
+import { authenticator } from 'otplib';
+
+// If your secret was encrypted before storing, first decrypt it using your decryptSecret()
+// helper; here we assume you already have the plain base32 secret.
+const secret = 'JBSWY3DPEHPK3PXP'; // sample base32; replace with real
+const token = authenticator.generate(secret);
+console.log('Current TOTP code:', token);import { authenticator } from 'otplib';
+function verifyTotp(secret, inputCode) {
+  return authenticator.verify({ token: inputCode, secret });
+}# SentinelScope Workspace Configuration (Platform-neutral)
+# This file replaces the previous Replit-specific .replit configuration
+# and avoids any vendor-specific naming. Adjust values per hosting environment.
+
+[workspace]
+runtime = "nodejs-20"
+database = "postgresql-16"
+entry_dev = "npm run dev"
+entry_prod_build = ["npm", "run", "build"]
+entry_prod_run = ["npm", "run", "start"]
+hide = [".config", ".git", "node_modules", "dist"]
+
+[env]
+PORT = "3003"
+# PUBLIC_BASE_URL = "http://localhost:3003"  # Uncomment & adjust as needed
+
+[ports]
+# Logical service exposure mapping (internal -> external or just documentation)
+app = 3003
+api = 3001
+legacy = 3000
+extra = 3002
+
+[workflows.dev]
+name = "Development Server"
+command = "npm run dev"
+waitForPort = 3003
+
+[workflows.test]
+name = "Test Suite"
+command = "npm test"
+
+[workflows.migrations]
+name = "Apply Migrations"
+command = "npm run db:migrate"
+
+[integrations]
+# List integrations used by the project for informational purposes
+firebase = true
+stripe = true
+
+[notes]
+# This file is informational; no platform will auto-consume it by default.
+# You can parse it from internal tooling or scripts if desired.
+# Remove or tailor sections (ports/integrations) to fit deployment stack.

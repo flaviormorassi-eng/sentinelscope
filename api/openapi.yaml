@@ -1,0 +1,412 @@
+openapi: 3.1.0
+info:
+  title: SentinelScope API
+  version: 0.1.0
+  description: Core endpoints for SentinelScope (auth, monitoring, threats, alerts, preferences, subscription).
+servers:
+  - url: https://api.sentinelscope.example
+  - url: http://localhost:3001
+components:
+  securitySchemes:
+    sessionAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: session
+    apiKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+  schemas:
+    Threat:
+      type: object
+      properties:
+        id: { type: string }
+        timestamp: { type: string, format: date-time }
+        severity: { type: string, enum: [low, medium, high, critical] }
+        type: { type: string }
+        sourceIP: { type: string }
+        targetIP: { type: string }
+        status: { type: string }
+        description: { type: string }
+        blocked: { type: boolean }
+    FlowEvent:
+      type: object
+      properties:
+        id: { type: string }
+        timestamp: { type: string, format: date-time }
+        severity: { type: string }
+        eventType: { type: string }
+        sourceIP: { type: string }
+        destinationIP: { type: string }
+        protocol:
+          type: [string, 'null']
+        action:
+          type: [string, 'null']
+        message:
+          type: [string, 'null']
+    Alert:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        createdAt: { type: string, format: date-time }
+        severity: { type: string }
+        title: { type: string }
+        message: { type: string }
+        read: { type: boolean }
+    Preferences:
+      type: object
+      properties:
+        userId: { type: string }
+        monitoringMode: { type: string, enum: [demo, real] }
+        browsingMonitoringEnabled: { type: boolean }
+        browsingHistoryEnabled: { type: boolean }
+        alertThreshold: { type: string }
+        flaggedOnlyDefault:
+          type: boolean
+          description: Default preference to show only flagged browsing entries in Network Activity
+paths:
+  /api/event-sources/{id}/rotate:
+    post:
+      summary: Rotate event source API key (dual-key window)
+      description: |
+        Rotates the API key for an event source and enables a dual-key grace window where both the old and new keys are valid until `rotationExpiresAt`.
+        Requires authenticated user owning the event source and recent MFA (freshness window ~300s).
+      tags:
+        - Event Sources
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Event source ID.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                graceSeconds:
+                  type: integer
+                  minimum: 0
+                  maximum: 604800
+                  description: Optional grace window in seconds (default 86400, max 7 days).
+      responses:
+        "200":
+          description: Rotation succeeded; returns new plaintext API key and expiration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apiKey:
+                    type: string
+                    description: Newly generated plaintext API key (return once).
+                  rotationExpiresAt:
+                    type: string
+                    format: date-time
+                    description: When the dual-key grace window expires.
+        "400":
+          description: Bad request (e.g., inactive source or invalid parameters).
+        "403":
+          description: Forbidden (not owner or MFA not fresh).
+        "404":
+          description: Event source not found.
+        "500":
+          description: Failed to rotate API key.
+
+  /api/event-sources/{id}/rotation/expire:
+    post:
+      summary: Force-expire rotation window
+      description: |
+        Immediately ends the dual-key grace window by invalidating the secondary key.
+        Requires authenticated owner and recent MFA (freshness window ~300s).
+      tags:
+        - Event Sources
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Event source ID.
+      responses:
+        "200":
+          description: Force-expire succeeded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        "400":
+          description: No active rotation window to expire.
+        "403":
+          description: Forbidden (not owner or MFA not fresh).
+        "404":
+          description: Event source not found.
+        "500":
+          description: Failed to force expire rotation.
+  /api/user/preferences:
+      /api/admin/event-sources:
+        get:
+          security: [ { sessionAuth: [] } ]
+          summary: List all event sources (admin, global)
+          parameters:
+            - in: query
+              name: limit
+              schema:
+                type: integer
+                default: 100
+                minimum: 1
+                maximum: 500
+            - in: query
+              name: offset
+              schema:
+                type: integer
+                default: 0
+                minimum: 0
+          responses:
+            '200':
+              description: Array of event sources (cross-tenant)
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+      /api/admin/browsing:
+        get:
+          security: [ { sessionAuth: [] } ]
+          summary: List all browsing activity (admin, global)
+          parameters:
+            - in: query
+              name: limit
+              schema:
+                type: integer
+                default: 100
+                minimum: 1
+                maximum: 500
+            - in: query
+              name: offset
+              schema:
+                type: integer
+                default: 0
+                minimum: 0
+          responses:
+            '200':
+              description: Array of browsing activity (cross-tenant)
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+      /api/admin/normalized-events:
+        get:
+          security: [ { sessionAuth: [] } ]
+          summary: List all normalized events (admin, global)
+          parameters:
+            - in: query
+              name: limit
+              schema:
+                type: integer
+                default: 100
+                minimum: 1
+                maximum: 500
+            - in: query
+              name: offset
+              schema:
+                type: integer
+                default: 0
+                minimum: 0
+          responses:
+            '200':
+              description: Array of normalized events (cross-tenant)
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+      /api/admin/audit-logs:
+        get:
+          security: [ { sessionAuth: [] } ]
+          summary: List audit logs (admin, global)
+          parameters:
+            - in: query
+              name: limit
+              schema:
+                type: integer
+                default: 100
+                minimum: 1
+                maximum: 500
+            - in: query
+              name: offset
+              schema:
+                type: integer
+                default: 0
+                minimum: 0
+          responses:
+            '200':
+              description: Array of audit logs
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+    get:
+      security: [ { sessionAuth: [] } ]
+      summary: Get current user preferences
+      responses:
+        '200':
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+    put:
+      security: [ { sessionAuth: [] } ]
+      summary: Update user preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Preferences'
+      responses:
+        '200': { description: Updated preferences }
+        '403': { description: Trial expired or access denied }
+  /api/stats:
+    get:
+      security: [ { sessionAuth: [] } ]
+      summary: Get dashboard stats (real or demo depending on monitoringMode)
+      responses:
+        '200': { description: Stats payload }
+  /api/threats:
+    get:
+      security: [ { sessionAuth: [] } ]
+      summary: List threats (mapped real-mode or demo table)
+      responses:
+        '200':
+          description: Array of threats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Threat'
+  /api/network/flow:
+    get:
+      security: [ { sessionAuth: [] } ]
+      summary: Recent normalized network flow events (empty array in demo mode)
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Array of flow events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FlowEvent'
+  /api/alerts:
+    get:
+      security: [ { sessionAuth: [] } ]
+      summary: List alerts for user
+      responses:
+        '200':
+          description: Array of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+  /api/browsing/ingest:
+    post:
+      security: [ { apiKey: [] } ]
+      summary: Ingest real browsing activity (requires preferences enabled)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                events:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      url: { type: string }
+                      title: { type: string }
+                      visitedAt: { type: string, format: date-time }
+      responses:
+        '202': { description: Accepted }
+        '403': { description: Not enabled or user mismatch }
+        '400': { description: Validation error }
+  /api/user/subscription:
+    get:
+      security: [ { sessionAuth: [] } ]
+      summary: Get subscription tier
+      responses:
+        '200': { description: Subscription object }
+    post:
+      security: [ { sessionAuth: [] } ]
+      summary: Update subscription tier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tier:
+                  type: string
+      responses:
+        '200': { description: Updated tier }
+  /api/user/real-monitoring-access:
+    get:
+      security: [ { sessionAuth: [] } ]
+      summary: Check real monitoring access/trial status
+      responses:
+        '200': { description: Access object }
+  /api/network/flow/generate:
+    post:
+      security: [ { sessionAuth: [] } ]
+      summary: Development utility to seed sample normalized events (real monitoring only)
+      responses:
+        '200': { description: Generation summary }
+  /api/threats/recent:
+    get:
+      security: [ { sessionAuth: [] } ]
+      summary: Recent threats (10)
+      responses:
+        '200': { description: Array of recent threats }
+  /api/threats/map:
+    get:
+      security: [ { sessionAuth: [] } ]
+      summary: Threats with geo context for map visualization
+      responses:
+        '200': { description: Array of threats }
+tags:
+  - name: Threats
+  - name: Network
+  - name: Alerts
+  - name: Preferences
+  - name: Subscription
+  - name: Browsing

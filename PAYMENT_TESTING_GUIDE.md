@@ -11,7 +11,7 @@ Before you start testing, make sure you have:
 ✅ **Stripe Account** - Signed up at https://stripe.com  
 ✅ **Test Mode Enabled** - Using test keys (pk_test_ and sk_test_)  
 ✅ **Stripe Products Created** - Three subscription products configured (see STRIPE_SETUP.md)  
-✅ **Environment Variables Set** - All Stripe keys configured in Replit Secrets
+✅ **Environment Variables Set** - All Stripe keys configured in your `.env`
 
 ---
 
@@ -19,7 +19,7 @@ Before you start testing, make sure you have:
 
 ### 1.1 Check Environment Variables
 
-Make sure these are set in **Replit Secrets**:
+Make sure these are set in your **.env**:
 
 ```
 VITE_STRIPE_PUBLIC_KEY=pk_test_xxxxxxxxxxxxx
@@ -267,7 +267,7 @@ Follow the same steps as above. You should see a specific error message.
 
 After successful payment, verify the database was updated:
 
-1. Open Replit Database viewer
+1. Query your database (e.g., with psql or your provider UI)
 2. Find your user record
 3. Verify these fields are populated:
    ```json
@@ -289,14 +289,14 @@ After successful payment, verify the database was updated:
 
 **Cause:** Stripe Price IDs not configured  
 **Solution:**
-1. Check STRIPE_PRICE_INDIVIDUAL, STRIPE_PRICE_SMB, STRIPE_PRICE_ENTERPRISE in Replit Secrets
+1. Check STRIPE_PRICE_INDIVIDUAL, STRIPE_PRICE_SMB, STRIPE_PRICE_ENTERPRISE in `.env`
 2. Or verify hardcoded Price IDs in shared/schema.ts
 
 ### Issue: "Stripe is not defined" or payment form doesn't load
 
 **Cause:** Missing or invalid Stripe publishable key  
 **Solution:**
-1. Check VITE_STRIPE_PUBLIC_KEY in Replit Secrets
+1. Check VITE_STRIPE_PUBLIC_KEY in `.env`
 2. Ensure it starts with `pk_test_` for test mode
 3. Restart the application
 
@@ -304,7 +304,7 @@ After successful payment, verify the database was updated:
 
 **Cause:** Webhook not configured or failing  
 **Solution:**
-1. Check webhook endpoint is configured: `https://your-app.replit.dev/api/stripe/webhook`
+1. Check webhook endpoint is configured: `https://YOUR_DOMAIN/api/stripe/webhook`
 2. View webhook logs in Stripe Dashboard
 3. Check application logs for webhook processing errors
 
@@ -312,7 +312,7 @@ After successful payment, verify the database was updated:
 
 **Cause:** Wrong Stripe secret key  
 **Solution:**
-1. Verify STRIPE_SECRET_KEY in Replit Secrets
+1. Verify STRIPE_SECRET_KEY in `.env`
 2. Ensure it starts with `sk_test_` for test mode
 3. Ensure no extra spaces or quotes
 
@@ -369,7 +369,7 @@ Your payment integration is working correctly if:
 ## 🆘 Need Help?
 
 If you encounter issues:
-1. Check application logs in Replit
+1. Check application logs (server console/PM2)
 2. Check Stripe Dashboard logs
 3. Verify all environment variables
 4. Review STRIPE_SETUP.md for configuration steps

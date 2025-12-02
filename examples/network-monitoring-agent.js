@@ -18,7 +18,7 @@ const axios = require('axios');
 const os = require('os');
 
 // Configuração
-const API_URL = process.env.SENTINELSCOPE_API_URL || 'https://seu-dominio.replit.app/api/browsing/ingest';
+const API_URL = process.env.SENTINELSCOPE_API_URL || 'http://localhost:3001/api/browsing/ingest';
 const BATCH_SIZE = 50;
 const CHECK_INTERVAL = 60000; // 60 segundos
 

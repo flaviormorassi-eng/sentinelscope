@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,13 +27,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Download, Search, Filter, Unlock, History, ExternalLink, Monitor, Mail, Usb, Globe, Network } from 'lucide-react';
+import { Download, Search, Filter, Unlock, History, ExternalLink, Monitor, Mail, Usb, Globe, Network, XCircle } from 'lucide-react';
 import { Threat, User } from '@shared/schema';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useThreatFilters } from '@/hooks/useThreatFilters';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Link } from 'wouter';
 
 interface ThreatDecision {
   id: number;
@@ -44,22 +47,77 @@ interface ThreatDecision {
   timestamp: string;
 }
 
+type ThreatListResponse = {
+  data: Threat[];
+  total: number;
+  limit: number;
+  offset: number;
+  mode?: 'demo' | 'real';
+};
+
 export default function Threats() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [search, setSearch] = useState('');
-  const [severityFilter, setSeverityFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  // Centralized filters + persistence
+  const {
+    severityFilter,
+    setSeverityFilter,
+    typeFilter,
+    setTypeFilter,
+    typeFilterEffective,
+    sourceInput,
+    setSourceInput,
+    sourceQuery,
+    statusFilter,
+    setStatusFilter,
+    searchInput,
+    setSearchInput,
+    searchQuery,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    clearFilters,
+  } = useThreatFilters(user?.uid);
   const [historyThreatId, setHistoryThreatId] = useState<string | null>(null);
+
+  // Value adapters: select expects 'all' when undefined in hook
+  const typeValue = typeFilter ?? 'all';
+  const sevValue = severityFilter ?? 'all';
+  const statusValue = statusFilter ?? 'all';
 
   const { data: currentUser } = useQuery<User>({
     queryKey: [`/api/user/${user?.uid}`],
     enabled: !!user?.uid,
   });
 
-  const { data: threats = [], isLoading } = useQuery<Threat[]>({
-    queryKey: ['/api/threats'],
+  const { data: listResp, isLoading } = useQuery<ThreatListResponse>({
+    queryKey: [
+      'threats/list',
+      page,
+      pageSize,
+      sevValue,
+      statusValue,
+      searchQuery,
+      typeFilterEffective,
+      sourceQuery,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set('limit', String(pageSize));
+      params.set('offset', String((page - 1) * pageSize));
+      if (severityFilter) params.set('sev', severityFilter);
+      if (statusFilter) params.set('status', statusFilter);
+      if (searchQuery) params.set('q', searchQuery);
+      if (typeFilterEffective) params.set('type', typeFilterEffective);
+      if (sourceQuery) params.set('src', sourceQuery);
+      const url = `/api/threats/list?${params.toString()}`;
+      return apiRequest('GET', url) as Promise<ThreatListResponse>;
+    },
+    // Periodically refresh so new real-mode threats appear without reload
+    refetchInterval: 15000,
+    placeholderData: (prev) => prev as ThreatListResponse | undefined,
   });
 
   const { data: decisionHistory = [], isLoading: historyLoading } = useQuery<ThreatDecision[]>({
@@ -75,33 +133,92 @@ export default function Threats() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/threats'] });
+      queryClient.invalidateQueries({ queryKey: ['threats/list'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/threats/pending'] });
       toast({
         title: t('admin.decisionRecorded'),
         description: t('threats.threatUnblocked'),
       });
     },
-    onError: () => {
+    onError: (err: any) => {
       toast({
         title: t('common.error'),
-        description: t('admin.threatDecisionError'),
+        description: err?.message || t('admin.threatDecisionError'),
         variant: 'destructive',
       });
     },
   });
 
-  const filteredThreats = threats.filter((threat) => {
-    const matchesSearch = 
-      threat.sourceIP.toLowerCase().includes(search.toLowerCase()) ||
-      threat.description.toLowerCase().includes(search.toLowerCase()) ||
-      threat.type.toLowerCase().includes(search.toLowerCase()) ||
-      (threat.deviceName && threat.deviceName.toLowerCase().includes(search.toLowerCase())) ||
-      (threat.sourceURL && threat.sourceURL.toLowerCase().includes(search.toLowerCase())) ||
-      (threat.threatVector && threat.threatVector.toLowerCase().includes(search.toLowerCase()));
+  const blockMutation = useMutation({
+    mutationFn: async (threatId: string) => {
+      return await apiRequest('POST', `/api/threats/${threatId}/decide`, {
+        decision: 'block',
+        reason: 'Blocked from threat log view',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['threats/list'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/threats/pending'] });
+      toast({
+        title: t('admin.decisionRecorded'),
+        description: 'Threat blocked.',
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: t('common.error'),
+        description: err?.message || t('admin.threatDecisionError'),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const allowMutation = useMutation({
+    mutationFn: async (threatId: string) => {
+      return await apiRequest('POST', `/api/threats/${threatId}/decide`, {
+        decision: 'allow',
+        reason: 'Marked as not a threat from threat log view',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['threats/list'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/threats/pending'] });
+      toast({
+        title: t('admin.decisionRecorded'),
+        description: t('admin.threatAllowed', 'Marked as not a threat.'),
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: t('common.error'),
+        description: err?.message || t('admin.threatDecisionError'),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const threatsData: Threat[] = listResp?.data ?? ([] as Threat[]);
+  // Runtime diagnostics
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.debug('[Threats] listResp', listResp);
+  }
+  const filteredThreats = threatsData.filter((threat: Threat) => {
+    // When we send q to the server, skip local search matching to avoid double-filtering
+    const matchesSearch = searchQuery
+      ? true
+      : (
+        (threat.sourceIP || '').toLowerCase().includes(searchInput.toLowerCase()) ||
+        (threat.description || '').toLowerCase().includes(searchInput.toLowerCase()) ||
+        (threat.type || '').toLowerCase().includes(searchInput.toLowerCase()) ||
+        (threat.deviceName && threat.deviceName.toLowerCase().includes(searchInput.toLowerCase())) ||
+        (threat.sourceURL && threat.sourceURL.toLowerCase().includes(searchInput.toLowerCase())) ||
+        (threat.threatVector && threat.threatVector.toLowerCase().includes(searchInput.toLowerCase()))
+      );
     
-    const matchesSeverity = severityFilter === 'all' || threat.severity === severityFilter;
-    const matchesStatus = statusFilter === 'all' || threat.status === statusFilter;
+    // Severity filter is already applied server-side when not 'all', but keep for safety
+    const matchesSeverity = !severityFilter || threat.severity === severityFilter;
+    const matchesStatus = !statusFilter || threat.status === statusFilter;
 
     return matchesSearch && matchesSeverity && matchesStatus;
   });
@@ -137,6 +254,16 @@ export default function Threats() {
     }
   };
 
+  const safeFormatTs = (ts: any) => {
+    try {
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return '-';
+      return format(d, 'yyyy-MM-dd HH:mm:ss');
+    } catch {
+      return '-';
+    }
+  };
+
   const handleExport = () => {
     const csv = [
       ['Timestamp', 'Severity', 'Type', 'Source IP', 'Target IP', 'Device', 'Vector', 'Source URL', 'Status', 'Description'],
@@ -168,6 +295,30 @@ export default function Threats() {
       <div>
         <h1 className="text-3xl font-bold">{t('threats.title')}</h1>
       </div>
+      {listResp?.mode === 'real' && (listResp?.total ?? 0) === 0 && (
+        <Alert className="border-blue-500/40 bg-blue-500/10">
+          <AlertTitle className="text-blue-600 dark:text-blue-400">Real monitoring enabled</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            No real-time threat events have been received yet. Create an event source and send events to see live data.
+            {' '}<Link href="/event-sources"><span className="underline text-blue-600 dark:text-blue-400">Go to Event Sources</span></Link>
+          </AlertDescription>
+        </Alert>
+      )}
+      {import.meta.env.DEV && (
+        <div className="rounded border p-3 text-xs bg-muted/40">
+          <strong>Debug:</strong> total={listResp?.total ?? 'n/a'} limit={listResp?.limit ?? 'n/a'} offset={listResp?.offset ?? 'n/a'} pageState={page} pageSize={pageSize} severityFilter={sevValue} statusFilter={statusValue} typeFilter={typeValue} src={sourceQuery || '(none)'} q={searchQuery || '(none)'}
+          <div>dataCount(threatsData)={threatsData.length} filteredCount={filteredThreats.length}</div>
+          {!isLoading && threatsData.length === 0 && <div>No data from /api/threats/list. If just seeded, hard refresh (Cmd+Shift+R).</div>}
+          {(!isLoading && threatsData.length === 0 && listResp) && (
+            <details className="mt-2">
+              <summary>Raw response JSON</summary>
+              <pre className="max-h-64 overflow-auto whitespace-pre-wrap">
+{JSON.stringify(listResp, null, 2)}
+              </pre>
+            </details>
+          )}
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -176,14 +327,32 @@ export default function Threats() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={t('threats.search')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={(e) => { setSearchInput(e.target.value); setPage(1); }}
                 className="pl-9"
                 data-testid="input-search-threats"
               />
             </div>
             <div className="flex gap-2">
-              <Select value={severityFilter} onValueChange={setSeverityFilter}>
+              <Select value={typeValue} onValueChange={(v) => { setTypeFilter(v === 'all' ? undefined : v); setPage(1); }}>
+                <SelectTrigger className="w-[160px]" data-testid="select-type-filter">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder={t('threats.type')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="ddos">{t('threats.types.ddos')}</SelectItem>
+                  <SelectItem value="phishing">{t('threats.types.phishing')}</SelectItem>
+                  <SelectItem value="malware">{t('threats.types.malware')}</SelectItem>
+                  <SelectItem value="ransomware">{t('threats.types.ransomware')}</SelectItem>
+                  <SelectItem value="botnet">{t('threats.types.botnet')}</SelectItem>
+                  <SelectItem value="brute_force">{t('threats.types.brute_force')}</SelectItem>
+                  <SelectItem value="port_scan">{t('threats.types.port_scan')}</SelectItem>
+                  <SelectItem value="malware_traffic">{t('threats.types.malware_traffic')}</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={sevValue} onValueChange={(v) => { setSeverityFilter(v === 'all' ? undefined : (v as any)); setPage(1); }}>
                 <SelectTrigger className="w-[150px]" data-testid="select-severity-filter">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder={t('threats.severity')} />
@@ -197,7 +366,7 @@ export default function Threats() {
                 </SelectContent>
               </Select>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusValue} onValueChange={(v) => { setStatusFilter(v === 'all' ? undefined : v); setPage(1); }}>
                 <SelectTrigger className="w-[150px]" data-testid="select-status-filter">
                   <SelectValue placeholder={t('threats.status')} />
                 </SelectTrigger>
@@ -210,6 +379,26 @@ export default function Threats() {
                   <SelectItem value="unblocked">{t('threats.statuses.unblocked')}</SelectItem>
                 </SelectContent>
               </Select>
+
+              <div className="relative">
+                <Input
+                  placeholder="Source contains (IP/URL/device)"
+                  value={sourceInput}
+                  onChange={(e) => { setSourceInput(e.target.value); setPage(1); }}
+                  className="w-[220px]"
+                  data-testid="input-source-filter"
+                />
+              </div>
+
+              <Button
+                onClick={() => {
+                  clearFilters();
+                }}
+                variant="ghost"
+                data-testid="button-clear-filters"
+              >
+                {t('common.clearFilters', { defaultValue: 'Clear Filters' })}
+              </Button>
 
               <Button onClick={handleExport} variant="outline" data-testid="button-export">
                 <Download className="h-4 w-4 mr-2" />
@@ -232,7 +421,7 @@ export default function Threats() {
                   <TableHead className="w-[200px]">{t('threats.sourceURL')}</TableHead>
                   <TableHead className="w-[120px]">{t('threats.status')}</TableHead>
                   <TableHead>Description</TableHead>
-                  {currentUser?.isAdmin && <TableHead className="w-[100px] text-right">{t('admin.actions')}</TableHead>}
+                  <TableHead className="text-right w-[160px]">{t('admin.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -246,7 +435,7 @@ export default function Threats() {
                   filteredThreats.map((threat) => (
                     <TableRow key={threat.id} data-testid={`row-threat-${threat.id}`}>
                       <TableCell className="font-mono text-xs">
-                        {format(new Date(threat.timestamp), 'yyyy-MM-dd HH:mm:ss')}
+                        {safeFormatTs(threat.timestamp)}
                       </TableCell>
                       <TableCell>
                         <Badge variant={getSeverityBadgeVariant(threat.severity)}>
@@ -284,46 +473,119 @@ export default function Threats() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">{threat.description}</TableCell>
-                      {currentUser?.isAdmin && (
-                        <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
-                            {threat.status !== 'detected' && threat.status !== 'pending_review' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setHistoryThreatId(threat.id)}
-                                data-testid={`button-history-${threat.id}`}
-                              >
-                                <History className="h-3 w-3 mr-1" />
-                                {t('admin.history')}
-                              </Button>
-                            )}
-                            {threat.status === 'blocked' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => unblockMutation.mutate(threat.id)}
-                                disabled={unblockMutation.isPending}
-                                data-testid={`button-unblock-${threat.id}`}
-                              >
-                                <Unlock className="h-3 w-3 mr-1" />
-                                {t('admin.unblockThreat')}
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      )}
+                      
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          {currentUser?.isAdmin && threat.status !== 'detected' && threat.status !== 'pending_review' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setHistoryThreatId(threat.id)}
+                              data-testid={`button-history-${threat.id}`}
+                            >
+                              <History className="h-3 w-3 mr-1" />
+                              {t('admin.history')}
+                            </Button>
+                          )}
+                          {threat.status === 'blocked' ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => unblockMutation.mutate(threat.id)}
+                              disabled={unblockMutation.isPending}
+                              data-testid={`button-unblock-${threat.id}`}
+                            >
+                              <Unlock className="h-3 w-3 mr-1" />
+                              {t('admin.unblockThreat')}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => blockMutation.mutate(threat.id)}
+                              disabled={blockMutation.isPending}
+                              data-testid={`button-block-${threat.id}`}
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              {t('admin.blockThreat')}
+                            </Button>
+                          )}
+                          {threat.status !== 'allowed' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => allowMutation.mutate(threat.id)}
+                              disabled={allowMutation.isPending}
+                              data-testid={`button-allow-${threat.id}`}
+                            >
+                              {t('admin.markNotThreat', 'Not a threat')}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={currentUser?.isAdmin ? 11 : 10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       {t('threats.noThreats')}
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+          </div>
+          {/** Pagination controls */}
+          <div className="mt-4 flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              {(() => {
+                const total = listResp?.total ?? 0;
+                return total >= 0 ? (
+                <span>
+                  {t('common.showing')} {threatsData.length} {t('common.of')} {total} {t('threats.title').toLowerCase()}
+                </span>
+                ) : null;
+              })()}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1 || isLoading}
+              >
+                {t('common.previous')}
+              </Button>
+              <span className="text-sm">
+                {(() => {
+                  const total = listResp?.total ?? 0;
+                  const limit = listResp?.limit ?? pageSize;
+                  return (
+                    <>
+                      {t('common.page')} {page} {t('common.of')} {Math.max(1, Math.ceil(total / limit))}
+                    </>
+                  );
+                })()}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const total = listResp?.total ?? 0;
+                  const limit = listResp?.limit ?? pageSize;
+                  const maxPage = Math.max(1, Math.ceil(total / limit));
+                  setPage(Math.min(maxPage, page + 1));
+                }}
+                disabled={(() => {
+                  const total = listResp?.total ?? 0;
+                  const limit = listResp?.limit ?? pageSize;
+                  const offset = listResp?.offset ?? (page - 1) * pageSize;
+                  return isLoading || (offset + limit) >= total;
+                })()}
+              >
+                {t('common.next')}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

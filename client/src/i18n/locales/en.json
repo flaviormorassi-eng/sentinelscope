@@ -3,6 +3,21 @@
     "name": "SentinelScope",
     "tagline": "Advanced Cybersecurity Monitoring"
   },
+  "authFailures": {
+    "title": "Authentication Failures",
+    "description": "Recent failed authentication and API key events (admin only).",
+    "unauthorized": "You don't have permission to view authentication audit logs.",
+    "empty": "No failures recorded.",
+    "loading": "Loading…",
+    "showingSome": "Showing first {{shown}} of {{total}} failures.",
+    "headers": {
+      "time": "Time",
+      "action": "Action",
+      "ip": "IP",
+      "severity": "Severity",
+      "resource": "Resource"
+    }
+  },
   "auth": {
     "login": "Sign In",
     "logout": "Sign Out",
@@ -10,10 +25,21 @@
     "welcome": "Welcome to SentinelScope",
     "welcomeMessage": "Monitor and protect your systems in real-time",
     "loggingIn": "Signing in...",
-    "loginError": "Authentication failed. Please try again."
+    "loginError": "Authentication failed. Please try again.",
+    "email": "Email",
+    "threatUnblocked": "Threat has been unblocked successfully",
+    "signUp": "Sign Up",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "mfaRequired": "Two-Factor Authentication Required",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "resetPasswordInstructions": "Enter your email to receive a password reset link.",
+    "resetPasswordSuccess": "Password reset email sent. Please check your inbox."
   },
   "nav": {
     "dashboard": "Dashboard",
+    "securityCenter": "Security Center",
     "threats": "Threat Log",
     "alerts": "Alerts",
     "map": "Threat Map",
@@ -22,13 +48,22 @@
     "eventSources": "Event Sources",
     "installGuide": "Installation Guide",
     "reports": "Reports",
+    "features": "Features",
+    "pricing": "Pricing",
     "subscription": "Subscription",
+    "security": "Security",
     "settings": "Settings",
     "adminPanel": "Admin Panel",
     "adminDashboard": "Admin Dashboard",
     "userManagement": "User Management",
     "systemAnalytics": "System Analytics",
-    "compliance": "Compliance & Audit"
+    "ipBlocklist": "IP Blocklist",
+    "compliance": "Compliance & Audit",
+    "careers": "Careers",
+    "contact": "Contact"
+  },
+  "securityCenter": {
+    "subtitle": "Unify your Alerts and Threat Log in one place."
   },
   "dashboard": {
     "title": "Security Dashboard",
@@ -37,15 +72,18 @@
     "alertsToday": "Alerts Today",
     "systemStatus": "System Status",
     "threatFeed": "Live Threat Feed",
-    "recentAlerts": "Recent Alerts",
-    "threatsByType": "Threats by Type",
-    "threatTimeline": "24-Hour Threat Timeline",
-    "viewAll": "View All",
+  "recentAlerts": "Recent Alerts",
+  "threatsByType": "Threats by Type",
+  "threatTimeline": "24-Hour Threat Timeline",
+  "lastUpdated": "Last updated",
+  "viewAll": "View All",
     "noThreats": "No active threats detected",
     "allSystemsOperational": "All systems operational",
     "networkActivity": "Network Activity",
     "totalVisits": "Total Visits",
     "uniqueDomains": "Unique Domains",
+    "recentlyBlockedIps": "Recently Blocked IPs",
+    "noBlockedIps": "No IPs recently blocked",
     "flaggedDomains": "Flagged Domains",
     "topBrowser": "Top Browser",
     "topVisitedDomains": "Top Visited Domains"
@@ -96,8 +134,14 @@
   "alerts": {
     "title": "Security Alerts",
     "markAllRead": "Mark All as Read",
+    "clearAll": "Clear All",
     "noAlerts": "No alerts at this time",
-    "newAlert": "New Alert"
+    "newAlert": "New Alert",
+    "clearAllConfirmation": {
+      "title": "Are you sure you want to clear all alerts?",
+      "description": "This action cannot be undone. All alerts, both read and unread, will be permanently deleted.",
+      "confirm": "Yes, Clear All"
+    }
   },
   "map": {
     "title": "Global Threat Map",
@@ -204,6 +248,82 @@
       "medium": "Medium (High & Critical)",
       "high": "High (Critical only)"
     },
+    "mfa": {
+      "title": "Multi-Factor Authentication",
+      "description": "Add an extra layer of security to your account.",
+      "phoneTitle": "Phone Number",
+      "phoneDescription": "Receive verification codes via SMS.",
+      "notEnrolled": "Not enrolled",
+      "enrolled": "Enrolled",
+      "addPhone": "Add Phone Number",
+      "enrollTitle": "Enroll Phone Number",
+      "enrollDescription": "Enter your phone number to receive a verification code.",
+      "phoneNumber": "Phone Number (e.g., +15551234567)",
+      "sendCode": "Send Code",
+      "verifyCode": "Verify Code",
+      "loadingStatus": "Loading MFA status...",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "locked": "Locked"
+      },
+      "totp": {
+        "title": "Authenticator (TOTP)",
+        "description": "Use an authenticator app (e.g., 1Password, Authy, Google Authenticator) for stronger MFA security.",
+        "notConfigured": "No authenticator configured.",
+        "startEnrollment": "Start Enrollment",
+        "scanInstruction": "Scan this QR code with your authenticator app, then enter the 6-digit code.",
+        "codeLabel": "6-digit Code",
+        "codePlaceholder": "123456",
+        "verifyEnable": "Verify & Enable"
+      },
+      "recovery": {
+        "title": "Recovery Codes",
+        "description": "Store these codes in a secure password manager. Each code can be used once if you lose access to your authenticator.",
+        "initialOnly": "Codes generated during initial verification are shown only once.",
+        "regenLabel": "Current TOTP Code (to regenerate)",
+        "regenButton": "Regenerate Codes"
+      },
+      "disable": {
+        "title": "Disable TOTP",
+        "description": "Enter a current TOTP code OR a valid unused recovery code to disable.",
+        "totpPlaceholder": "TOTP code",
+        "recoveryPlaceholder": "Recovery code",
+        "button": "Disable MFA"
+      },
+      "lockedNotice": "Too many failed attempts. Locked until {{time}}.",
+      "footerNote": "Authenticator secrets are encrypted at rest. Lockout after 5 failed attempts for 5 minutes."
+      ,"phoneComingSoon": "Phone/SMS factor coming soon (feature flag enabled).",
+      "phone": {
+        "enabledBadge": "Phone MFA Enabled",
+        "disabledBadge": "Phone MFA Disabled",
+        "inputLabel": "Phone Number",
+        "inputPlaceholder": "+15551234567",
+        "totpLabel": "Current TOTP Code",
+        "requestButton": "Request SMS Code",
+        "codeLabel": "SMS Verification Code",
+        "codePlaceholder": "123456",
+        "verifyButton": "Verify & Enable",
+        "disableButton": "Disable Phone MFA",
+        "disableTotpPlaceholder": "TOTP code"
+      }
+      ,"webauthn": {
+        "title": "Security Keys (WebAuthn)",
+        "description": "Register a hardware key or platform authenticator.",
+        "registeredCount": "Registered: {{count}}",
+        "unsupported": "WebAuthn requires a secure context (https) and a compatible browser.",
+        "addKeyButton": "Add security key",
+        "verifyButton": "Verify with security key",
+        "listTitle": "Registered Keys",
+        "listEmpty": "No security keys registered yet.",
+        "listLoading": "Loading...",
+        "deleteButton": "Delete",
+        "renamePlaceholder": "Key name",
+        "renameSave": "Save",
+        "credentialUnnamed": "Unnamed Key",
+        "warningSignCount": "Potential cloned authenticator detected (sign count anomaly)."
+      }
+    },
     "privacy": {
       "title": "Privacy & Data Collection",
       "description": "Control how we monitor and protect your network activity",
@@ -222,6 +342,85 @@
       "privacyNoteText": "HTTPS sites: Only domain names are collected (not full URLs). All data is encrypted and used solely for threat detection. You can delete your data anytime.",
       "consent": "User Consent",
       "consentRequired": "By enabling browser history collection, you explicitly consent to the collection and processing of your browsing data in accordance with GDPR/LGPD regulations."
+    },
+    "deleteAccount": {
+      "title": "Delete Account",
+      "description": "Permanently delete your account and all associated data. This action cannot be undone.",
+      "button": "Delete My Account",
+      "dialogTitle": "Are you absolutely sure?",
+      "dialogDescription": "This will permanently delete your account, subscription, and all associated data. To confirm, please enter your password.",
+      "confirmButton": "Delete Account Permanently"
+    }
+  },
+  "mfa": {
+    "challenge": {
+      "enterTotp": "Enter the 6-digit code from your authenticator app.",
+      "enterRecovery": "Enter one unused recovery code.",
+      "locked": "Too many failed attempts. Locked until {{time}}.",
+      "totpLabel": "TOTP Code",
+      "useRecoveryInstead": "Use recovery code instead",
+      "recoveryLabel": "Recovery Code",
+      "recoveryPlaceholder": "xxxxx-xxxxx",
+      "backToTotp": "Back to TOTP code",
+      "verify": "Verify",
+      "useRecovery": "Use Recovery Code"
+    },
+    "toast": {
+      "enrollStarted": {
+        "title": "TOTP Enrollment Started",
+        "desc": "Scan the QR with your authenticator app."
+      },
+      "verifySuccess": {
+        "title": "MFA Verified",
+        "withCodes": "Store your recovery codes safely.",
+        "noCodes": "TOTP verified."
+      },
+      "regenerated": {
+        "title": "Recovery Codes Regenerated",
+        "desc": "Store the new codes securely."
+      },
+      "disabled": {
+        "title": "TOTP Disabled",
+        "desc": "Multi-factor authentication has been turned off."
+      },
+      "recoveryUsed": {
+        "title": "Recovery Code Used",
+        "desc": "MFA challenge satisfied via recovery code."
+      },
+      "error": {
+        "enroll": "Enrollment Error",
+        "verify": "Verification Failed",
+        "regenerate": "Regeneration Failed",
+        "disable": "Disable Failed",
+        "recovery": "Recovery Code Failed",
+        "phoneRequest": "SMS Request Failed",
+        "phoneVerify": "SMS Verification Failed",
+        "phoneDisable": "Disable Phone MFA Failed"
+    ,"webauthnDelete": "Delete Security Key Failed",
+    "webauthnRename": "Rename Security Key Failed"
+      },
+      "replaySuccess": {
+        "title": "Requests Replayed",
+        "desc": "Automatically retried {{success}} of {{total}} protected request(s)."
+      }
+      ,"phone": {
+        "requestSent": {
+          "title": "SMS Sent",
+          "desc": "Verification code sent. Expires at {{time}}"
+        },
+        "verifySuccess": {
+          "title": "Phone Verified",
+          "desc": "SMS factor enabled successfully."
+        },
+        "disabled": {
+          "title": "Phone MFA Disabled",
+          "desc": "SMS factor has been turned off."
+        }
+      }
+      ,"webauthn": {
+        "deleted": { "title": "Security Key Deleted", "desc": "Key removed successfully." },
+        "renamed": { "title": "Security Key Renamed", "desc": "Name updated." }
+      }
     }
   },
   "virustotal": {
@@ -282,6 +481,7 @@
     "totalAlerts": "Total Alerts",
     "estimatedRevenue": "Estimated Revenue",
     "threatTrends": "Threat Trends Over Time",
+    "help": "Help",
     "recentAuditLogs": "Recent Audit Logs",
     "noAuditLogs": "No audit logs available",
     "noData": "No data available",
@@ -328,9 +528,17 @@
     "allowThreat": "Allow Threat",
     "blockThreat": "Block Threat",
     "unblockThreat": "Unblock",
+  "markNotThreat": "Not a threat",
     "decisionRecorded": "Decision Recorded",
     "threatDecisionSuccess": "Your threat decision has been recorded successfully",
     "threatDecisionError": "Failed to record threat decision",
+  "threatAllowed": "Marked as not a threat.",
+    "addIp": "Add IP",
+    "bulkImport": "Bulk Import",
+    "bulkImportDescription": "Upload a CSV file to add multiple IPs to the blocklist at once.",
+    "csvFormatInstructions": "The CSV file must have 'ip_address' and 'reason' columns. The header row is required.",
+    "csvFile": "CSV File",
+    "import": "Import",
     "history": "History",
     "decisionHistory": "Decision History",
     "decisionHistoryDescription": "View all administrative decisions made for this threat",
@@ -340,12 +548,14 @@
   },
   "eventSources": {
     "title": "Event Sources",
-    "description": "Configure security event data sources for real-time monitoring",
+    "description": "Configure security event data sources for real-time monitoring. You can rotate API keys with a grace window and force-expire rotations when needed.",
     "createNew": "Create Event Source",
     "createDescription": "Add a new event source to collect security events from your infrastructure",
     "created": "Event Source Created",
     "updated": "Event Source Updated",
     "deleted": "Event Source Deleted",
+    "rotateKey": "Rotate Key",
+    "forceExpire": "Force Expire",
     "noSources": "No Event Sources",
     "noSourcesDescription": "Create your first event source to start receiving real-time security events"
   },
@@ -575,10 +785,6 @@
       "global": "Team distributed globally"
     }
   },
-  "privacy": {
-    "title": "Privacy Policy",
-    "updated": "Last Updated: January 2025"
-  },
   "terms": {
     "title": "Terms of Service",
     "updated": "Last Updated: January 2025"
@@ -613,7 +819,7 @@
       },
       "secrets": {
         "title": "Secret Management",
-        "description": "Environment variables managed securely via Replit Secrets, never exposed in code or version control."
+  "description": "Environment variables managed securely via environment configuration (e.g., .env), never exposed in code or version control."
       }
     },
     "practices": {
@@ -668,10 +874,26 @@
     "dateFrom": "Date From",
     "dateTo": "Date To",
     "clearFilters": "Clear Filters",
+    "networkFlow": "Network Flow",
+    "networkFlowDescription": "Recent normalized events (live network flow).",
+    "protocol": "Protocol",
+    "timeWindow": "Time window",
+    "severityDistribution": "Severity distribution",
+    "protocolDistribution": "Protocol distribution",
+    "topSources": "Top source IPs",
+    "timeline": "Event timeline",
+    "noFlowData": "No Flow Data",
+    "noFlowDataDescription": "No normalized events have been recorded yet.",
     "browsingHistory": "Browsing History",
     "recordsFound": "records found",
     "noData": "No browsing activity yet",
     "noDataDescription": "Enable network monitoring in Settings to start collecting browsing activity data. Make sure you have given consent for data collection.",
-    "flagged": "Flagged"
+    "flagged": "Flagged",
+    "flaggedOnly": "Flagged only",
+    "flaggedOnlyTooltip": "Show only flagged browsing entries. This preference is saved to your account.",
+    "flaggedTooltip": "This domain is flagged. Flagging highlights it and counts toward flagged stats.",
+    "flagDomain": "Flag domain",
+    "flagging": "Flagging...",
+    "flagDomainTooltip": "Mark this domain as flagged to highlight it and include it in flagged stats."
   }
 }
