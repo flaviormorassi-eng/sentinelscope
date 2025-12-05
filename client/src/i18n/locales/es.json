@@ -4,5 +4,24 @@
   "authFailures": {"title": "Fallos de Autenticación", "description": "Eventos recientes fallidos (solo admin)", "unauthorized": "No tienes permiso", "empty": "Sin fallos", "loading": "Cargando…", "headers": {"time": "Hora", "action": "Acción", "ip": "IP", "severity": "Severidad", "resource": "Recurso"}},
   "threats": {"title": "Registro de Amenazas", "severityLevels": {"critical": "Crítica", "high": "Alta", "medium": "Media", "low": "Baja"}},
   "common": {"loading": "Cargando…", "error": "Error", "retry": "Reintentar", "close": "Cerrar", "save": "Guardar", "cancel": "Cancelar"},
+  "auth": {
+    "login": "Iniciar sesión",
+    "signUp": "Registrarse",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "welcomeMessage": "Monitorea y protege tus sistemas en tiempo real",
+    "resetPasswordInstructions": "Ingresa tu correo para restablecer la contraseña",
+    "loggingIn": "Iniciando sesión...",
+    "resetPassword": "Restablecer contraseña",
+    "threatUnblocked": "Amenaza desbloqueada con éxito"
+  },
+  "eventSources": {
+    "title": "Fuentes de Eventos",
+    "description": "Configura fuentes de datos de eventos de seguridad.",
+    "createNew": "Crear Fuente",
+    "rotateKey": "Rotar Clave",
+    "forceExpire": "Forzar Expiración"
+  },
   "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "es": "Español"}}
 }

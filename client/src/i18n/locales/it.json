@@ -4,5 +4,24 @@
   "authFailures": {"title": "Errori di Autenticazione", "description": "Eventi di autenticazione/API falliti recenti (solo admin)", "unauthorized": "Non hai permesso", "empty": "Nessun errore", "loading": "Caricamento…", "headers": {"time": "Ora", "action": "Azione", "ip": "IP", "severity": "Gravità", "resource": "Risorsa"}},
   "threats": {"title": "Registro Minacce", "severityLevels": {"critical": "Critica", "high": "Alta", "medium": "Media", "low": "Bassa"}},
   "common": {"loading": "Caricamento…", "error": "Errore", "retry": "Riprova", "close": "Chiudi", "save": "Salva", "cancel": "Annulla"},
+  "auth": {
+    "login": "Accedi",
+    "signUp": "Iscriviti",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Password dimenticata?",
+    "welcomeMessage": "Monitora e proteggi i tuoi sistemi in tempo reale",
+    "resetPasswordInstructions": "Inserisci la tua email per reimpostare la password",
+    "loggingIn": "Accesso in corso...",
+    "resetPassword": "Reimposta Password",
+    "threatUnblocked": "Minaccia sbloccata con successo"
+  },
+  "eventSources": {
+    "title": "Fonti Eventi",
+    "description": "Configura le fonti di dati degli eventi di sicurezza.",
+    "createNew": "Crea Fonte",
+    "rotateKey": "Ruota Chiave",
+    "forceExpire": "Forza Scadenza"
+  },
   "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "it": "Italiano"}}
 }

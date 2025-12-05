@@ -4,5 +4,24 @@
   "authFailures": {"title": "Authentifizierungsfehler", "description": "Letzte fehlgeschlagene Ereignisse (nur Admin)", "unauthorized": "Keine Berechtigung", "empty": "Keine Fehler", "loading": "Lädt…", "headers": {"time": "Zeit", "action": "Aktion", "ip": "IP", "severity": "Schwere", "resource": "Ressource"}},
   "threats": {"title": "Bedrohungsprotokoll", "severityLevels": {"critical": "Kritisch", "high": "Hoch", "medium": "Mittel", "low": "Niedrig"}},
   "common": {"loading": "Lädt…", "error": "Fehler", "retry": "Erneut versuchen", "close": "Schließen", "save": "Speichern", "cancel": "Abbrechen"},
+  "auth": {
+    "login": "Anmelden",
+    "signUp": "Registrieren",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "forgotPassword": "Passwort vergessen?",
+    "welcomeMessage": "Überwachen und schützen Sie Ihre Systeme in Echtzeit",
+    "resetPasswordInstructions": "Geben Sie Ihre E-Mail ein, um das Passwort zurückzusetzen",
+    "loggingIn": "Anmelden...",
+    "resetPassword": "Passwort zurücksetzen",
+    "threatUnblocked": "Bedrohung erfolgreich entsperrt"
+  },
+  "eventSources": {
+    "title": "Ereignisquellen",
+    "description": "Konfigurieren Sie Sicherheitsereignisdatenquellen.",
+    "createNew": "Quelle erstellen",
+    "rotateKey": "Schlüssel rotieren",
+    "forceExpire": "Ablauf erzwingen"
+  },
   "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "de": "Deutsch"}}
 }

@@ -4,5 +4,24 @@
   "authFailures": {"title": "Ошибки аутентификации", "description": "Недавние неудачные события (только админ)", "unauthorized": "Нет доступа", "empty": "Нет ошибок", "loading": "Загрузка…", "headers": {"time": "Время", "action": "Действие", "ip": "IP", "severity": "Степень", "resource": "Ресурс"}},
   "threats": {"title": "Журнал угроз", "severityLevels": {"critical": "Критическая", "high": "Высокая", "medium": "Средняя", "low": "Низкая"}},
   "common": {"loading": "Загрузка…", "error": "Ошибка", "retry": "Повторить", "close": "Закрыть", "save": "Сохранить", "cancel": "Отмена"},
+  "auth": {
+    "login": "Войти",
+    "signUp": "Регистрация",
+    "email": "Email",
+    "password": "Пароль",
+    "forgotPassword": "Забыли пароль?",
+    "welcomeMessage": "Мониторинг и защита ваших систем в реальном времени",
+    "resetPasswordInstructions": "Введите email для сброса пароля",
+    "loggingIn": "Вход...",
+    "resetPassword": "Сбросить пароль",
+    "threatUnblocked": "Угроза успешно разблокирована"
+  },
+  "eventSources": {
+    "title": "Источники событий",
+    "description": "Настройка источников данных событий безопасности.",
+    "createNew": "Создать источник",
+    "rotateKey": "Сменить ключ",
+    "forceExpire": "Принудительно завершить"
+  },
   "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "ru": "Русский"}}
 }

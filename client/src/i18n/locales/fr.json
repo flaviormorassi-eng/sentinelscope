@@ -4,5 +4,24 @@
   "authFailures": {"title": "Échecs d'authentification", "description": "Événements récents échoués (admin seul)", "unauthorized": "Accès refusé", "empty": "Aucun échec", "loading": "Chargement…", "headers": {"time": "Heure", "action": "Action", "ip": "IP", "severity": "Gravité", "resource": "Ressource"}},
   "threats": {"title": "Journal des menaces", "severityLevels": {"critical": "Critique", "high": "Élevée", "medium": "Moyenne", "low": "Faible"}},
   "common": {"loading": "Chargement…", "error": "Erreur", "retry": "Réessayer", "close": "Fermer", "save": "Enregistrer", "cancel": "Annuler"},
+  "auth": {
+    "login": "Se connecter",
+    "signUp": "S'inscrire",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "welcomeMessage": "Surveillez et protégez vos systèmes en temps réel",
+    "resetPasswordInstructions": "Entrez votre e-mail pour réinitialiser le mot de passe",
+    "loggingIn": "Connexion...",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "threatUnblocked": "Menace débloquée avec succès"
+  },
+  "eventSources": {
+    "title": "Sources d'événements",
+    "description": "Configurez les sources de données d'événements de sécurité.",
+    "createNew": "Créer une source",
+    "rotateKey": "Faire tourner la clé",
+    "forceExpire": "Forcer l'expiration"
+  },
   "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "fr": "Français"}}
 }

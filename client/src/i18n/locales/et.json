@@ -4,5 +4,24 @@
   "authFailures": {"title": "Autentimise tõrked", "description": "Hiljutised ebaõnnestunud sündmused (ainult admin)", "unauthorized": "Puudub luba", "empty": "Tõrkeid pole", "loading": "Laadin…", "headers": {"time": "Aeg", "action": "Tegevus", "ip": "IP", "severity": "Tõsidus", "resource": "Ressurss"}},
   "threats": {"title": "Ohtude logi", "severityLevels": {"critical": "Kriitiline", "high": "Kõrge", "medium": "Keskmine", "low": "Madal"}},
   "common": {"loading": "Laadin…", "error": "Viga", "retry": "Proovi uuesti", "close": "Sulge", "save": "Salvesta", "cancel": "Loobu"},
+  "auth": {
+    "login": "Logi sisse",
+    "signUp": "Registreeru",
+    "email": "E-post",
+    "password": "Parool",
+    "forgotPassword": "Unustasid parooli?",
+    "welcomeMessage": "Jälgi ja kaitse oma süsteeme reaalajas",
+    "resetPasswordInstructions": "Sisesta e-post parooli lähtestamiseks",
+    "loggingIn": "Sisselogimine...",
+    "resetPassword": "Lähtesta parool",
+    "threatUnblocked": "Oht edukalt blokeeringust vabastatud"
+  },
+  "eventSources": {
+    "title": "Sündmuste allikad",
+    "description": "Seadista turvasündmuste andmeallikad.",
+    "createNew": "Loo allikas",
+    "rotateKey": "Vaheta võti",
+    "forceExpire": "Sunni aegumine"
+  },
   "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "et": "Eesti"}}
 }
