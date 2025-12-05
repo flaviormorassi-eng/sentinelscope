@@ -28,6 +28,7 @@
     "loginError": "Falha na autenticação. Por favor, tente novamente.",
     "email": "E-mail",
     "password": "Senha",
+    "threatUnblocked": "A ameaça foi desbloqueada com sucesso",
     "signUp": "Cadastre-se",
     "noAccount": "Não tem uma conta?",
     "haveAccount": "Já tem uma conta?",
@@ -546,12 +547,14 @@
   },
   "eventSources": {
     "title": "Fontes de Eventos",
-    "description": "Configure fontes de dados de eventos de segurança para monitoramento em tempo real",
+    "description": "Configure fontes de dados de eventos de segurança para monitoramento em tempo real. Você pode rotacionar chaves de API com uma janela de carência e forçar a expiração de rotações quando necessário.",
     "createNew": "Criar Fonte de Eventos",
     "createDescription": "Adicione uma nova fonte de eventos para coletar eventos de segurança de sua infraestrutura",
     "created": "Fonte de Eventos Criada",
     "updated": "Fonte de Eventos Atualizada",
     "deleted": "Fonte de Eventos Excluída",
+    "rotateKey": "Rotacionar Chave",
+    "forceExpire": "Forçar Expiração",
     "noSources": "Nenhuma Fonte de Eventos",
     "noSourcesDescription": "Crie sua primeira fonte de eventos para começar a receber eventos de segurança em tempo real"
   },

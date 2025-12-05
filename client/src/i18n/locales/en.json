@@ -27,6 +27,7 @@
     "loggingIn": "Signing in...",
     "loginError": "Authentication failed. Please try again.",
     "email": "Email",
+    "password": "Password",
     "threatUnblocked": "Threat has been unblocked successfully",
     "signUp": "Sign Up",
     "noAccount": "Don't have an account?",
