@@ -61,6 +61,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // Dev auth override check
+      const isDev = import.meta.env.DEV || import.meta.env.VITE_DISABLE_FIREBASE_AUTH === 'true';
+      const devUserId = typeof localStorage !== 'undefined' ? localStorage.getItem('devUserId') : null;
+      
+      if (isDev && devUserId && !user) {
+        // Mock user object for dev mode
+        const mockUser = {
+          uid: devUserId,
+          email: `${devUserId}@example.com`,
+          displayName: `Dev User (${devUserId})`,
+          emailVerified: true,
+          isAnonymous: false,
+          metadata: {},
+          providerData: [],
+          refreshToken: '',
+          tenantId: null,
+          delete: async () => {},
+          getIdToken: async () => 'dev-token',
+          getIdTokenResult: async () => ({ token: 'dev-token' } as any),
+          reload: async () => {},
+          toJSON: () => ({}),
+          phoneNumber: null,
+          photoURL: null,
+          providerId: 'dev',
+        } as unknown as FirebaseUser;
+        
+        setUser(mockUser);
+        // Also sync the dev user
+        try {
+          await fetch('/api/auth/user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: mockUser.uid,
+              email: mockUser.email,
+              displayName: mockUser.displayName,
+              photoURL: mockUser.photoURL,
+            }),
+          });
+          setIsAdmin(true); // Dev users are admins by default
+        } catch (e) {
+          console.error('Failed to sync dev user', e);
+        }
+        setLoading(false);
+        return;
+      }
+
       setUser(user);
       
       if (user) {
@@ -71,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               id: user.uid,
-              email: user.email!,
+              email: user.email || '',
               displayName: user.displayName,
               photoURL: user.photoURL,
             }),
