@@ -786,6 +786,10 @@
       "global": "Team distributed globally"
     }
   },
+  "privacy": {
+    "title": "Privacy Policy",
+    "updated": "Last Updated: January 2025"
+  },
   "terms": {
     "title": "Terms of Service",
     "updated": "Last Updated: January 2025"

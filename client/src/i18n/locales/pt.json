@@ -251,22 +251,6 @@
       "title": "Autenticação de Múltiplos Fatores",
       "description": "Adicione uma camada extra de segurança à sua conta.",
   "phoneTitle": "Número de Telefone",
-  "webauthn": {
-        "title": "Chaves de Segurança (WebAuthn)",
-        "description": "Registre uma chave de hardware ou autenticador da plataforma.",
-        "registeredCount": "Registradas: {{count}}",
-        "unsupported": "WebAuthn requer contexto seguro (https) e navegador compatível.",
-        "addKeyButton": "Adicionar chave de segurança",
-        "verifyButton": "Verificar com chave",
-        "listTitle": "Chaves Registradas",
-        "listEmpty": "Nenhuma chave de segurança registrada ainda.",
-        "listLoading": "Carregando...",
-        "deleteButton": "Excluir",
-        "renamePlaceholder": "Nome da chave",
-        "renameSave": "Salvar",
-    "credentialUnnamed": "Chave sem nome",
-        "warningSignCount": "Possível autenticador clonado detectado (anomalia de sign count)."
-  },
   "phoneDescription": "Receba códigos de verificação por SMS.",
       "notEnrolled": "Não cadastrado",
       "enrolled": "Cadastrado",
@@ -321,6 +305,22 @@
         "verifyButton": "Verificar e Ativar",
         "disableButton": "Desativar MFA por Telefone",
         "disableTotpPlaceholder": "Código TOTP"
+      },
+      "webauthn": {
+        "title": "Chaves de Segurança (WebAuthn)",
+        "description": "Registre uma chave de hardware ou autenticador da plataforma.",
+        "registeredCount": "Registradas: {{count}}",
+        "unsupported": "WebAuthn requer contexto seguro (https) e navegador compatível.",
+        "addKeyButton": "Adicionar chave de segurança",
+        "verifyButton": "Verificar com chave",
+        "listTitle": "Chaves Registradas",
+        "listEmpty": "Nenhuma chave de segurança registrada ainda.",
+        "listLoading": "Carregando...",
+        "deleteButton": "Excluir",
+        "renamePlaceholder": "Nome da chave",
+        "renameSave": "Salvar",
+        "credentialUnnamed": "Chave sem nome",
+        "warningSignCount": "Possível autenticador clonado detectado (anomalia de sign count)."
       }
     },
     "privacy": {
