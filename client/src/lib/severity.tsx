@@ -4,14 +4,14 @@ import React from 'react';
 
 export type SeverityKey = 'critical' | 'high' | 'medium' | 'low';
 
-const MAP: Record<SeverityKey, { variant: BadgeProps['variant']; icon: JSX.Element; label: string }> = {
+const MAP: Record<SeverityKey, { variant: BadgeProps['variant']; icon: React.ReactNode; label: string }> = {
   critical: { variant: 'destructive', icon: <XCircle className="h-4 w-4" />, label: 'critical' },
   high: { variant: 'destructive', icon: <AlertTriangle className="h-4 w-4" />, label: 'high' },
   medium: { variant: 'secondary', icon: <CircleDot className="h-4 w-4" />, label: 'medium' },
   low: { variant: 'outline', icon: <CheckCircle className="h-4 w-4" />, label: 'low' },
 };
 
-export function getSeverityConfig(sev: SeverityKey): { variant: BadgeProps['variant']; icon: JSX.Element; label: string } {
+export function getSeverityConfig(sev: SeverityKey): { variant: BadgeProps['variant']; icon: React.ReactNode; label: string } {
   return MAP[sev];
 }
 

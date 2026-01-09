@@ -1,9 +1,48 @@
 import { storage } from './storage';
 import { getGeolocation } from './utils/geolocationService';
 import { generateMockThreat } from './utils/threatGenerator';
+import { checkIPAddress } from './utils/virusTotalService';
 import type { RawEvent, InsertNormalizedEvent, NormalizedEvent } from '@shared/schema';
 
 const BATCH_SIZE = 100;
+
+// Helper to check for private IPs
+function isPrivateIP(ip: string): boolean {
+  return /^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|127\.)/.test(ip);
+}
+
+async function detectThreats(normalized: InsertNormalizedEvent): Promise<{ type: string; severity: string } | null> {
+  // 1. Check VirusTotal if IP is public and available
+  if (normalized.destinationIP && !isPrivateIP(normalized.destinationIP)) {
+     try {
+       const vtResult = await checkIPAddress(normalized.destinationIP);
+       if (vtResult && vtResult.malicious > 0) {
+         return { type: 'Malicious IP (VirusTotal)', severity: 'critical' };
+       }
+     } catch (e) {
+       console.error('VT check failed', e);
+     }
+  }
+
+  // 2. Check keywords in message
+  const msg = normalized.message?.toLowerCase() || '';
+  if (msg.includes('failed login') || msg.includes('authentication failure')) {
+    return { type: 'Brute Force Attempt', severity: 'medium' };
+  }
+  if (msg.includes('sql syntax') || msg.includes('union select')) {
+    return { type: 'SQL Injection', severity: 'high' };
+  }
+  if (msg.includes('xss') || msg.includes('script>')) {
+    return { type: 'XSS Attack', severity: 'high' };
+  }
+
+  // 3. Check threat vector from source
+  if (normalized.threatVector) {
+      return { type: normalized.threatVector, severity: normalized.severity || 'medium' };
+  }
+
+  return null;
+}
 
 async function processRawEvent(event: RawEvent) {
   console.log(`[Processor] Processing raw event ${event.id} from source ${event.sourceId}`);
@@ -49,9 +88,21 @@ async function processRawEvent(event: RawEvent) {
     const createdNormalizedEvent = await storage.createNormalizedEvent(normalized);
 
     // --- Threat Detection Logic ---
-    // Replace with real detection logic if available
-    // For now, use mock threat generator
-    const threatSignature = generateMockThreat(event.userId, normalized.destinationIP || '192.168.1.1');
+    const preferences = await storage.getUserPreferences(event.userId);
+    const isDemoMode = preferences?.monitoringMode === 'demo';
+
+    let threatSignature: { type: string; severity: string } | null = null;
+
+    if (isDemoMode) {
+      // Use mock threat generator for demo mode
+      const mock = generateMockThreat(event.userId, normalized.destinationIP || '192.168.1.1');
+      if (mock) {
+        threatSignature = { type: mock.type, severity: mock.severity };
+      }
+    } else {
+      // Use real detection logic
+      threatSignature = await detectThreats(normalized);
+    }
 
     if (threatSignature) {
       console.log(`[Processor] Threat detected for event ${createdNormalizedEvent.id}: ${threatSignature.type}`);

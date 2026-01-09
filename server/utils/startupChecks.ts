@@ -29,27 +29,31 @@ export async function runStartupChecks(): Promise<void> {
   const pool = new Pool({ connectionString: dbUrl });
   const issues: SchemaIssue[] = [];
 
-  for (const req of REQUIRED_COLUMNS) {
-    try {
-      const res = await pool.query(
-        `SELECT column_name FROM information_schema.columns WHERE table_name = $1`,
-        [req.table]
-      );
-      const cols = res.rows.map(r => r.column_name);
-      if (!cols.includes(req.column)) {
+  try {
+    for (const req of REQUIRED_COLUMNS) {
+      try {
+        const res = await pool.query(
+          `SELECT column_name FROM information_schema.columns WHERE table_name = $1`,
+          [req.table]
+        );
+        const cols = res.rows.map(r => r.column_name);
+        if (!cols.includes(req.column)) {
+          issues.push({
+            table: req.table,
+            column: req.column,
+            message: `Missing required column '${req.column}' in table '${req.table}'. Run migrations.`
+          });
+        }
+      } catch (e: any) {
         issues.push({
           table: req.table,
-            column: req.column,
-          message: `Missing required column '${req.column}' in table '${req.table}'. Run migrations.`
+          column: req.column,
+          message: `Error querying table '${req.table}': ${e?.message || String(e)}`
         });
       }
-    } catch (e: any) {
-      issues.push({
-        table: req.table,
-        column: req.column,
-        message: `Error querying table '${req.table}': ${e?.message || String(e)}`
-      });
     }
+  } finally {
+    await pool.end();
   }
 
   await pool.end().catch(() => {});

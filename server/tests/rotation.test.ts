@@ -46,6 +46,12 @@ vi.mock('../storage', () => {
       return { id: s.id, userId: s.userId, name: s.name, sourceType: s.sourceType, description: s.description || null, isActive: s.isActive, lastHeartbeat: s.lastHeartbeat, rotationExpiresAt: s.rotationExpiresAt, secondaryApiKeyHash: s.secondaryApiKeyHash } as any;
     },
 
+    async getEventSources(userId: string) {
+      return Array.from(sources.values())
+        .filter(s => s.userId === userId)
+        .map(s => ({ id: s.id, userId: s.userId, name: s.name, sourceType: s.sourceType, description: s.description || null, isActive: s.isActive, lastHeartbeat: s.lastHeartbeat, rotationExpiresAt: s.rotationExpiresAt, secondaryApiKeyHash: s.secondaryApiKeyHash } as any));
+    },
+
     async createEventSource(s: any) {
       const id = crypto.randomUUID?.() || newId('src');
       const rec: SrcRec = {
@@ -124,10 +130,10 @@ vi.mock('../storage', () => {
 let registerRoutes: any;
 
 const TEST_USER_ID = 'test-user-rotation';
-const AUTH_HEADER = { Authorization: 'Bearer dev', 'x-user-id': TEST_USER_ID } as const;
+const AUTH_HEADER = { 'x-user-id': TEST_USER_ID } as const;
 
 let app: express.Express;
-let agent: supertest.SuperTest<supertest.Test>;
+let agent: any;
 let storageRef: any;
 
 async function ensureUser() {

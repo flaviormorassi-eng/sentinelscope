@@ -94,6 +94,14 @@ export interface IStorage {
   getUserSubscription(userId: string): Promise<{ tier: SubscriptionTier }>;
   updateSubscription(userId: string, tier: SubscriptionTier): Promise<void>;
   
+  // Bot Analysis
+  getBotStats(userId: string): Promise<{
+    total: number;
+    bots: number;
+    humans: number;
+    botTypes: Array<{ browser: string; count: number }>;
+  }>;
+  
   // Stripe integration
   updateUserStripeInfo(userId: string, stripeInfo: {
     stripeCustomerId?: string | null;
@@ -106,9 +114,10 @@ export interface IStorage {
   getUserByStripeCustomerId(customerId: string): Promise<User | undefined>;
 
   // Stats
-  getStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }>;
-  getRealMonitoringStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }>;
+  getStats(userId: string): Promise<{ active: number; blocked: number; alerts: number; totalEvents: number }>;
+  getRealMonitoringStats(userId: string): Promise<{ active: number; blocked: number; alerts: number; totalEvents: number }>;
   getRecentThreatEvents(userId: string, hours: number): Promise<ThreatEvent[]>;
+  getRecentThreatEventsLimit(userId: string, limit: number): Promise<ThreatEvent[]>;
   // Historical stats for KPI trends
   getStatsHistory(
     userId: string,
@@ -124,7 +133,8 @@ export interface IStorage {
   getThreatCount(): Promise<number>;
   getUserCount(): Promise<number>;
   createAuditLog(log: InsertAdminAuditLog): Promise<AdminAuditLog>;
-  getAuditLogs(limit?: number): Promise<AdminAuditLog[]>;
+  getAuditLogs(limit?: number, offset?: number): Promise<AdminAuditLog[]>;
+  resetUserMfa(userId: string): Promise<void>;
   getSystemStats(): Promise<{ 
     totalUsers: number; 
     totalThreats: number; 
@@ -161,6 +171,8 @@ export interface IStorage {
   // Real monitoring - Threat Events
   createThreatEvent(event: InsertThreatEvent): Promise<ThreatEvent>;
   getThreatEvents(userId: string, limit?: number): Promise<ThreatEvent[]>;
+  getThreatEventById(id: string): Promise<ThreatEvent | undefined>;
+  updateThreatEventStatus(id: string, status: string, blocked: boolean, reviewData?: { reviewedBy: string; reviewNotes?: string }): Promise<void>;
   searchThreatEvents(userId: string, query: string): Promise<any[]>;
   getThreatEventsForMap(userId: string): Promise<any[]>;
 
@@ -482,6 +494,10 @@ export class MemStorage implements IStorage {
     // MemStorage doesn't support real monitoring - return empty array
     return [];
   }
+  async getRecentThreatEventsLimit(userId: string, limit: number): Promise<ThreatEvent[]> {
+    // MemStorage doesn't support real monitoring - return empty array
+    return [];
+  }
 
   async getStatsHistory(
     userId: string,
@@ -601,10 +617,14 @@ export class MemStorage implements IStorage {
     return log;
   }
 
-  async getAuditLogs(limit: number = 50): Promise<AdminAuditLog[]> {
+  async getAuditLogs(limit: number = 50, offset: number = 0): Promise<AdminAuditLog[]> {
     const logs = Array.from(this.auditLogs.values())
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    return logs.slice(0, limit);
+    return logs.slice(offset, offset + limit);
+  }
+
+  async resetUserMfa(userId: string): Promise<void> {
+    return;
   }
 
   async getSystemStats(): Promise<{ totalUsers: number; totalThreats: number; totalAlerts: number; estimatedRevenue: number }> {
@@ -664,6 +684,8 @@ export class MemStorage implements IStorage {
   async flagNormalizedEventAsThreat(id: string): Promise<void> { return; }
   async createThreatEvent(): Promise<ThreatEvent> { throw new Error("Real monitoring not supported in MemStorage"); }
   async getThreatEvents(): Promise<ThreatEvent[]> { return []; }
+  async getThreatEventById(id: string): Promise<ThreatEvent | undefined> { return undefined; }
+  async updateThreatEventStatus(id: string, status: string, blocked: boolean, reviewData?: { reviewedBy: string; reviewNotes?: string }): Promise<void> { return; }
   async createIntelMatch(): Promise<IntelMatch> { throw new Error("Real monitoring not supported in MemStorage"); }
   async searchThreatEvents(userId: string, query: string): Promise<any[]> {
     return [];
@@ -1011,21 +1033,25 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async getStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }> {
+  async getStats(userId: string): Promise<{ active: number; blocked: number; alerts: number; totalEvents: number }> {
     const userThreats = await this.getThreats(userId);
     const userAlerts = await this.getAlerts(userId);
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // In demo mode, we simulate total events as a multiple of threats to show "traffic" volume
+    const totalEvents = userThreats.length > 0 ? userThreats.length * 45 + 120 : 0;
+
     return {
       active: userThreats.filter(t => t.status === 'detected').length,
       blocked: userThreats.filter(t => t.blocked).length,
       alerts: userAlerts.filter(a => new Date(a.timestamp) >= today).length,
+      totalEvents,
     };
   }
 
-  async getRealMonitoringStats(userId: string): Promise<{ active: number; blocked: number; alerts: number }> {
+  async getRealMonitoringStats(userId: string): Promise<{ active: number; blocked: number; alerts: number; totalEvents: number }> {
     // Get stats from real monitoring tables
     const allThreatEvents = await this.db
       .select()
@@ -1033,6 +1059,12 @@ export class DbStorage implements IStorage {
       .where(eq(threatEvents.userId, userId));
     
     const userAlerts = await this.getAlerts(userId);
+
+    // Get total traffic volume from normalized events
+    const trafficCount = await this.db
+      .select({ count: count() })
+      .from(normalizedEvents)
+      .where(eq(normalizedEvents.userId, userId));
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1041,6 +1073,7 @@ export class DbStorage implements IStorage {
       active: allThreatEvents.filter(t => t.mitigationStatus === 'detected').length,
       blocked: allThreatEvents.filter(t => t.autoBlocked).length,
       alerts: userAlerts.filter(a => new Date(a.timestamp) >= today).length,
+      totalEvents: trafficCount[0]?.count || 0,
     };
   }
 
@@ -1079,6 +1112,38 @@ export class DbStorage implements IStorage {
     
     // The result is no longer a pure ThreatEvent[], but we can cast it for the purpose of this API.
     // The frontend will correctly interpret the added fields.
+    return results as ThreatEvent[];
+  }
+
+  async getRecentThreatEventsLimit(userId: string, limit: number): Promise<ThreatEvent[]> {
+    // Join threatEvents with normalizedEvents to include IP addresses
+    const results = await this.db
+      .select({
+        id: threatEvents.id,
+        userId: threatEvents.userId,
+        normalizedEventId: threatEvents.normalizedEventId,
+        createdAt: threatEvents.createdAt,
+        threatType: threatEvents.threatType,
+        severity: threatEvents.severity,
+        confidence: threatEvents.confidence,
+        mitigationStatus: threatEvents.mitigationStatus,
+        autoBlocked: threatEvents.autoBlocked,
+        manuallyReviewed: threatEvents.manuallyReviewed,
+        reviewedBy: threatEvents.reviewedBy,
+        reviewNotes: threatEvents.reviewNotes,
+        reviewedAt: threatEvents.reviewedAt,
+        sourceURL: threatEvents.sourceURL,
+        deviceName: threatEvents.deviceName,
+        threatVector: threatEvents.threatVector,
+        sourceIP: normalizedEvents.sourceIP,
+        destinationIP: normalizedEvents.destinationIP,
+      })
+      .from(threatEvents)
+      .leftJoin(normalizedEvents, eq(threatEvents.normalizedEventId, normalizedEvents.id))
+      .where(eq(threatEvents.userId, userId))
+      .orderBy(desc(threatEvents.createdAt))
+      .limit(limit);
+    
     return results as ThreatEvent[];
   }
 
@@ -1277,12 +1342,17 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async getAuditLogs(limit: number = 50): Promise<AdminAuditLog[]> {
+  async getAuditLogs(limit: number = 50, offset: number = 0): Promise<AdminAuditLog[]> {
     return await this.db
       .select()
       .from(adminAuditLog)
       .orderBy(desc(adminAuditLog.timestamp))
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async resetUserMfa(userId: string): Promise<void> {
+    await this.db.delete(userMfa).where(eq(userMfa.userId, userId));
   }
 
   async getSystemStats(): Promise<{ 
@@ -1327,6 +1397,7 @@ export class DbStorage implements IStorage {
   }
 
   async getThreatById(id: string): Promise<Threat | undefined> {
+    // console.log(`[Storage] getThreatById(${id})`);
     const result = await this.db
       .select()
       .from(threats)
@@ -1598,6 +1669,35 @@ export class DbStorage implements IStorage {
       .values(event)
       .returning();
     return result[0];
+  }
+
+  async getThreatEventById(id: string): Promise<ThreatEvent | undefined> {
+    console.log(`[Storage] getThreatEventById(${id})`);
+    try {
+      const result = await this.db
+        .select()
+        .from(threatEvents)
+        .where(eq(threatEvents.id, id));
+      console.log(`[Storage] getThreatEventById result:`, result[0] ? 'FOUND' : 'NOT FOUND');
+      return result[0];
+    } catch (e) {
+      console.error(`[Storage] getThreatEventById error:`, e);
+      return undefined;
+    }
+  }
+
+  async updateThreatEventStatus(id: string, status: string, blocked: boolean, reviewData?: { reviewedBy: string; reviewNotes?: string }): Promise<void> {
+    await this.db
+      .update(threatEvents)
+      .set({ 
+        mitigationStatus: status, 
+        autoBlocked: blocked,
+        manuallyReviewed: true,
+        reviewedBy: reviewData?.reviewedBy,
+        reviewNotes: reviewData?.reviewNotes,
+        reviewedAt: new Date()
+      })
+      .where(eq(threatEvents.id, id));
   }
 
   async getThreatEvents(userId: string, limit: number = 100): Promise<ThreatEvent[]> {
@@ -1954,6 +2054,46 @@ export class DbStorage implements IStorage {
       flaggedDomains,
       topDomains,
       browserBreakdown,
+    };
+  }
+
+  async getBotStats(userId: string): Promise<{
+    total: number;
+    bots: number;
+    humans: number;
+    botTypes: Array<{ browser: string; count: number }>;
+  }> {
+    const totalResult = await this.db
+      .select({ count: count() })
+      .from(browsingActivity)
+      .where(eq(browsingActivity.userId, userId));
+    const total = Number(totalResult[0]?.count || 0);
+
+    const botPatterns = ['%bot%', '%crawl%', '%spider%', '%headless%', '%python%', '%curl%', '%wget%', '%httpclient%'];
+    const botCondition = or(...botPatterns.map(p => ilike(browsingActivity.browser, p)));
+
+    const botsResult = await this.db
+      .select({ count: count() })
+      .from(browsingActivity)
+      .where(and(eq(browsingActivity.userId, userId), botCondition));
+    const bots = Number(botsResult[0]?.count || 0);
+
+    const botTypesResult = await this.db
+      .select({
+        browser: browsingActivity.browser,
+        count: count(),
+      })
+      .from(browsingActivity)
+      .where(and(eq(browsingActivity.userId, userId), botCondition))
+      .groupBy(browsingActivity.browser)
+      .orderBy(desc(count()))
+      .limit(5);
+
+    return {
+      total,
+      bots,
+      humans: Math.max(0, total - bots),
+      botTypes: botTypesResult.map(r => ({ browser: r.browser || 'Unknown Bot', count: Number(r.count) })),
     };
   }
 

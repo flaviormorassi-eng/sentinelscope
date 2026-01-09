@@ -28,7 +28,7 @@ const severityConfig = {
   high: { variant: 'destructive', icon: <AlertTriangle className="h-4 w-4" />, label: 'high' },
   medium: { variant: 'secondary', icon: <CircleDot className="h-4 w-4" />, label: 'medium' },
   low: { variant: 'outline', icon: <CheckCircle className="h-4 w-4" />, label: 'low' },
-} as const satisfies Record<string, { variant: BadgeProps['variant']; icon: JSX.Element; label: string }>;
+} as const satisfies Record<string, { variant: BadgeProps['variant']; icon: React.ReactNode; label: string }>;
 
 export default function Alerts() {
   const { t } = useTranslation();

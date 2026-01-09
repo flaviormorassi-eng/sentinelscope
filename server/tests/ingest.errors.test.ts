@@ -47,7 +47,7 @@ vi.mock('../storage', () => {
 let registerRoutes: any;
 
 const TEST_USER_ID = 'test-user-ingest-errors';
-const AUTH_HEADER = { Authorization: 'Bearer dev', 'x-user-id': TEST_USER_ID } as const;
+const AUTH_HEADER = { 'x-user-id': TEST_USER_ID } as const;
 
 let app: express.Express;
 let agent: any;

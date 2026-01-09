@@ -1,27 +1,101 @@
 {
-  "_meta": { "language": "es", "note": "Initial Spanish locale. Many strings copied from English; TODO translate." },
-  "app": {"name": "SentinelScope", "tagline": "Supervisión avanzada de ciberseguridad"},
-  "authFailures": {"title": "Fallos de Autenticación", "description": "Eventos recientes fallidos (solo admin)", "unauthorized": "No tienes permiso", "empty": "Sin fallos", "loading": "Cargando…", "headers": {"time": "Hora", "action": "Acción", "ip": "IP", "severity": "Severidad", "resource": "Recurso"}},
-  "threats": {"title": "Registro de Amenazas", "severityLevels": {"critical": "Crítica", "high": "Alta", "medium": "Media", "low": "Baja"}},
-  "common": {"loading": "Cargando…", "error": "Error", "retry": "Reintentar", "close": "Cerrar", "save": "Guardar", "cancel": "Cancelar"},
+  "_meta": { "language": "es", "note": "Spanish locale." },
+  "app": {
+    "name": "SentinelScope",
+    "tagline": "Monitoreo Avanzado de Ciberseguridad"
+  },
+  "authFailures": {
+    "title": "Fallos de Autenticación",
+    "description": "Eventos recientes de fallos de autenticación y claves API (solo admin).",
+    "unauthorized": "No tiene permiso para ver los registros de auditoría de autenticación.",
+    "empty": "No hay fallos registrados.",
+    "loading": "Cargando...",
+    "headers": {
+      "time": "Hora",
+      "action": "Acción",
+      "ip": "IP",
+      "severity": "Gravedad",
+      "resource": "Recurso"
+    }
+  },
   "auth": {
-    "login": "Iniciar sesión",
-    "signUp": "Registrarse",
-    "email": "Correo electrónico",
-    "password": "Contraseña",
-    "forgotPassword": "¿Olvidaste tu contraseña?",
-    "welcomeMessage": "Monitorea y protege tus sistemas en tiempo real",
-    "resetPasswordInstructions": "Ingresa tu correo para restablecer la contraseña",
+    "login": "Iniciar Sesión",
+    "logout": "Cerrar Sesión",
+    "loginWithGoogle": "Continuar con Google",
+    "welcome": "Bienvenido a SentinelScope",
+    "welcomeMessage": "Monitoree y proteja sus sistemas en tiempo real",
     "loggingIn": "Iniciando sesión...",
-    "resetPassword": "Restablecer contraseña",
-    "threatUnblocked": "Amenaza desbloqueada con éxito"
+    "loginError": "Fallo en la autenticación. Inténtelo de nuevo.",
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "signUp": "Registrarse",
+    "noAccount": "¿No tiene una cuenta?",
+    "haveAccount": "¿Ya tiene una cuenta?",
+    "mfaRequired": "Autenticación de Dos Factores Requerida",
+    "forgotPassword": "¿Olvidó su contraseña?",
+    "resetPassword": "Restablecer Contraseña"
   },
-  "eventSources": {
-    "title": "Fuentes de Eventos",
-    "description": "Configura fuentes de datos de eventos de seguridad.",
-    "createNew": "Crear Fuente",
-    "rotateKey": "Rotar Clave",
-    "forceExpire": "Forzar Expiración"
+  "nav": {
+    "dashboard": "Panel de Control",
+    "securityCenter": "Centro de Seguridad",
+    "threats": "Registro de Amenazas",
+    "alerts": "Alertas",
+    "map": "Mapa de Amenazas",
+    "networkActivity": "Actividad de Red",
+    "virustotal": "Escaneo VirusTotal",
+    "eventSources": "Fuentes de Eventos",
+    "reports": "Informes",
+    "settings": "Configuración",
+    "adminPanel": "Panel de Administración"
   },
-  "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "es": "Español"}}
+  "dashboard": {
+    "title": "Panel de Seguridad",
+    "activeThreats": "Amenazas Activas",
+    "threatsBlocked": "Amenazas Bloqueadas",
+    "alertsToday": "Alertas de Hoy",
+    "systemStatus": "Estado del Sistema",
+    "threatFeed": "Feed de Amenazas en Vivo",
+    "recentAlerts": "Alertas Recientes",
+    "noThreats": "No se detectaron amenazas activas",
+    "allSystemsOperational": "Todos los sistemas operativos"
+  },
+  "threats": {
+    "title": "Registro de Actividad de Amenazas",
+    "timestamp": "Marca de tiempo",
+    "severity": "Gravedad",
+    "type": "Tipo",
+    "source": "IP de Origen",
+    "target": "Objetivo",
+    "status": "Estado",
+    "actions": "Acciones",
+    "noThreats": "No se encontraron amenazas",
+    "severityLevels": {
+      "critical": "Crítica",
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja"
+    },
+    "statuses": {
+      "detected": "Detectado",
+      "blocked": "Bloqueado",
+      "resolved": "Resuelto"
+    }
+  },
+  "alerts": {
+    "title": "Alertas de Seguridad",
+    "markAllRead": "Marcar todo como leído",
+    "clearAll": "Borrar todo",
+    "noAlerts": "No hay alertas en este momento",
+    "newAlert": "Nueva Alerta"
+  },
+  "settings": {
+    "title": "Configuración",
+    "profile": "Perfil",
+    "preferences": "Preferencias",
+    "notifications": "Notificaciones",
+    "language": "Idioma",
+    "theme": "Tema",
+    "save": "Guardar Cambios",
+    "saved": "Configuración guardada exitosamente"
+  }
 }

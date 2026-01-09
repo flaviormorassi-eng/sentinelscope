@@ -17,6 +17,7 @@ export function useFilteredThreats(
     const q = (sourceQuery || '').toLowerCase();
 
     return threats
+      .filter((th: any) => th && typeof th === 'object')
       .filter((th: any) => !severity || th.severity === severity)
       .filter((th: any) => !type || (("threatType" in th ? th.threatType : th.type) === type))
       .filter((th: any) => {

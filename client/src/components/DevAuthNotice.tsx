@@ -40,9 +40,20 @@ export function DevAuthNotice() {
           />
         </label>
         <button
-          onClick={() => applyUserId(userId)}
+          onClick={() => {
+            applyUserId(userId);
+            window.location.reload();
+          }}
           className="h-7 rounded bg-amber-600 px-2 text-white hover:bg-amber-700"
-        >Apply</button>
+        >Set Dev User</button>
+        <button
+          onClick={() => {
+            localStorage.removeItem('devUserId');
+            window.location.reload();
+          }}
+          className="h-7 rounded border border-amber-600 px-2 text-amber-900 hover:bg-amber-100"
+          title="Switch back to Firebase Auth"
+        >Use Firebase</button>
         <button
           onClick={() => { try { sessionStorage.setItem('hideDevAuthNotice','1'); } catch {}; setHidden(true); }}
           className="ml-auto h-7 rounded px-2 text-amber-900 hover:bg-amber-100"

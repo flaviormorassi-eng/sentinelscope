@@ -38,6 +38,16 @@
     "resetPasswordInstructions": "Enter your email to receive a password reset link.",
     "resetPasswordSuccess": "Password reset email sent. Please check your inbox."
   },
+  "search": {
+    "placeholder": "Type a command or search...",
+    "noResults": "No results found.",
+    "quickActions": "Quick Actions",
+    "navigation": "Navigation",
+    "scanNow": "Scan Now",
+    "scanTarget": "Scan Target",
+    "viewAlerts": "View Alerts",
+    "updateProfile": "Update Profile"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "securityCenter": "Security Center",

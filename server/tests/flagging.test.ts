@@ -34,7 +34,7 @@ let app: express.Express;
 let agent: any;
 
 const TEST_USER_ID = 'test-user-flag';
-const AUTH = { Authorization: 'Bearer dev', 'x-user-id': TEST_USER_ID } as const;
+const AUTH = { 'x-user-id': TEST_USER_ID } as const;
 
 async function ensureUser(storageRef: any) {
   if (!await storageRef.getUser(TEST_USER_ID)) {

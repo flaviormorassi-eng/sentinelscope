@@ -58,7 +58,7 @@ let registerRoutes: any;
 // For isolation you may want a separate test schema or a transaction wrapper.
 
 const TEST_USER_ID = 'test-user-ingest';
-const AUTH_HEADER = { Authorization: 'Bearer dev', 'x-user-id': TEST_USER_ID } as const;
+const AUTH_HEADER = { 'x-user-id': TEST_USER_ID } as const;
 
 let app: express.Express;
 let agent: supertest.SuperTest<supertest.Test>;

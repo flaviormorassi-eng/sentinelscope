@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { useSearch } from "wouter";
 
 interface VirusTotalResult {
   status: 'clean' | 'malicious' | 'suspicious' | 'undetected' | 'error';
@@ -26,10 +27,12 @@ interface VirusTotalResult {
 export default function VirusTotalScan() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const searchString = useSearch();
   const [fileHash, setFileHash] = useState("");
   const [url, setUrl] = useState("");
   const [ipAddress, setIpAddress] = useState("");
   const [result, setResult] = useState<VirusTotalResult | null>(null);
+  const [activeTab, setActiveTab] = useState("hash");
 
   const checkHashMutation = useMutation({
     mutationFn: async (hash: string) => {
@@ -91,6 +94,27 @@ export default function VirusTotalScan() {
     },
   });
 
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const urlParam = params.get("url");
+    const ipParam = params.get("ip");
+    const hashParam = params.get("hash");
+
+    if (urlParam) {
+      setActiveTab("url");
+      setUrl(urlParam);
+      checkURLMutation.mutate(urlParam);
+    } else if (ipParam) {
+      setActiveTab("ip");
+      setIpAddress(ipParam);
+      checkIPMutation.mutate(ipParam);
+    } else if (hashParam) {
+      setActiveTab("hash");
+      setFileHash(hashParam);
+      checkHashMutation.mutate(hashParam);
+    }
+  }, [searchString]);
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       clean: "default",
@@ -116,7 +140,7 @@ export default function VirusTotalScan() {
         </div>
       </div>
 
-      <Tabs defaultValue="hash" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="hash" data-testid="tab-file-hash">
             <FileSearch className="h-4 w-4 mr-2" />

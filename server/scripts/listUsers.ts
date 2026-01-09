@@ -5,9 +5,9 @@
  *   npx tsx server/scripts/listUsers.ts [limit]
  * Defaults to 20 rows.
  */
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pgPkg from 'pg';
+const { Pool } = pgPkg;
 import { users } from '../../shared/schema';
 import { desc } from 'drizzle-orm';
 
@@ -18,7 +18,6 @@ async function main() {
     process.exit(1);
   }
 
-  neonConfig.webSocketConstructor = ws as any;
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const db = drizzle(pool);
 
@@ -39,7 +38,7 @@ async function main() {
       console.log(`${r.id}\t${r.email}\tadmin=${r.isAdmin}\tcreated=${r.createdAt?.toISOString?.() || r.createdAt}`);
     }
   } catch (err) {
-    console.error('Listing users failed:', (err as Error).message);
+    console.error('Listing users failed:', err);
     process.exit(2);
   } finally {
     await pool.end();

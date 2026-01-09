@@ -67,8 +67,8 @@ export const SecurityKpiStrip: React.FC = () => {
   });
 
   const stats = statsQuery.data as { active: number; blocked: number; alerts: number } | undefined;
-  const history = historyQuery.data as Array<{ ts: string; active: number; blocked: number; alerts: number; blockedRatio?: number; severityPctCritical?: number; severityPctHigh?: number; severityPctMedium?: number; severityPctLow?: number; anomalyActive?: boolean; anomalyBlocked?: boolean }> | undefined;
-  const authLogs: any[] | undefined = authFailuresQuery.isError ? undefined : (authFailuresQuery.data as any[] | undefined);
+  const history = Array.isArray(historyQuery.data) ? (historyQuery.data as Array<{ ts: string; active: number; blocked: number; alerts: number; blockedRatio?: number; severityPctCritical?: number; severityPctHigh?: number; severityPctMedium?: number; severityPctLow?: number; anomalyActive?: boolean; anomalyBlocked?: boolean }>) : undefined;
+  const authLogs: any[] | undefined = authFailuresQuery.isError || !Array.isArray(authFailuresQuery.data) ? undefined : (authFailuresQuery.data as any[]);
 
   // Compute derived metrics (placeholders until more endpoints exist)
   const failedAuthCount = authLogs ? authLogs.filter(l => l.status === 'failure').length : null;

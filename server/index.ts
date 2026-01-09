@@ -24,10 +24,11 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: false }));
 
 // Security headers
-// In development, relax CSP to avoid blocking Vite dev client/HMR
+// In development, relax CSP and COOP to avoid blocking Vite dev client/HMR and Firebase Auth popups
 if (app.get('env') === 'development') {
   app.use(helmet({
     contentSecurityPolicy: false,
+    crossOriginOpenerPolicy: false,
   }));
 } else {
   app.use(helmet());

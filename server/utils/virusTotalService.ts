@@ -32,6 +32,41 @@ export function validateURL(url: string): boolean {
 
 async function makeVTRequest(endpoint: string): Promise<any> {
   if (!VIRUSTOTAL_API_KEY) {
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+      console.warn('VirusTotal API key missing. Returning mock data for development.');
+      
+      // Check for specific test hash to simulate malicious result
+      // Hash: ad5018008a4ca1aa7111c8fcab5e3143516227023f238eccc1df6146dafa7899
+      if (endpoint.includes('ad5018008a4ca1aa7111c8fcab5e3143516227023f238eccc1df6146dafa7899')) {
+        return {
+          data: {
+            attributes: {
+              last_analysis_stats: {
+                malicious: 45,
+                suspicious: 2,
+                harmless: 10,
+                undetected: 5
+              },
+              last_analysis_date: Math.floor(Date.now() / 1000)
+            }
+          }
+        };
+      }
+
+      return {
+        data: {
+          attributes: {
+            last_analysis_stats: {
+              malicious: 0,
+              suspicious: 0,
+              harmless: 85,
+              undetected: 0
+            },
+            last_analysis_date: Math.floor(Date.now() / 1000)
+          }
+        }
+      };
+    }
     throw new Error('VirusTotal API key not configured');
   }
 
@@ -214,6 +249,10 @@ export async function checkIPAddress(ip: string): Promise<VirusTotalResult> {
  */
 export async function submitURL(url: string): Promise<{ analysisId: string }> {
   if (!VIRUSTOTAL_API_KEY) {
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+      console.warn('VirusTotal API key missing. Returning mock analysis ID.');
+      return { analysisId: `mock-analysis-id-${Date.now()}` };
+    }
     throw new Error('VirusTotal API key not configured');
   }
 

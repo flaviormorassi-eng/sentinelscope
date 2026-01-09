@@ -15,6 +15,7 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
+  envDir: path.resolve(import.meta.dirname, "."),
   css: {
     // Inline PostCSS config so we can set `from` and silence the warning.
     postcss: {

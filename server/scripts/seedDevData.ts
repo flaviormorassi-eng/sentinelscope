@@ -61,6 +61,26 @@ async function main() {
     } as any);
     sources = [created as any];
     console.log('Event source created (apiKey not stored retrievably)');
+
+    // Add custom static source requested by user
+    const customKey = '8a857ae2d657ae297171d4d5b5227642e50651673aade86b41898eaed6c86e43';
+    const customHash = hashApiKey(customKey);
+    try {
+      await storage.createEventSource({
+        userId,
+        name: 'Custom Static Source',
+        sourceType: 'api',
+        description: 'Static source added via seed',
+        apiKeyHash: customHash,
+        isActive: true,
+        metadata: { static: true }
+      } as any);
+      console.log(`[Seed] Created custom static source. Key: ${customKey}`);
+    } catch (e: any) {
+      if (e.code !== '23505') { // Ignore unique constraint violation
+        console.warn('[Seed] Failed to create custom static source:', e.message);
+      }
+    }
   }
   const source = sources[0];
   if (purgeExisting) {

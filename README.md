@@ -52,10 +52,14 @@ Optional (dev convenience):
 - `DISABLE_RATE_LIMIT=1` to disable `/api` rate limiting
 - `REAL_MONITORING_ALWAYS_ON=true` to force real mode
 
-Stripe:
-- `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLIC_KEY`, `STRIPE_PRICE_*` (stubs used if missing)
-VirusTotal:
-- `VIRUSTOTAL_API_KEY` (optional)
+Stripe (Required for Payments):
+- `STRIPE_SECRET_KEY`: Secret key from Stripe Dashboard
+- `VITE_STRIPE_PUBLIC_KEY`: Publishable key
+- `STRIPE_PRICE_INDIVIDUAL`, `STRIPE_PRICE_SMB`, `STRIPE_PRICE_ENTERPRISE`: Price IDs
+
+VirusTotal (Required for Real Threat Detection):
+- `VIRUSTOTAL_API_KEY`: API key from VirusTotal (free tier works)
+
 
 ## One-Shot Bootstrap
 Provision a user, promote admin, switch to real mode, seed data, and print a JWT:

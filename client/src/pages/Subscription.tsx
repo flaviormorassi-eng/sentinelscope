@@ -62,8 +62,9 @@ export default function Subscription() {
   });
 
   const currentTier = userSubscription?.tier || 'individual';
-  const hasActiveSubscription = userSubscription?.stripeSubscriptionId && 
-    userSubscription?.subscriptionStatus === 'active';
+  // Allow access if status is active, even without Stripe ID (for manual admin overrides)
+  const hasActiveSubscription = userSubscription?.subscriptionStatus === 'active';
+  const hasStripeBilling = !!userSubscription?.stripeSubscriptionId;
 
   const handleChoosePlan = (tier: SubscriptionTier) => {
     setLocation(`/checkout?tier=${tier}`);
@@ -97,26 +98,28 @@ export default function Subscription() {
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>{t('subscription.active.message')}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleManageBilling}
-              disabled={billingPortalMutation.isPending}
-              data-testid="button-manage-billing"
-            >
-              {billingPortalMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('subscription.loading')}
-                </>
-              ) : (
-                <>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  {t('subscription.manageBilling')}
-                  <ExternalLink className="ml-2 h-3 w-3" />
-                </>
-              )}
-            </Button>
+            {hasStripeBilling && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManageBilling}
+                disabled={billingPortalMutation.isPending}
+                data-testid="button-manage-billing"
+              >
+                {billingPortalMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('subscription.loading')}
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    {t('subscription.manageBilling')}
+                    <ExternalLink className="ml-2 h-3 w-3" />
+                  </>
+                )}
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -208,11 +211,11 @@ export default function Subscription() {
             </p>
             <p>
               <strong>Small Business:</strong> Ideal for growing teams and small companies. 
-              Protect up to 50 devices with advanced threat intelligence and priority support.
+              Protect up to 30 devices with advanced threat intelligence and priority support.
             </p>
             <p>
               <strong>Enterprise:</strong> Comprehensive security solution for large organizations. 
-              Unlimited devices, AI-powered threat prediction, and 24/7 dedicated support.
+              Protect up to 100 devices, AI-powered threat prediction, and 24/7 dedicated support.
             </p>
           </div>
         </CardContent>

@@ -87,8 +87,8 @@ export default function Terms() {
                   </h3>
                   <ul className="list-disc list-inside space-y-2 text-muted-foreground mb-4">
                     <li><strong>Individual ($5/month):</strong> {t('terms.subscription.individual', '24-hour real monitoring trial, then demo mode only')}</li>
-                    <li><strong>SMB ($49.99/month):</strong> {t('terms.subscription.smb', 'Unlimited real monitoring, up to 10 devices')}</li>
-                    <li><strong>Enterprise ($199.99/month):</strong> {t('terms.subscription.enterprise', 'Unlimited devices and priority support')}</li>
+                    <li><strong>Small Business ($49.99/month):</strong> {t('terms.subscription.smb', 'Unlimited real monitoring, up to 30 devices')}</li>
+                    <li><strong>Pro ($199.99/month):</strong> {t('terms.subscription.enterprise', 'Up to 100 devices and priority support')}</li>
                   </ul>
                   
                   <h3 className="text-lg font-semibold mb-2">

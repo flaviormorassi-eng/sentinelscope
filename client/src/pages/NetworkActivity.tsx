@@ -15,6 +15,7 @@ import { Pie, PieChart, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Respon
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useMutation } from '@tanstack/react-query';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { BotTrafficChart } from '@/components/BotTrafficChart';
 
 interface BrowsingActivity {
   id: number;
@@ -22,8 +23,8 @@ interface BrowsingActivity {
   domain: string;
   url: string;
   ipAddress: string | null;
-  browserType: string;
-  timestamp: string;
+  browser: string;
+  detectedAt: string;
   isFlagged: boolean;
   metadata: Record<string, any> | null;
 }
@@ -211,21 +212,21 @@ export default function NetworkActivity() {
         return false;
       }
     }
-    if (browserFilter !== 'all' && activity.browserType !== browserFilter) {
+    if (browserFilter !== 'all' && !activity.browser.toLowerCase().includes(browserFilter.toLowerCase())) {
       return false;
     }
     if (flaggedOnly && !activity.isFlagged) {
       return false;
     }
     if (dateFrom) {
-      const activityDate = new Date(activity.timestamp);
+      const activityDate = new Date(activity.detectedAt);
       const fromDate = new Date(dateFrom);
       if (activityDate < fromDate) {
         return false;
       }
     }
     if (dateTo) {
-      const activityDate = new Date(activity.timestamp);
+      const activityDate = new Date(activity.detectedAt);
       const toDate = new Date(dateTo);
       toDate.setHours(23, 59, 59, 999);
       if (activityDate > toDate) {
@@ -236,12 +237,19 @@ export default function NetworkActivity() {
   });
 
   const getBrowserIcon = (browser: string) => {
-    const lowerBrowser = browser.toLowerCase();
+    const lowerBrowser = (browser || '').toLowerCase();
     if (lowerBrowser.includes('chrome')) return Chrome;
     return Globe;
   };
 
-  const uniqueBrowsers = Array.from(new Set(activities.map(a => a.browserType)));
+  const uniqueBrowsers = Array.from(new Set([
+    'Chrome',
+    'Firefox',
+    'Safari',
+    'Edge',
+    'Opera',
+    ...activities.map(a => a.browser)
+  ])).filter(Boolean).sort();
 
   return (
     <div className="space-y-6 p-6">
@@ -311,6 +319,11 @@ export default function NetworkActivity() {
           </Card>
         </div>
       )}
+
+      {/* Bot Traffic Widget */}
+      <div className="h-[300px]">
+         <BotTrafficChart />
+      </div>
 
       <Card>
         <CardHeader>
@@ -649,7 +662,7 @@ export default function NetworkActivity() {
           ) : (
             <div className="space-y-3 max-h-[600px] overflow-y-auto">
               {filteredActivities.map((activity) => {
-                const BrowserIcon = getBrowserIcon(activity.browserType);
+                const BrowserIcon = getBrowserIcon(activity.browser);
                 return (
                   <div
                     key={activity.id}
@@ -680,10 +693,10 @@ export default function NetworkActivity() {
                           </TooltipProvider>
                         )}
                         <Badge variant="secondary" className="text-xs">
-                          {activity.browserType}
+                          {activity.browser}
                         </Badge>
                         <span className="text-xs text-muted-foreground ml-auto">
-                          {format(new Date(activity.timestamp), 'PPp')}
+                          {format(new Date(activity.detectedAt), 'PPp')}
                         </span>
                         {!activity.isFlagged && (
                           <TooltipProvider delayDuration={150}>

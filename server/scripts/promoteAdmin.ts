@@ -6,9 +6,9 @@
  *
  * Requires DATABASE_URL in environment (.env loaded via dev script or manually).
  */
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pgPkg from 'pg';
+const { Pool } = pgPkg;
 import { users } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 
@@ -23,7 +23,6 @@ async function main() {
     process.exit(1);
   }
 
-  neonConfig.webSocketConstructor = ws as any;
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const db = drizzle(pool);
 

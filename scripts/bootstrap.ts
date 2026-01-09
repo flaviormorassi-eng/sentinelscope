@@ -82,7 +82,10 @@ async function run() {
   // 1) Create or sync user
   const user = await httpJson(`${base}/api/auth/user`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'x-user-id': opts.id
+    },
     body: JSON.stringify({ id: opts.id, email: opts.email, displayName: opts.displayName }),
   });
   console.log('[bootstrap] User upserted:', { id: user.id, email: user.email });

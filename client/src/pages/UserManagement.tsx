@@ -31,12 +31,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Edit, Shield } from 'lucide-react';
-import { User, SUBSCRIPTION_TIERS } from '@shared/schema';
+import { Search, Edit, Shield, Lock, Activity } from 'lucide-react';
+import { User, SUBSCRIPTION_TIERS, SecurityAuditLog } from '@shared/schema';
 import { format } from 'date-fns';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function UserManagement() {
   const { t } = useTranslation();
@@ -47,7 +57,10 @@ export default function UserManagement() {
   const [search, setSearch] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedTier, setSelectedTier] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [mfaResetUser, setMfaResetUser] = useState<User | null>(null);
+  const [viewingLogsUser, setViewingLogsUser] = useState<User | null>(null);
 
   const { data: currentUser, isLoading: userLoading } = useQuery<User>({
     queryKey: [`/api/user/${user?.uid}`],
@@ -63,6 +76,11 @@ export default function UserManagement() {
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ['/api/admin/users'],
     enabled: currentUser?.isAdmin === true,
+  });
+
+  const { data: userLogs = [], isLoading: logsLoading } = useQuery<SecurityAuditLog[]>({
+    queryKey: [`/api/admin/users/${viewingLogsUser?.id}/logs`],
+    enabled: !!viewingLogsUser,
   });
 
   const updateUserMutation = useMutation({
@@ -81,6 +99,26 @@ export default function UserManagement() {
       toast({
         title: 'Error',
         description: error.message || 'Failed to update user',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const resetMfaMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest('POST', `/api/admin/users/${userId}/reset-mfa`);
+    },
+    onSuccess: () => {
+      setMfaResetUser(null);
+      toast({
+        title: "MFA Reset Successful",
+        description: "The user's MFA settings have been cleared. They can now set up MFA again.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reset MFA',
         variant: 'destructive',
       });
     },
@@ -127,6 +165,7 @@ export default function UserManagement() {
   const handleEditUser = (user: User) => {
     setEditingUser(user);
     setSelectedTier(user.subscriptionTier);
+    setSelectedStatus(user.subscriptionStatus || 'inactive');
     setIsAdmin(user.isAdmin);
   };
 
@@ -137,6 +176,7 @@ export default function UserManagement() {
       id: editingUser.id,
       updates: {
         subscriptionTier: selectedTier,
+        subscriptionStatus: selectedStatus,
         isAdmin,
       },
     });
@@ -268,11 +308,29 @@ export default function UserManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="individual">Individual - $9.99/mo</SelectItem>
+                    <SelectItem value="individual">Individual - $5.00/mo</SelectItem>
                     <SelectItem value="smb">Small Business - $49.99/mo</SelectItem>
-                    <SelectItem value="enterprise">Enterprise - $199.99/mo</SelectItem>
+                    <SelectItem value="enterprise">Pro - $199.99/mo</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Subscription Status</Label>
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger id="status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="past_due">Past Due</SelectItem>
+                    <SelectItem value="canceled">Canceled</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Set to "Active" to grant access without Stripe payment (e.g. for complimentary accounts).
+                </p>
               </div>
 
               <div className="flex items-center justify-between p-4 border rounded-md">
@@ -299,6 +357,40 @@ export default function UserManagement() {
                   )}
                 </Button>
               </div>
+
+              <div className="flex items-center justify-between p-4 border rounded-md border-destructive/20 bg-destructive/5">
+                <div>
+                  <Label className="font-medium text-destructive">Emergency MFA Reset</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Clear all MFA factors for this user.
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setMfaResetUser(editingUser)}
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Reset MFA
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border rounded-md">
+                <div>
+                  <Label className="font-medium">Activity Logs</Label>
+                  <p className="text-sm text-muted-foreground">
+                    View recent security events for this user.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setViewingLogsUser(editingUser)}
+                >
+                  <Activity className="h-4 w-4 mr-2" />
+                  View Logs
+                </Button>
+              </div>
             </div>
           )}
 
@@ -320,6 +412,83 @@ export default function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!viewingLogsUser} onOpenChange={(open) => !open && setViewingLogsUser(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Activity Logs: {viewingLogsUser?.email}</DialogTitle>
+            <DialogDescription>
+              Recent security events and actions performed by this user.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="max-h-[60vh] overflow-y-auto border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>IP Address</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {logsLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ) : userLogs.length > 0 ? (
+                  userLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="whitespace-nowrap text-xs">
+                        {format(new Date(log.timestamp), 'MMM d, HH:mm:ss')}
+                      </TableCell>
+                      <TableCell className="font-medium">{log.eventType}</TableCell>
+                      <TableCell>{log.action}</TableCell>
+                      <TableCell>
+                        <Badge variant={log.status === 'success' ? 'outline' : 'destructive'}>
+                          {log.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs font-mono">{log.ipAddress || '-'}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No recent activity logs found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!mfaResetUser} onOpenChange={(open) => !open && setMfaResetUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset MFA for {mfaResetUser?.email}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The user will be required to set up Multi-Factor Authentication again on their next login.
+              Use this only if the user has lost access to their authentication device.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => mfaResetUser && resetMfaMutation.mutate(mfaResetUser.id)}
+            >
+              {resetMfaMutation.isPending ? "Resetting..." : "Yes, Reset MFA"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,27 +1,101 @@
 {
-  "_meta": { "language": "de", "note": "Initial German locale. Many strings copied; TODO translate fully." },
-  "app": {"name": "SentinelScope", "tagline": "Erweiterte Cybersecurity-Überwachung"},
-  "authFailures": {"title": "Authentifizierungsfehler", "description": "Letzte fehlgeschlagene Ereignisse (nur Admin)", "unauthorized": "Keine Berechtigung", "empty": "Keine Fehler", "loading": "Lädt…", "headers": {"time": "Zeit", "action": "Aktion", "ip": "IP", "severity": "Schwere", "resource": "Ressource"}},
-  "threats": {"title": "Bedrohungsprotokoll", "severityLevels": {"critical": "Kritisch", "high": "Hoch", "medium": "Mittel", "low": "Niedrig"}},
-  "common": {"loading": "Lädt…", "error": "Fehler", "retry": "Erneut versuchen", "close": "Schließen", "save": "Speichern", "cancel": "Abbrechen"},
+  "_meta": { "language": "de", "note": "German locale." },
+  "app": {
+    "name": "SentinelScope",
+    "tagline": "Erweiterte Cybersicherheitsüberwachung"
+  },
+  "authFailures": {
+    "title": "Authentifizierungsfehler",
+    "description": "Kürzliche fehlgeschlagene Authentifizierungs- und API-Schlüssel-Ereignisse (nur Admin).",
+    "unauthorized": "Sie haben keine Berechtigung, Authentifizierungs-Audit-Protokolle anzuzeigen.",
+    "empty": "Keine Fehler aufgezeichnet.",
+    "loading": "Laden...",
+    "headers": {
+      "time": "Zeit",
+      "action": "Aktion",
+      "ip": "IP",
+      "severity": "Schweregrad",
+      "resource": "Ressource"
+    }
+  },
   "auth": {
     "login": "Anmelden",
-    "signUp": "Registrieren",
+    "logout": "Abmelden",
+    "loginWithGoogle": "Weiter mit Google",
+    "welcome": "Willkommen bei SentinelScope",
+    "welcomeMessage": "Überwachen und schützen Sie Ihre Systeme in Echtzeit",
+    "loggingIn": "Anmelden...",
+    "loginError": "Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "email": "E-Mail",
     "password": "Passwort",
+    "signUp": "Registrieren",
+    "noAccount": "Kein Konto?",
+    "haveAccount": "Haben Sie bereits ein Konto?",
+    "mfaRequired": "Zwei-Faktor-Authentifizierung erforderlich",
     "forgotPassword": "Passwort vergessen?",
-    "welcomeMessage": "Überwachen und schützen Sie Ihre Systeme in Echtzeit",
-    "resetPasswordInstructions": "Geben Sie Ihre E-Mail ein, um das Passwort zurückzusetzen",
-    "loggingIn": "Anmelden...",
-    "resetPassword": "Passwort zurücksetzen",
-    "threatUnblocked": "Bedrohung erfolgreich entsperrt"
+    "resetPassword": "Passwort zurücksetzen"
   },
-  "eventSources": {
-    "title": "Ereignisquellen",
-    "description": "Konfigurieren Sie Sicherheitsereignisdatenquellen.",
-    "createNew": "Quelle erstellen",
-    "rotateKey": "Schlüssel rotieren",
-    "forceExpire": "Ablauf erzwingen"
+  "nav": {
+    "dashboard": "Dashboard",
+    "securityCenter": "Sicherheitscenter",
+    "threats": "Bedrohungsprotokoll",
+    "alerts": "Warnungen",
+    "map": "Bedrohungskarte",
+    "networkActivity": "Netzwerkaktivität",
+    "virustotal": "VirusTotal Scan",
+    "eventSources": "Ereignisquellen",
+    "reports": "Berichte",
+    "settings": "Einstellungen",
+    "adminPanel": "Admin-Panel"
   },
-  "settings": {"languages": {"en": "English", "pt": "Português (Brasil)", "de": "Deutsch"}}
+  "dashboard": {
+    "title": "Sicherheits-Dashboard",
+    "activeThreats": "Aktive Bedrohungen",
+    "threatsBlocked": "Blockierte Bedrohungen",
+    "alertsToday": "Warnungen Heute",
+    "systemStatus": "Systemstatus",
+    "threatFeed": "Live-Bedrohungs-Feed",
+    "recentAlerts": "Kürzliche Warnungen",
+    "noThreats": "Keine aktiven Bedrohungen erkannt",
+    "allSystemsOperational": "Alle Systeme betriebsbereit"
+  },
+  "threats": {
+    "title": "Bedrohungsaktivitätsprotokoll",
+    "timestamp": "Zeitstempel",
+    "severity": "Schweregrad",
+    "type": "Typ",
+    "source": "Quell-IP",
+    "target": "Ziel",
+    "status": "Status",
+    "actions": "Aktionen",
+    "noThreats": "Keine Bedrohungen gefunden",
+    "severityLevels": {
+      "critical": "Kritisch",
+      "high": "Hoch",
+      "medium": "Mittel",
+      "low": "Niedrig"
+    },
+    "statuses": {
+      "detected": "Erkannt",
+      "blocked": "Blockiert",
+      "resolved": "Gelöst"
+    }
+  },
+  "alerts": {
+    "title": "Sicherheitswarnungen",
+    "markAllRead": "Alle als gelesen markieren",
+    "clearAll": "Alle löschen",
+    "noAlerts": "Keine Warnungen zur Zeit",
+    "newAlert": "Neue Warnung"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "profile": "Profil",
+    "preferences": "Präferenzen",
+    "notifications": "Benachrichtigungen",
+    "language": "Sprache",
+    "theme": "Thema",
+    "save": "Änderungen speichern",
+    "saved": "Einstellungen erfolgreich gespeichert"
+  }
 }

@@ -26,13 +26,17 @@ const COLOR_MAP = {
 type Severity = 'critical' | 'high' | 'medium' | 'low';
 export const SeverityDistributionBar: React.FC<{ className?: string; selectedSeverity?: Severity; onSelectSeverity?: (s?: Severity) => void }> = ({ className, selectedSeverity, onSelectSeverity }) => {
   const historyQuery = useQuery({ queryKey: ['/api/stats/history?hours=24&interval=hour&includeDerived=true'] });
-  const history = historyQuery.data as HistoryBucket[] | undefined;
+  const history = Array.isArray(historyQuery.data) ? (historyQuery.data as HistoryBucket[]) : undefined;
   const last = history?.[history.length - 1];
 
-  const pctCritical = last?.severityPctCritical ?? (function() { const total = (last?.severityCritical||0)+(last?.severityHigh||0)+(last?.severityMedium||0)+(last?.severityLow||0); return total? (last!.severityCritical!/total)*100 : 0; })();
-  const pctHigh = last?.severityPctHigh ?? (function() { const total = (last?.severityCritical||0)+(last?.severityHigh||0)+(last?.severityMedium||0)+(last?.severityLow||0); return total? (last!.severityHigh!/total)*100 : 0; })();
-  const pctMedium = last?.severityPctMedium ?? (function() { const total = (last?.severityCritical||0)+(last?.severityHigh||0)+(last?.severityMedium||0)+(last?.severityLow||0); return total? (last!.severityMedium!/total)*100 : 0; })();
-  const pctLow = last?.severityPctLow ?? (function() { const total = (last?.severityCritical||0)+(last?.severityHigh||0)+(last?.severityMedium||0)+(last?.severityLow||0); return total? (last!.severityLow!/total)*100 : 0; })();
+  const calculatePct = (val: number | undefined, total: number) => total ? ((val || 0) / total) * 100 : 0;
+
+  const total = (last?.severityCritical || 0) + (last?.severityHigh || 0) + (last?.severityMedium || 0) + (last?.severityLow || 0);
+
+  const pctCritical = last?.severityPctCritical ?? calculatePct(last?.severityCritical, total);
+  const pctHigh = last?.severityPctHigh ?? calculatePct(last?.severityHigh, total);
+  const pctMedium = last?.severityPctMedium ?? calculatePct(last?.severityMedium, total);
+  const pctLow = last?.severityPctLow ?? calculatePct(last?.severityLow, total);
 
   const loading = historyQuery.isLoading;
   const empty = !loading && (!last || (pctCritical + pctHigh + pctMedium + pctLow) === 0);

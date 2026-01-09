@@ -507,13 +507,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
   }
-  // Authentication - User Management (no auth required for creating user)
-  app.post("/api/auth/user", async (req, res) => {
+  // Authentication - User Management
+  app.post("/api/auth/user", authenticateUser, async (req: AuthRequest, res) => {
     try {
-      const { id, email, displayName, photoURL } = req.body;
+      const id = req.userId!;
+      const { email, displayName, photoURL } = req.body;
       
-      if (!id || !email) {
-        return res.status(400).json({ error: 'id and email required' });
+      if (!email) {
+        return res.status(400).json({ error: 'email required' });
       }
       
       // Check if user already exists
@@ -1338,6 +1339,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/threats/recent", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
+      const { limit } = req.query;
+      const parsedLimit = limit ? Math.min(100, Math.max(1, parseInt(limit as string, 10))) : 10;
       
       // Check monitoring mode
       const preferences = await storage.getUserPreferences(userId);
@@ -1345,9 +1348,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let threats: any[];
       if (monitoringMode === 'real') {
-        threats = await storage.getRecentThreatEvents(userId, 10);
+        threats = await storage.getRecentThreatEventsLimit(userId, parsedLimit);
       } else {
-        threats = await storage.getRecentThreats(userId, 10);
+        threats = await storage.getRecentThreats(userId, parsedLimit);
       }
   safeJson(res, threats);
     } catch (error: any) {
@@ -1775,7 +1778,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.userId!;
       const { type, period, format } = req.body;
 
-      const threats = await storage.getThreats(userId);
+      let threats = await storage.getThreats(userId);
+      const preferences = await storage.getUserPreferences(userId);
+      const isDemo = !preferences || preferences.monitoringMode === 'demo';
+      
+      // If no threats found AND user is in demo mode, generate sample data for the report
+      // so the user sees what the report looks like instead of a blank page.
+      if (threats.length === 0 && isDemo) {
+        const now = new Date();
+        const generateMockThreat = (offsetMinutes: number, severity: string, type: string, ip: string, blocked: boolean): any => ({
+          id: `demo-${offsetMinutes}`,
+          userId,
+          timestamp: new Date(now.getTime() - offsetMinutes * 60000),
+          severity,
+          type,
+          sourceIP: ip,
+          targetIP: "192.168.1.105",
+          sourceCountry: "Unknown",
+          sourceCity: "Unknown", 
+          sourceLat: "0",
+          sourceLon: "0",
+          status: blocked ? "blocked" : "detected",
+          description: `Simulated ${type} attack detected`,
+          blocked,
+          sourceURL: null, 
+          deviceName: "Server-01",
+          threatVector: "network"
+        });
+
+        threats = [
+          generateMockThreat(5, "critical", "SQL Injection", "45.33.22.11", true),
+          generateMockThreat(12, "high", "Brute Force", "192.168.1.200", true),
+          generateMockThreat(45, "medium", "Port Scan", "10.0.0.55", false),
+          generateMockThreat(120, "critical", "Ransomware Signature", "88.22.11.99", true),
+          generateMockThreat(180, "low", "Unauthorized Access Attempt", "5.5.5.5", true),
+        ]; // Cast to any to bypass strict type check for partial mocks if needed, but these fields match schema
+      }
       
       let reportData: Buffer | string;
       let contentType: string;
@@ -1940,6 +1978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Validate request body - only allow specific fields
     const updateUserSchema = z.object({
       subscriptionTier: z.enum(['individual', 'smb', 'enterprise']).optional(),
+      subscriptionStatus: z.enum(['active', 'inactive', 'past_due', 'canceled']).optional(),
       isAdmin: z.boolean().optional(),
       language: z.enum(['en', 'pt']).optional(),
       theme: z.enum(['light', 'dark']).optional(),
@@ -1973,6 +2012,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updatedUser);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/reset-mfa", authenticateUser, requireAdmin, requireMfaFresh({ windowSeconds: 900 }), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Log the admin action
+      await storage.createAuditLog({
+        adminId: req.userId!,
+        action: 'reset_user_mfa',
+        targetUserId: id,
+        details: 'Emergency MFA reset initiated by admin',
+      });
+      
+      await storage.resetUserMfa(id);
+      
+      res.json({ success: true, message: 'MFA reset successfully' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/admin/users/:id/logs", authenticateUser, requireAdmin, requireMfaFresh({ windowSeconds: 900 }), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      
+      const logs = await storage.getSecurityAuditLogs({
+        userId: id,
+        limit: limit
+      });
+      
+      res.json(logs);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -2086,7 +2161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const u of allUsers) {
         const activity = await storage.getBrowsingActivity(u.id);
         for (const a of activity) {
-          rows.push({ userId: u.id, userEmail: (u as any).email, ...a });
+          rows.push({ userEmail: (u as any).email, ...a });
         }
       }
       rows.sort((a,b)=>+new Date(b.detectedAt)-+new Date(a.detectedAt));
@@ -2138,49 +2213,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { decision, reason } = validation.data;
       const userId = req.userId!;
       
-      // Get current threat
+      console.log(`[ThreatDecision] Processing decision '${decision}' for ID: ${id} by user: ${userId}`);
+
+      // Try to find as a classic Threat (Demo Mode)
       const threat = await storage.getThreatById(id);
-      if (!threat) {
-        return res.status(404).json({ error: 'Threat not found' });
+      
+      if (threat) {
+        console.log(`[ThreatDecision] Found classic Threat: ${id}`);
+        // Verify ownership (users can only manage their own threats)
+        if (threat.userId !== userId) {
+          console.log(`[ThreatDecision] Unauthorized access to Threat ${id}`);
+          return res.status(403).json({ error: 'Unauthorized to manage this threat' });
+        }
+
+        const previousStatus = threat.status;
+        
+        // Determine new status and blocked state
+        let newStatus = threat.status;
+        let blocked = threat.blocked;
+        
+        if (decision === 'block') {
+          newStatus = 'blocked';
+          blocked = true;
+        } else if (decision === 'allow') {
+          newStatus = 'allowed';
+          blocked = false;
+        } else if (decision === 'unblock') {
+          newStatus = 'detected';
+          blocked = false;
+        }
+
+        // Update threat status
+        await storage.updateThreatStatus(id, newStatus, blocked);
+        
+        // Record decision
+        await storage.recordThreatDecision({
+          threatId: id,
+          decidedBy: userId,
+          decision,
+          reason,
+          previousStatus,
+        });
+        
+        // Get updated threat
+        const updatedThreat = await storage.getThreatById(id);
+        return res.json(updatedThreat);
       }
 
-      // Verify ownership (users can only manage their own threats)
-      if (threat.userId !== userId) {
-        return res.status(403).json({ error: 'Unauthorized to manage this threat' });
+      // If not found, try to find as a ThreatEvent (Real Mode)
+      const threatEvent = await storage.getThreatEventById(id);
+      
+      if (threatEvent) {
+        console.log(`[ThreatDecision] Found ThreatEvent: ${id}`);
+        // Verify ownership
+        if (threatEvent.userId !== userId) {
+          console.log(`[ThreatDecision] Unauthorized access to ThreatEvent ${id}`);
+          return res.status(403).json({ error: 'Unauthorized to manage this threat' });
+        }
+
+        // Determine new status and blocked state
+        let newStatus = threatEvent.mitigationStatus;
+        let blocked = threatEvent.autoBlocked;
+        
+        if (decision === 'block') {
+          newStatus = 'blocked';
+          blocked = true;
+        } else if (decision === 'allow') {
+          newStatus = 'allowed';
+          blocked = false;
+        } else if (decision === 'unblock') {
+          newStatus = 'detected';
+          blocked = false;
+        }
+
+        // Update threat event status
+        await storage.updateThreatEventStatus(id, newStatus, blocked, {
+          reviewedBy: userId,
+          reviewNotes: reason
+        });
+        
+        // Get updated threat event
+        const updatedThreatEvent = await storage.getThreatEventById(id);
+        
+        // Map to Threat shape for frontend compatibility
+        const mappedThreat = {
+            id: updatedThreatEvent!.id,
+            userId: updatedThreatEvent!.userId,
+            timestamp: updatedThreatEvent!.createdAt,
+            severity: updatedThreatEvent!.severity,
+            type: updatedThreatEvent!.threatType,
+            threatType: updatedThreatEvent!.threatType,
+            status: updatedThreatEvent!.mitigationStatus,
+            description: updatedThreatEvent!.threatType,
+            blocked: !!updatedThreatEvent!.autoBlocked,
+        };
+        
+        return res.json(mappedThreat);
       }
 
-      const previousStatus = threat.status;
-      
-      // Determine new status and blocked state
-      let newStatus = threat.status;
-      let blocked = threat.blocked;
-      
-      if (decision === 'block') {
-        newStatus = 'blocked';
-        blocked = true;
-      } else if (decision === 'allow') {
-        newStatus = 'allowed';
-        blocked = false;
-      } else if (decision === 'unblock') {
-        newStatus = 'detected';
-        blocked = false;
-      }
-
-      // Update threat status
-      await storage.updateThreatStatus(id, newStatus, blocked);
-      
-      // Record decision
-      await storage.recordThreatDecision({
-        threatId: id,
-        decidedBy: userId,
-        decision,
-        reason,
-        previousStatus,
-      });
-      
-      // Get updated threat
-      const updatedThreat = await storage.getThreatById(id);
-      res.json(updatedThreat);
+      return res.status(404).json({ error: 'Threat not found' });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -2216,57 +2347,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { decision, reason } = validation.data;
       
-      // Get current threat
+      // Try to find as a classic Threat (Demo Mode)
       const threat = await storage.getThreatById(id);
-      if (!threat) {
-        return res.status(404).json({ error: 'Threat not found' });
+      
+      if (threat) {
+        const previousStatus = threat.status;
+        
+        // Determine new status and blocked state
+        let newStatus = threat.status;
+        let blocked = threat.blocked;
+        
+        if (decision === 'block') {
+          newStatus = 'blocked';
+          blocked = true;
+        } else if (decision === 'allow') {
+          newStatus = 'allowed';
+          blocked = false;
+        } else if (decision === 'unblock') {
+          newStatus = 'detected';
+          blocked = false;
+        }
+
+        // Update threat status
+        await storage.updateThreatStatus(id, newStatus, blocked);
+        
+        // Record decision
+        await storage.recordThreatDecision({
+          threatId: id,
+          decidedBy: req.userId!,
+          decision,
+          reason,
+          previousStatus,
+        });
+        
+        // Log admin action
+        await storage.createAuditLog({
+          adminId: req.userId!,
+          action: `threat_${decision}`,
+          details: JSON.stringify({ 
+            threatId: id, 
+            sourceIP: threat.sourceIP,
+            type: threat.type,
+            severity: threat.severity,
+            reason 
+          }),
+        });
+        
+        // Get updated threat
+        const updatedThreat = await storage.getThreatById(id);
+        return res.json(updatedThreat);
       }
 
-      const previousStatus = threat.status;
+      // If not found, try to find as a ThreatEvent (Real Mode)
+      const threatEvent = await storage.getThreatEventById(id);
       
-      // Determine new status and blocked state
-      let newStatus = threat.status;
-      let blocked = threat.blocked;
-      
-      if (decision === 'block') {
-        newStatus = 'blocked';
-        blocked = true;
-      } else if (decision === 'allow') {
-        newStatus = 'allowed';
-        blocked = false;
-      } else if (decision === 'unblock') {
-        newStatus = 'detected';
-        blocked = false;
+      if (threatEvent) {
+        // Determine new status and blocked state
+        let newStatus = threatEvent.mitigationStatus;
+        let blocked = threatEvent.autoBlocked;
+        
+        if (decision === 'block') {
+          newStatus = 'blocked';
+          blocked = true;
+        } else if (decision === 'allow') {
+          newStatus = 'allowed';
+          blocked = false;
+        } else if (decision === 'unblock') {
+          newStatus = 'detected';
+          blocked = false;
+        }
+
+        // Update threat event status
+        await storage.updateThreatEventStatus(id, newStatus, blocked, {
+          reviewedBy: req.userId!,
+          reviewNotes: reason
+        });
+        
+        // Log admin action
+        await storage.createAuditLog({
+          adminId: req.userId!,
+          action: `threat_${decision}`,
+          details: JSON.stringify({ 
+            threatId: id, 
+            type: threatEvent.threatType,
+            severity: threatEvent.severity,
+            reason 
+          }),
+        });
+        
+        // Get updated threat event
+        const updatedThreatEvent = await storage.getThreatEventById(id);
+        
+        // Map to Threat shape for frontend compatibility
+        const mappedThreat = {
+            id: updatedThreatEvent!.id,
+            userId: updatedThreatEvent!.userId,
+            timestamp: updatedThreatEvent!.createdAt,
+            severity: updatedThreatEvent!.severity,
+            type: updatedThreatEvent!.threatType,
+            threatType: updatedThreatEvent!.threatType,
+            status: updatedThreatEvent!.mitigationStatus,
+            description: updatedThreatEvent!.threatType,
+            blocked: !!updatedThreatEvent!.autoBlocked,
+        };
+        
+        return res.json(mappedThreat);
       }
 
-      // Update threat status
-      await storage.updateThreatStatus(id, newStatus, blocked);
-      
-      // Record decision
-      await storage.recordThreatDecision({
-        threatId: id,
-        decidedBy: req.userId!,
-        decision,
-        reason,
-        previousStatus,
-      });
-      
-      // Log admin action
-      await storage.createAuditLog({
-        adminId: req.userId!,
-        action: `threat_${decision}`,
-        details: JSON.stringify({ 
-          threatId: id, 
-          sourceIP: threat.sourceIP,
-          type: threat.type,
-          severity: threat.severity,
-          reason 
-        }),
-      });
-      
-      // Get updated threat
-      const updatedThreat = await storage.getThreatById(id);
-      res.json(updatedThreat);
+      return res.status(404).json({ error: 'Threat not found' });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -2431,6 +2619,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       const { name, sourceType, description, metadata } = validation.data;
+
+      // Enforce subscription device limits
+      const currentSources = await storage.getEventSources(userId);
+      const tier = (user.subscriptionTier as SubscriptionTier) || 'individual';
+      const tierConfig = SUBSCRIPTION_TIERS[tier];
+      
+      if (tierConfig && currentSources.length >= tierConfig.maxDevices) {
+        return res.status(403).json({
+          error: 'Device limit reached',
+          code: 'device_limit_reached',
+          message: `Your ${tierConfig.name} plan allows up to ${tierConfig.maxDevices} devices. Please upgrade to add more.`,
+          currentCount: currentSources.length,
+          limit: tierConfig.maxDevices
+        });
+      }
 
       // Generate API key for this source
       const apiKey = generateApiKey();
@@ -3140,6 +3343,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/network/bot-stats", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      
+      // Real mode check? 
+      // Ideally we want meaningful data in demo mode too.
+      const preferences = await storage.getUserPreferences(userId);
+      if (preferences?.monitoringMode !== 'real') {
+        // Return mock data for powerful demo impact
+        return safeJson(res, {
+            total: 12540,
+            bots: 4389,
+            humans: 8151,
+            botTypes: [
+                { browser: 'Googlebot/2.1', count: 1205 },
+                { browser: 'Python-requests/2.28', count: 850 },
+                { browser: 'AhrefsBot/7.0', count: 620 },
+                { browser: 'HeadlessChrome/112.0', count: 410 },
+                { browser: 'Bytespider', count: 320 }
+            ]
+        });
+      }
+
+      const stats = await storage.getBotStats(userId);
+      safeJson(res, stats);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/browsing/flag", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
@@ -3191,6 +3424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apiKey = req.headers['x-api-key'] as string;
       
       if (!apiKey) {
+        console.log('[Ingest] Missing API key');
         try {
           await storage.createSecurityAuditLog({
             userId: null,
@@ -3213,6 +3447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify API key and get event source
       const eventSource = await storage.verifyEventSourceApiKey(apiKey);
       if (!eventSource) {
+        console.log('[Ingest] Invalid API key:', apiKey.substring(0, 10) + '...');
         try {
           await storage.createSecurityAuditLog({
             userId: null,

@@ -24,7 +24,7 @@ const COLORS = {
 type Severity = 'critical' | 'high' | 'medium' | 'low';
 export const SeverityDonutChart: React.FC<{ className?: string; selectedSeverity?: Severity; onSelectSeverity?: (s?: Severity) => void }> = ({ className, selectedSeverity, onSelectSeverity }) => {
   const historyQuery = useQuery({ queryKey: ['/api/stats/history?hours=24&interval=hour&includeDerived=true'] });
-  const history = historyQuery.data as HistoryBucket[] | undefined;
+  const history = Array.isArray(historyQuery.data) ? (historyQuery.data as HistoryBucket[]) : undefined;
   const last = history?.[history.length - 1];
 
   const totals = {

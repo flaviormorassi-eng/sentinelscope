@@ -14,8 +14,8 @@
  * 3. Execute: node network-monitoring-agent.js --api-key SUA_API_KEY --simulate
  */
 
-const axios = require('axios');
-const os = require('os');
+import os from 'os';
+import process from 'process';
 
 // Configuração
 const API_URL = process.env.SENTINELSCOPE_API_URL || 'http://localhost:3001/api/browsing/ingest';
@@ -71,35 +71,32 @@ class NetworkMonitorAgent {
       const batch = this.eventQueue.splice(0, BATCH_SIZE);
 
       try {
-        const response = await axios.post(
-          this.apiUrl,
-          { events: batch },
-          {
-            headers: {
-              'X-API-Key': this.apiKey,
-              'Content-Type': 'application/json'
-            },
-            timeout: 10000
-          }
-        );
+        const response = await fetch(this.apiUrl, {
+          method: 'POST',
+          headers: {
+            'X-API-Key': this.apiKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ events: batch })
+        });
 
-        if (response.status === 200) {
-          console.log(`✓ Enviados ${response.data.received || 0} eventos com sucesso`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✓ Enviados ${data.received || 0} eventos com sucesso`);
+        } else {
+          const errorText = await response.text();
+          if (response.status === 403) {
+             console.error('✗ Erro: Permissão negada');
+             console.error('  → Ative o monitoramento de rede nas Configurações do SentinelScope');
+          } else {
+             console.error(`✗ Erro HTTP ${response.status}:`, errorText);
+          }
         }
       } catch (error) {
-        if (error.response) {
-          if (error.response.status === 403) {
-            console.error('✗ Erro:', error.response.data.message || 'Permissão negada');
-            console.error('  → Ative o monitoramento de rede nas Configurações do SentinelScope');
-          } else {
-            console.error(`✗ Erro HTTP ${error.response.status}:`, error.response.data);
-          }
-        } else {
           console.error('✗ Erro ao enviar eventos:', error.message);
           // Re-adiciona eventos à fila para tentar novamente
           this.eventQueue.unshift(...batch);
-        }
-        break;
+          break;
       }
     }
   }
@@ -118,6 +115,44 @@ class NetworkMonitorAgent {
     });
   }
 
+  async sendSystemLog(event) {
+    // Derive base URL from browsing URL (hacky but works for this example)
+    const baseUrl = this.apiUrl.includes('/api/browsing/ingest') 
+        ? this.apiUrl.replace('/api/browsing/ingest', '') 
+        : 'http://localhost:3001';
+    
+    const systemLogUrl = `${baseUrl}/api/ingest/events`;
+    
+    try {
+        const response = await fetch(systemLogUrl, {
+            method: 'POST',
+            headers: {
+                'X-API-Key': this.apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(event)
+        });
+        if (!response.ok) {
+            console.error('Failed to send system log:', await response.text());
+        }
+    } catch (e) {
+        console.error('Error sending system log', e.message);
+    }
+  }
+
+  async simulateSystemLogs() {
+      const logs = [
+          { eventType: 'system_log', severity: 'low', message: 'User login successful', metadata: { user: 'admin' } },
+          { eventType: 'firewall_log', severity: 'medium', message: 'Port scan detected', metadata: { src_ip: '192.168.1.50' } },
+          { eventType: 'antivirus_log', severity: 'high', message: 'Malware detected', metadata: { file: 'virus.exe' } }
+      ];
+      
+      for (const log of logs) {
+          await this.sendSystemLog(log);
+      }
+      console.log(`📊 Sent ${logs.length} system logs (for threat detection)`);
+  }
+
   async run(simulationMode = false) {
     console.log('🔍 SentinelScope Network Monitoring Agent iniciado');
     console.log(`📡 API URL: ${this.apiUrl}`);
@@ -128,7 +163,8 @@ class NetworkMonitorAgent {
       if (simulationMode) {
         // Modo de teste: gera dados de exemplo
         this.simulateBrowsingData();
-        console.log(`📊 Gerados ${this.eventQueue.length} eventos de teste`);
+        await this.simulateSystemLogs();
+        console.log(`📊 Gerados ${this.eventQueue.length} eventos de navegação`);
       } else {
         // Modo real: monitora tráfego de rede
         console.log('⚠️  Monitoramento real ainda não implementado neste exemplo');

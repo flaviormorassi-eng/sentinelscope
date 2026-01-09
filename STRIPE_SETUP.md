@@ -9,8 +9,8 @@ In Stripe Dashboard (Test mode first):
 | Plan | Name | Monthly Price | Notes |
 |------|------|---------------|-------|
 | Individual | SentinelScope Individual | 5.00 USD | Up to 3 devices |
-| Small Business | SentinelScope Small Business | 49.99 USD | Up to 50 devices |
-| Enterprise | SentinelScope Enterprise | 199.99 USD | Unlimited devices |
+| Small Business | SentinelScope Small Business | 49.99 USD | Up to 30 devices |
+| Pro | SentinelScope Pro | 199.99 USD | Up to 100 devices |
 
 Steps:
 1. Products → Add product

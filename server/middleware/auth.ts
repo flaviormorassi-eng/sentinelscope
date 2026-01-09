@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { auth as firebaseAuth } from '../firebase';
 import { storage } from '../storage';
 
 export interface AuthRequest extends Request { userId?: string }
@@ -25,13 +26,27 @@ export async function authenticateUser(req: AuthRequest, res: Response, next: Ne
     }
 
     let userId: string | undefined;
-    if (token && JWT_SECRET) {
+    if (token) {
+      // 1. Try Firebase Admin verification (for real Google/Firebase tokens)
       try {
-        const decoded: any = jwt.verify(token, JWT_SECRET);
-        userId = decoded.sub || decoded.uid || decoded.userId;
-      } catch (e) {
-        await logAuthFailure('invalid_or_expired_token', req, 'medium');
-        return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+        const decodedToken = await firebaseAuth.verifyIdToken(token);
+        userId = decodedToken.uid;
+      } catch (firebaseError) {
+        // 2. Fallback to local JWT verification (for dev tokens or legacy)
+        if (JWT_SECRET) {
+          try {
+            const decoded: any = jwt.verify(token, JWT_SECRET);
+            userId = decoded.sub || decoded.uid || decoded.userId;
+          } catch (jwtError) {
+            // Both verifications failed
+            await logAuthFailure('invalid_or_expired_token', req, 'medium');
+            return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+          }
+        } else {
+          // No local secret to fallback to
+          await logAuthFailure('invalid_or_expired_token', req, 'medium');
+          return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+        }
       }
     } else if (ALLOW_LEGACY) {
         const legacyId = req.headers['x-user-id'] as string | undefined;

@@ -2,20 +2,24 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-// TODO: Add SDKs for Firebase products that you want to use
+// Add other Firebase products here as needed (e.g., Firestore, Functions)
 // https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyD-oemnIwBy9W7bpZAmg4hdOPi-MAkPhb8",
-  authDomain: "sentinelscope-fb845.firebaseapp.com",
-  projectId: "sentinelscope-fb845",
-  storageBucket: "sentinelscope-fb845.firebasestorage.app",
-  messagingSenderId: "880809360603",
-  appId: "1:880809360603:web:cc8b31cfd5100432eca0fe",
-  measurementId: "G-HS545JSSFV"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
+
+if (!firebaseConfig.apiKey) {
+  console.warn("Firebase config missing. Check your .env file.");
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
