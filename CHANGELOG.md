@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.1.1 - 2026-02-19
+
+### Fixed
+- Resolved TypeScript build break caused by unsupported `Button` `variant="link"` usage in triage pages.
+- Updated affected actions to use supported button variants while preserving link-like interaction styling.
+
 ## v1.1.0 - 2026-02-19
 
 ### Added
