@@ -6,7 +6,8 @@
   "permissions": [
     "tabs",
     "storage",
-    "webNavigation"
+    "webNavigation",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "<all_urls>"

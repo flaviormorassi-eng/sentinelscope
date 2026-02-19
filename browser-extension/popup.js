@@ -27,23 +27,69 @@ chrome.storage.local.get(['apiKey', 'apiUrl', 'isEnabled'], (result) => {
 });
 
 // Atualiza status
-function updateStatus() {
-  chrome.runtime.sendMessage({ action: 'getStatus' }, (response) => {
-    if (response) {
-      // Status ativo/inativo
-      if (response.isEnabled) {
-        statusBadge.textContent = 'Ativo';
-        statusBadge.className = 'badge active';
+async function updateStatus() {
+  // First, rely on local storage for configuration
+  chrome.storage.local.get(['isEnabled', 'apiKey', 'apiUrl'], async (local) => {
+      const isConfigured = !!(local.apiKey && local.apiUrl);
+      const isEnabled = local.isEnabled || false;
+      
+      let connectionStatus = 'unknown';
+
+      if (isEnabled && isConfigured) {
+         try {
+             // Check connectivity
+             let cleanUrl = local.apiUrl.replace('localhost', '127.0.0.1');
+             if (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1);
+             if (!cleanUrl.startsWith('http')) cleanUrl = 'http://' + cleanUrl;
+             
+             // Try a lightweight endpoint
+             const controller = new AbortController();
+             const id = setTimeout(() => controller.abort(), 2000);
+             
+             const res = await fetch(`${cleanUrl}/health`, { signal: controller.signal });
+             clearTimeout(id);
+             
+             if (res.ok) {
+                 connectionStatus = 'connected';
+             } else {
+                 connectionStatus = 'error';
+             }
+         } catch (e) {
+             console.log("Check failed", e);
+             connectionStatus = 'unreachable';
+         }
+      }
+
+      if (isEnabled && isConfigured) {
+        if (connectionStatus === 'connected') {
+            statusBadge.textContent = 'Ativo (Conectado)';
+            statusBadge.className = 'badge active';
+            statusBadge.style.backgroundColor = '#22c55e';
+        } else if (connectionStatus === 'unreachable') {
+            statusBadge.textContent = 'Erro de Conexão';
+            statusBadge.className = 'badge inactive';
+            statusBadge.style.backgroundColor = '#f59e0b'; // Orange
+        } else {
+            statusBadge.textContent = 'Ativo (Verificando...)';
+            statusBadge.className = 'badge active';
+        }
       } else {
         statusBadge.textContent = 'Inativo';
         statusBadge.className = 'badge inactive';
+        statusBadge.style.backgroundColor = '#ef4444';
       }
       
-      // Configurado
-      configStatus.textContent = response.hasConfig ? 'Sim' : 'Não';
-      
-      // Fila
-      queueSize.textContent = `${response.queueSize} eventos`;
+      configStatus.textContent = isConfigured ? 'Sim' : 'Não';
+  });
+
+  // Then try to get dynamic stats (queue) from background
+  chrome.runtime.sendMessage({ action: 'getStatus' }, (response) => {
+    if (chrome.runtime.lastError) {
+      // Ignore errors (service worker might be waking up)
+      return;
+    }
+    if (response) {
+      queueSize.textContent = `${response.queueSize || 0} eventos`;
     }
   });
 }
@@ -74,11 +120,10 @@ saveBtn.addEventListener('click', () => {
   if (apiUrl.endsWith('/')) {
     apiUrl = apiUrl.slice(0, -1);
   }
-  
-  // Adiciona /api/browsing/ingest se não estiver presente
-  if (!apiUrl.includes('/api/browsing/ingest')) {
-    apiUrl += '/api/browsing/ingest';
-  }
+
+  // Remove specific endpoints if user pasted full path
+  apiUrl = apiUrl.replace(/\/api\/browsing\/ingest\/?$/, '');
+  apiUrl = apiUrl.replace(/\/dashboard\/?$/, '');
   
   chrome.storage.local.set({
     apiUrl,

@@ -1,81 +1,175 @@
-// SentinelScope Background Service Worker
+// SentinelScope Background Service Worker - Robust V2
 
 let apiKey = null;
 let apiUrl = null;
 let isEnabled = false;
-let eventQueue = [];
-const BATCH_SIZE = 20;
-const SEND_INTERVAL = 30000; // 30 segundos
+// Reduced batch size for immediate feedback during development/testing
+const BATCH_SIZE = 1; 
+const FLUSH_ALARM = 'flushEvents';
+const REFRESH_ALARM = 'refreshBlocklist';
 
-// Carrega configurações ao iniciar
-chrome.storage.local.get(['apiKey', 'apiUrl', 'isEnabled'], (result) => {
-  apiKey = result.apiKey || null;
-  apiUrl = result.apiUrl || null;
-  isEnabled = result.isEnabled || false;
-  
-  if (isEnabled && apiKey && apiUrl) {
-    console.log('✓ SentinelScope Monitor ativado');
-    startMonitoring();
-  }
+// 1. Initialization
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create(FLUSH_ALARM, { periodInMinutes: 0.5 }); // Flush every 30s
+  chrome.alarms.create(REFRESH_ALARM, { periodInMinutes: 2.0 });
 });
 
-// Escuta mudanças nas configurações
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.apiKey) apiKey = changes.apiKey.newValue;
-  if (changes.apiUrl) apiUrl = changes.apiUrl.newValue;
-  if (changes.isEnabled) {
-    isEnabled = changes.isEnabled.newValue;
+chrome.runtime.onStartup.addListener(() => {
+  loadConfig();
+});
+
+// Load config immediately
+loadConfig();
+
+function loadConfig() {
+  chrome.storage.local.get(['apiKey', 'apiUrl', 'isEnabled'], (result) => {
+    apiKey = result.apiKey || null;
+    apiUrl = result.apiUrl || null;
+    isEnabled = result.isEnabled || false;
+    
     if (isEnabled && apiKey && apiUrl) {
-      startMonitoring();
+      console.log('SentinelScope Monitor active');
+      updateBlockRules();
     }
-  }
-});
-
-// Detecta quando uma aba carrega uma nova página
-function startMonitoring() {
-  chrome.webNavigation.onCompleted.addListener((details) => {
-    // Ignora iframes e sub-frames
-    if (details.frameId !== 0) return;
-    
-    // Ignora URLs internas do Chrome
-    if (details.url.startsWith('chrome://') || 
-        details.url.startsWith('chrome-extension://') ||
-        details.url.startsWith('about:')) {
-      return;
-    }
-    
-    capturePageVisit(details);
   });
 }
 
-// Captura informações da página visitada
+// 2. Event Listeners
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.apiKey) apiKey = changes.apiKey.newValue;
+  if (changes.apiUrl) apiUrl = changes.apiUrl.newValue;
+  if (changes.isEnabled) isEnabled = changes.isEnabled.newValue;
+  
+  if (isEnabled && apiKey && apiUrl) {
+    updateBlockRules();
+    // Re-create alarms in case they were cleared
+    chrome.alarms.create(FLUSH_ALARM, { periodInMinutes: 0.5 });
+  } else {
+    // If disabled, maybe clear rules?
+    updateBlockRules();
+  }
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === FLUSH_ALARM) {
+    flushQueue();
+  } else if (alarm.name === REFRESH_ALARM) {
+    updateBlockRules();
+  }
+});
+
+chrome.webNavigation.onCompleted.addListener((details) => {
+  if (details.frameId !== 0) return;
+  // Basic filtering
+  if (!details.url || details.url.startsWith('chrome') || details.url.startsWith('about')) return;
+  
+  capturePageVisit(details);
+});
+
+// 3. Core Logic
+
 async function capturePageVisit(details) {
   if (!isEnabled || !apiKey || !apiUrl) return;
-  
+
   try {
     const url = new URL(details.url);
-    const tab = await chrome.tabs.get(details.tabId);
-    
     const event = {
       domain: url.hostname,
-      fullUrl: url.protocol === 'https:' ? null : details.url, // Privacidade HTTPS
-      ipAddress: null, // Não disponível via extension API
+      fullUrl: url.href,
+      ipAddress: null,
       browser: getBrowserName(),
-      protocol: url.protocol.replace(':', '')
+      protocol: url.protocol.replace(':', ''),
+      timestamp: Date.now()
     };
+
+    // Atomic-ish push to storage
+    const data = await chrome.storage.local.get('eventQueue');
+    const queue = data.eventQueue || [];
     
-    eventQueue.push(event);
-    
-    // Envia em lotes quando atinge o limite
-    if (eventQueue.length >= BATCH_SIZE) {
-      await sendEvents();
+    // De-duplicate: simple check if last event is same URL within last 2s
+    const last = queue[queue.length - 1];
+    if (last && last.fullUrl === event.fullUrl && (event.timestamp - last.timestamp < 2000)) {
+       return; // Skip duplicate
     }
-  } catch (error) {
-    console.error('Erro ao capturar visita:', error);
+
+    queue.push(event);
+    await chrome.storage.local.set({ eventQueue: queue });
+    
+    // Update badge
+    chrome.action.setBadgeText({ text: queue.length.toString() });
+    
+    // If batch size met, flush immediately
+    if (queue.length >= BATCH_SIZE) {
+        flushQueue();
+    }
+
+  } catch (e) {
+    console.error("Capture error:", e);
   }
 }
 
-// Detecta o navegador
+async function flushQueue() {
+  if (!isEnabled || !apiKey || !apiUrl) return;
+
+  const data = await chrome.storage.local.get('eventQueue');
+  const queue = data.eventQueue || [];
+  if (queue.length === 0) return;
+
+  const batch = queue.slice(0, BATCH_SIZE);
+  console.log(`[Flush] Sending ${batch.length} events...`);
+
+  try {
+    const cleanUrl = getCleanBaseUrl(apiUrl);
+    const targetUrl = `${cleanUrl}/api/browsing/ingest`;
+
+    // 5s timeout
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey
+      },
+      body: JSON.stringify({ events: batch }),
+      signal: controller.signal
+    });
+    clearTimeout(id);
+
+    if (response.ok) {
+      // Remove the items we sent
+      const currentData = await chrome.storage.local.get('eventQueue');
+      const currentQueue = currentData.eventQueue || [];
+      // Remove N items from head
+      const nextQueue = currentQueue.slice(batch.length);
+      await chrome.storage.local.set({ eventQueue: nextQueue });
+      
+      // Update badge
+      if (nextQueue.length === 0) {
+        chrome.action.setBadgeText({ text: '' });
+      } else {
+        chrome.action.setBadgeText({ text: nextQueue.length.toString() });
+      }
+
+      // Check for blocklist updates in response
+      const json = await response.json();
+      if (json.domains) {
+        updateDynamicRulesFromDomains(json.domains);
+      }
+
+    } else if (response.status === 403) {
+      console.warn("Auth failed");
+      chrome.action.setBadgeText({ text: 'ERR' });
+      chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+    }
+  } catch (e) {
+    console.error("Flush failed:", e);
+  }
+}
+
+// 4. Helpers & Blocking
+
 function getBrowserName() {
   const userAgent = navigator.userAgent;
   if (userAgent.includes('Edg/')) return 'Microsoft Edge';
@@ -85,63 +179,108 @@ function getBrowserName() {
   return 'Unknown Browser';
 }
 
-// Envia eventos para o SentinelScope
-async function sendEvents() {
-  if (eventQueue.length === 0 || !apiKey || !apiUrl) return;
-  
-  const batch = eventQueue.splice(0, BATCH_SIZE);
-  
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': apiKey
-      },
-      body: JSON.stringify({ events: batch })
-    });
+function getCleanBaseUrl(rawUrl) {
+    if (!rawUrl) return null;
+    let cleanUrl = rawUrl.trim();
+    if (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1);
     
-    if (response.ok) {
-      const result = await response.json();
-      console.log(`✓ ${result.received} eventos enviados para SentinelScope`);
-      
-      // Atualiza badge
-      chrome.action.setBadgeText({ text: result.received.toString() });
-      chrome.action.setBadgeBackgroundColor({ color: '#22c55e' });
-      setTimeout(() => chrome.action.setBadgeText({ text: '' }), 2000);
-    } else if (response.status === 403) {
-      console.error('⚠️  Monitoramento não habilitado no SentinelScope');
-      chrome.action.setBadgeText({ text: '!' });
-      chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
-    } else {
-      console.error('Erro ao enviar eventos:', response.status);
-      // Re-adiciona eventos à fila
-      eventQueue.unshift(...batch);
+    // Auto-fix localhost IPv6 issues by forcing IPv4
+    cleanUrl = cleanUrl.replace('localhost', '127.0.0.1');
+    
+    if (cleanUrl.endsWith('/dashboard')) cleanUrl = cleanUrl.replace('/dashboard', '');
+    if (cleanUrl.endsWith('/network-activity')) cleanUrl = cleanUrl.replace('/network-activity', '');
+    if (cleanUrl.endsWith('/settings')) cleanUrl = cleanUrl.replace('/settings', '');
+    
+    // Ensure protocol
+    if (!cleanUrl.startsWith('http')) {
+        cleanUrl = 'http://' + cleanUrl;
     }
-  } catch (error) {
-    console.error('Erro de rede:', error);
-    // Re-adiciona eventos à fila
-    eventQueue.unshift(...batch);
-  }
+    
+    return cleanUrl;
 }
 
-// Envia eventos periodicamente
-setInterval(() => {
-  if (isEnabled && eventQueue.length > 0) {
-    sendEvents();
-  }
-}, SEND_INTERVAL);
+async function getExistingRuleIds() {
+    try {
+        const rules = await chrome.declarativeNetRequest.getDynamicRules();
+        return rules.map(rule => rule.id);
+    } catch (e) {
+        console.warn("Could not get existing rules:", e);
+        return [];
+    }
+}
 
-// Escuta mensagens do popup
+async function updateDynamicRulesFromDomains(domains) {
+    try {
+        const rules = domains.map((domain, index) => ({
+            id: index + 1,
+            priority: 1,
+            action: { type: 'block' },
+            condition: { 
+                urlFilter: `||${domain}`, 
+                resourceTypes: ['main_frame', 'sub_frame'] 
+            }
+        }));
+
+        if (rules.length > 4500) rules.length = 4500;
+
+        const existingIds = await getExistingRuleIds();
+        await chrome.declarativeNetRequest.updateDynamicRules({
+            removeRuleIds: existingIds,
+            addRules: rules
+        });
+        console.log(`[Blocklist] Applied ${rules.length} rules`);
+    } catch (e) {
+        console.error("Blocking update failed", e);
+    }
+}
+
+async function updateBlockRules() {
+    if (!isEnabled || !apiKey || !apiUrl) {
+        const ids = await getExistingRuleIds();
+        if (ids.length > 0) {
+            chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: ids });
+        }
+        return;
+    }
+
+    try {
+        const base = getCleanBaseUrl(apiUrl);
+        const endpoint = `${base}/api/browsing/blocklist`;
+        
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch(endpoint, {
+            signal: controller.signal,
+            headers: { 'x-api-key': apiKey }
+        });
+        clearTimeout(id);
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (data.domains) {
+            updateDynamicRulesFromDomains(data.domains);
+        }
+    } catch (e) {
+        console.error("Blocklist sync error", e);
+    }
+}
+
+// 5. Setup Messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'getStatus') {
-    sendResponse({
-      isEnabled,
-      hasConfig: !!(apiKey && apiUrl),
-      queueSize: eventQueue.length
+    chrome.storage.local.get('eventQueue', (data) => {
+       const q = data.eventQueue || [];
+       sendResponse({
+         isEnabled,
+         hasConfig: !!(apiKey && apiUrl),
+         queueSize: q.length
+       });
     });
+    return true; 
   } else if (message.action === 'sendNow') {
-    sendEvents().then(() => sendResponse({ success: true }));
-    return true; // Mantém a conexão aberta para resposta assíncrona
+    flushQueue().then(() => sendResponse({ success: true }));
+    return true;
   }
 });
