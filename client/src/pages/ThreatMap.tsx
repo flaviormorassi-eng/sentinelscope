@@ -261,13 +261,13 @@ export default function ThreatMap() {
         <Alert className="border-sky-500/40 bg-sky-500/10">
           <AlertTitle>{tx('map.contextTitle', 'Focused map context')}</AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="link" size="sm" className="h-auto px-1" onClick={() => setLocation(returnFlowHref)}>
+            <Button type="button" variant="ghost" size="sm" className="h-auto px-1 underline" onClick={() => setLocation(returnFlowHref)}>
               {tx('map.openFlow', 'Open Flow')}
             </Button>
-            <Button type="button" variant="link" size="sm" className="h-auto px-1" onClick={() => setLocation(returnThreatsHref)}>
+            <Button type="button" variant="ghost" size="sm" className="h-auto px-1 underline" onClick={() => setLocation(returnThreatsHref)}>
               {tx('map.openThreatLog', 'Open Threat Log')}
             </Button>
-            <Button type="button" variant="link" size="sm" className="h-auto px-1" onClick={() => setLocation(returnAlertsHref)}>
+            <Button type="button" variant="ghost" size="sm" className="h-auto px-1 underline" onClick={() => setLocation(returnAlertsHref)}>
               {tx('map.openAlerts', 'Open Alerts')}
             </Button>
           </AlertDescription>

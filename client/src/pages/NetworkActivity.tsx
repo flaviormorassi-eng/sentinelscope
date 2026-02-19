@@ -651,17 +651,17 @@ export default function NetworkActivity() {
           <AlertTitle>{tx('networkActivity.contextTitle', 'Focused flow context')}</AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-2">
             {navigationContext.returnHref && (
-              <Button size="sm" variant="link" className="h-auto px-1" onClick={() => setLocation(navigationContext.returnHref)}>
+              <Button size="sm" variant="ghost" className="h-auto px-1 underline" onClick={() => setLocation(navigationContext.returnHref)}>
                 {navigationContext.returnLabel}
               </Button>
             )}
-            <Button size="sm" variant="link" className="h-auto px-1" onClick={() => setLocation(navigationContext.alertsHref)}>
+            <Button size="sm" variant="ghost" className="h-auto px-1 underline" onClick={() => setLocation(navigationContext.alertsHref)}>
               {tx('networkActivity.openAlerts', 'Open Alerts')}
             </Button>
-            <Button size="sm" variant="link" className="h-auto px-1" onClick={() => setLocation(navigationContext.threatsHref)}>
+            <Button size="sm" variant="ghost" className="h-auto px-1 underline" onClick={() => setLocation(navigationContext.threatsHref)}>
               {tx('networkActivity.openThreatLog', 'Open Threat Log')}
             </Button>
-            <Button size="sm" variant="link" className="h-auto px-1" onClick={() => setLocation(navigationContext.mapHref)}>
+            <Button size="sm" variant="ghost" className="h-auto px-1 underline" onClick={() => setLocation(navigationContext.mapHref)}>
               {tx('networkActivity.openThreatMap', 'Open Threat Map')}
             </Button>
           </AlertDescription>

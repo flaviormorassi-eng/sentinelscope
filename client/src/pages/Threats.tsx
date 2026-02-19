@@ -515,8 +515,8 @@ export default function Threats() {
             {t('threats.selectedThreatNotFoundDescription', 'Try clearing filters to locate the selected threat.')} 
             <Button
               size="sm"
-              variant="link"
-              className="px-1 h-auto"
+              variant="ghost"
+              className="px-1 h-auto underline"
               onClick={() => {
                 clearFilters();
               }}
