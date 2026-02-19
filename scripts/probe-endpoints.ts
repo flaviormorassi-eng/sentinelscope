@@ -111,6 +111,28 @@ async function main() {
   const results: ProbeResult[] = [];
   results.push(await probe(args.base, '/api/mfa/status', headers, validateMfa));
   results.push(await probe(args.base, '/api/webauthn/credentials', headers, validateCreds));
+  results.push(await probe(args.base, '/api/stats', headers));
+  results.push(await probe(args.base, '/api/user/preferences', headers));
+  
+  // Test VirusTotal (expecting mock or real result)
+  const emptyFileHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+  try {
+    const vtRes = await fetch(args.base + '/api/virustotal/check-hash', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ hash: emptyFileHash })
+    });
+    const vtJson = await vtRes.json();
+    results.push({
+      endpoint: '/api/virustotal/check-hash',
+      ok: vtRes.ok,
+      status: vtRes.status,
+      body: vtJson,
+      validations: vtRes.ok ? ['OK'] : ['Failed']
+    });
+  } catch (e: any) {
+    results.push({ endpoint: '/api/virustotal/check-hash', ok: false, status: 0, error: e.message });
+  }
 
   const summary = {
     timestamp: new Date().toISOString(),
