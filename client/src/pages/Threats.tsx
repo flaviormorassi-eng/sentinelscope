@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,7 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useThreatFilters } from '@/hooks/useThreatFilters';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Link } from 'wouter';
+import { Link, useSearch } from 'wouter';
 
 interface ThreatDecision {
   id: number;
@@ -53,12 +53,24 @@ type ThreatListResponse = {
   limit: number;
   offset: number;
   mode?: 'demo' | 'real';
+  targetFound?: boolean;
+  targetIndex?: number;
+  targetPage?: number;
 };
 
 export default function Threats() {
   const { t } = useTranslation();
+  const searchString = useSearch();
   const { user } = useAuth();
   const { toast } = useToast();
+  const selectedThreatId = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return (params.get('threatId') || '').trim();
+  }, [searchString]);
+  const selectedAlertId = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return (params.get('alertId') || '').trim();
+  }, [searchString]);
   // Centralized filters + persistence
   const {
     severityFilter,
@@ -81,6 +93,7 @@ export default function Threats() {
     clearFilters,
   } = useThreatFilters(user?.uid);
   const [historyThreatId, setHistoryThreatId] = useState<string | null>(null);
+  const selectedThreatRowRef = useRef<HTMLTableRowElement | null>(null);
 
   // Value adapters: select expects 'all' when undefined in hook
   const typeValue = typeFilter ?? 'all';
@@ -102,6 +115,7 @@ export default function Threats() {
       searchQuery,
       typeFilterEffective,
       sourceQuery,
+      selectedThreatId,
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -112,6 +126,7 @@ export default function Threats() {
       if (searchQuery) params.set('q', searchQuery);
       if (typeFilterEffective) params.set('type', typeFilterEffective);
       if (sourceQuery) params.set('src', sourceQuery);
+      if (selectedThreatId) params.set('threatId', selectedThreatId);
       const url = `/api/threats/list?${params.toString()}`;
       return apiRequest('GET', url) as Promise<ThreatListResponse>;
     },
@@ -119,6 +134,15 @@ export default function Threats() {
     refetchInterval: 15000,
     placeholderData: (prev) => prev as ThreatListResponse | undefined,
   });
+
+  useEffect(() => {
+    if (!selectedThreatId) return;
+    if (isLoading) return;
+    if (!listResp?.targetFound) return;
+    if (!listResp?.targetPage) return;
+    if (listResp.targetPage === page) return;
+    setPage(listResp.targetPage);
+  }, [selectedThreatId, isLoading, listResp?.targetFound, listResp?.targetPage, page, setPage]);
 
   const { data: decisionHistory = [], isLoading: historyLoading } = useQuery<ThreatDecision[]>({
     queryKey: [`/api/admin/threats/${historyThreatId}/history`],
@@ -290,11 +314,218 @@ export default function Threats() {
     URL.revokeObjectURL(url);
   };
 
+  const getThreatFlowHref = (threat: Threat) => {
+    const params = new URLSearchParams();
+    params.set('from', 'threats');
+    params.set('view', 'flow');
+    if (threat.sourceIP && threat.sourceIP !== '-') {
+      params.set('sourceIp', threat.sourceIP);
+      params.set('focusSourceIp', threat.sourceIP);
+    }
+    params.set('threatId', threat.id);
+    if (selectedAlertId) params.set('alertId', selectedAlertId);
+    return `/network-activity?${params.toString()}`;
+  };
+
+  const getThreatMapHref = (threat: Threat) => {
+    const params = new URLSearchParams();
+    params.set('from', 'threats');
+    if (threat.sourceIP && threat.sourceIP !== '-') {
+      params.set('sourceIp', threat.sourceIP);
+    }
+    params.set('threatId', threat.id);
+    if (selectedAlertId) params.set('alertId', selectedAlertId);
+    return `/map?${params.toString()}`;
+  };
+
+  const getThreatAlertsHref = (threat: Threat) => {
+    const params = new URLSearchParams();
+    params.set('tab', 'alerts');
+    params.set('from', 'threats');
+    params.set('threatId', threat.id);
+    if (selectedAlertId) params.set('alertId', selectedAlertId);
+    if (threat.sourceIP && threat.sourceIP !== '-') {
+      params.set('src', threat.sourceIP);
+    }
+    return `/security-center?${params.toString()}`;
+  };
+
+  const flowContext = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    const from = (params.get('from') || '').trim();
+    const fromFlow = params.get('from') === 'flow';
+    const fromMap = params.get('from') === 'map';
+    const fromAlerts = params.get('from') === 'alerts';
+    const src = (params.get('src') || '').trim();
+    const threatId = (params.get('threatId') || '').trim();
+    const alertId = (params.get('alertId') || '').trim();
+    const returnView = (params.get('returnView') || 'flow').trim();
+    const returnWindow = (params.get('returnWindow') || '').trim();
+    const returnSuspicious = (params.get('returnSuspicious') || '').trim();
+    const returnSourceIp = (params.get('returnSourceIp') || src).trim();
+
+    const returnParams = new URLSearchParams();
+    if (returnView) returnParams.set('view', returnView);
+    if (returnWindow === '15m' || returnWindow === '1h' || returnWindow === '24h') returnParams.set('window', returnWindow);
+    if (returnSuspicious === '1' || returnSuspicious === 'true') returnParams.set('suspicious', '1');
+    if (returnSourceIp) returnParams.set('sourceIp', returnSourceIp);
+    if (returnSourceIp) returnParams.set('focusSourceIp', returnSourceIp);
+    if (threatId) returnParams.set('threatId', threatId);
+
+    const qs = returnParams.toString();
+    const returnHref = qs ? `/network-activity?${qs}` : '/network-activity';
+    const mapParams = new URLSearchParams();
+    mapParams.set('from', 'threats');
+    if (src) mapParams.set('sourceIp', src);
+    if (threatId) mapParams.set('threatId', threatId);
+    if (alertId) mapParams.set('alertId', alertId);
+    const mapQs = mapParams.toString();
+    const returnMapHref = mapQs ? `/map?${mapQs}` : '/map';
+    const alertsParams = new URLSearchParams();
+    alertsParams.set('tab', 'alerts');
+    alertsParams.set('from', 'threats');
+    if (alertId) alertsParams.set('alertId', alertId);
+    if (threatId) alertsParams.set('threatId', threatId);
+    if (src) alertsParams.set('src', src);
+    const returnAlertsHref = `/security-center?${alertsParams.toString()}`;
+
+    return { from, fromFlow, fromMap, fromAlerts, src, threatId, alertId, returnHref, returnMapHref, returnAlertsHref };
+  }, [searchString]);
+
+  const displayThreats = useMemo(() => {
+    if (!flowContext.threatId) return filteredThreats;
+
+    const idx = filteredThreats.findIndex((th) => th.id === flowContext.threatId);
+    if (idx < 0) return filteredThreats;
+
+    const selected = filteredThreats[idx];
+    const rest = [...filteredThreats.slice(0, idx), ...filteredThreats.slice(idx + 1)];
+    const middle = Math.floor(rest.length / 2);
+    return [...rest.slice(0, middle), selected, ...rest.slice(middle)];
+  }, [filteredThreats, flowContext.threatId]);
+
+  useEffect(() => {
+    if (!flowContext.threatId) return;
+    if (isLoading) return;
+    if (!selectedThreatRowRef.current) return;
+
+    try {
+      selectedThreatRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch {
+      // noop
+    }
+  }, [flowContext.threatId, isLoading, filteredThreats.length]);
+
   return (
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-3xl font-bold">{t('threats.title')}</h1>
       </div>
+      {flowContext.fromFlow && flowContext.src && (
+        <Alert className="border-emerald-500/40 bg-emerald-500/10">
+          <AlertTitle className="text-emerald-700 dark:text-emerald-400">
+            {t('threats.flowContextTitle', 'Viewing flow-sourced threats')}
+          </AlertTitle>
+          <AlertDescription className="text-muted-foreground flex flex-wrap items-center gap-2">
+            <span>
+              {t('threats.flowContextDescription', 'Threat Log is pre-filtered by source IP')}: <strong className="font-mono">{flowContext.src}</strong>
+            </span>
+            <Link href={flowContext.returnHref}>
+              <span className="underline text-emerald-700 dark:text-emerald-400 cursor-pointer">
+                {t('threats.returnToFlow', 'Return to Flow')}
+              </span>
+            </Link>
+            <Link href={flowContext.returnMapHref}>
+              <span className="underline text-emerald-700 dark:text-emerald-400 cursor-pointer">
+                {t('threats.openThreatMap', 'Open Threat Map')}
+              </span>
+            </Link>
+            {flowContext.threatId && (
+              <Link href={`/security-center?tab=alerts&from=threats&threatId=${encodeURIComponent(flowContext.threatId)}${flowContext.src ? `&src=${encodeURIComponent(flowContext.src)}` : ''}${flowContext.alertId ? `&alertId=${encodeURIComponent(flowContext.alertId)}` : ''}`}>
+                <span className="underline text-emerald-700 dark:text-emerald-400 cursor-pointer">
+                  {t('threats.openAlerts', 'Open Alerts')}
+                </span>
+              </Link>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+      {flowContext.fromMap && flowContext.src && (
+        <Alert className="border-sky-500/40 bg-sky-500/10">
+          <AlertTitle className="text-sky-700 dark:text-sky-400">
+            {t('threats.mapContextTitle', 'Viewing map-sourced threats')}
+          </AlertTitle>
+          <AlertDescription className="text-muted-foreground flex flex-wrap items-center gap-2">
+            <span>
+              {t('threats.mapContextDescription', 'Threat Log is pre-filtered by mapped source IP')}: <strong className="font-mono">{flowContext.src}</strong>
+            </span>
+            <Link href={flowContext.returnMapHref}>
+              <span className="underline text-sky-700 dark:text-sky-400 cursor-pointer">
+                {t('threats.returnToMap', 'Return to Map')}
+              </span>
+            </Link>
+            <Link href={flowContext.returnHref}>
+              <span className="underline text-sky-700 dark:text-sky-400 cursor-pointer">
+                {t('threats.openFlow', 'Open Flow')}
+              </span>
+            </Link>
+            {flowContext.threatId && (
+              <Link href={`/security-center?tab=alerts&from=threats&threatId=${encodeURIComponent(flowContext.threatId)}${flowContext.src ? `&src=${encodeURIComponent(flowContext.src)}` : ''}${flowContext.alertId ? `&alertId=${encodeURIComponent(flowContext.alertId)}` : ''}`}>
+                <span className="underline text-sky-700 dark:text-sky-400 cursor-pointer">
+                  {t('threats.openAlerts', 'Open Alerts')}
+                </span>
+              </Link>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+      {flowContext.fromAlerts && (flowContext.alertId || flowContext.threatId) && (
+        <Alert className="border-violet-500/40 bg-violet-500/10">
+          <AlertTitle className="text-violet-700 dark:text-violet-400">
+            {t('threats.alertContextTitle', 'Viewing alert-sourced threat context')}
+          </AlertTitle>
+          <AlertDescription className="text-muted-foreground flex flex-wrap items-center gap-2">
+            {flowContext.alertId && (
+              <span>
+                {t('threats.alertContextDescription', 'Context from alert')}: <strong className="font-mono">{flowContext.alertId}</strong>
+              </span>
+            )}
+            <Link href={flowContext.returnAlertsHref}>
+              <span className="underline text-violet-700 dark:text-violet-400 cursor-pointer">
+                {t('threats.returnToAlerts', 'Return to Alerts')}
+              </span>
+            </Link>
+            <Link href={flowContext.returnMapHref}>
+              <span className="underline text-violet-700 dark:text-violet-400 cursor-pointer">
+                {t('threats.openThreatMap', 'Open Threat Map')}
+              </span>
+            </Link>
+            <Link href={flowContext.returnHref}>
+              <span className="underline text-violet-700 dark:text-violet-400 cursor-pointer">
+                {t('threats.openFlow', 'Open Flow')}
+              </span>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
+      {selectedThreatId && !isLoading && listResp?.targetFound === false && (
+        <Alert className="border-amber-500/40 bg-amber-500/10">
+          <AlertTitle>{t('threats.selectedThreatNotFoundTitle', 'Selected threat not found in current filters')}</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            {t('threats.selectedThreatNotFoundDescription', 'Try clearing filters to locate the selected threat.')} 
+            <Button
+              size="sm"
+              variant="link"
+              className="px-1 h-auto"
+              onClick={() => {
+                clearFilters();
+              }}
+            >
+              {t('common.clearFilters', { defaultValue: 'Clear Filters' })}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       {listResp?.mode === 'real' && (listResp?.total ?? 0) === 0 && (
         <Alert className="border-blue-500/40 bg-blue-500/10">
           <AlertTitle className="text-blue-600 dark:text-blue-400">Real monitoring enabled</AlertTitle>
@@ -304,6 +535,7 @@ export default function Threats() {
           </AlertDescription>
         </Alert>
       )}
+      {/* Debug block removed as per user request
       {import.meta.env.DEV && (
         <div className="rounded border p-3 text-xs bg-muted/40">
           <strong>Debug:</strong> total={listResp?.total ?? 'n/a'} limit={listResp?.limit ?? 'n/a'} offset={listResp?.offset ?? 'n/a'} pageState={page} pageSize={pageSize} severityFilter={sevValue} statusFilter={statusValue} typeFilter={typeValue} src={sourceQuery || '(none)'} q={searchQuery || '(none)'}
@@ -319,6 +551,7 @@ export default function Threats() {
           )}
         </div>
       )}
+      */}
 
       <Card>
         <CardHeader>
@@ -431,9 +664,14 @@ export default function Threats() {
                       {t('common.loading')}
                     </TableCell>
                   </TableRow>
-                ) : filteredThreats.length > 0 ? (
-                  filteredThreats.map((threat) => (
-                    <TableRow key={threat.id} data-testid={`row-threat-${threat.id}`}>
+                ) : displayThreats.length > 0 ? (
+                  displayThreats.map((threat) => (
+                    <TableRow
+                      key={threat.id}
+                      ref={flowContext.threatId && threat.id === flowContext.threatId ? selectedThreatRowRef : undefined}
+                      className={flowContext.threatId && threat.id === flowContext.threatId ? 'bg-amber-500/10 ring-1 ring-amber-500/40' : ''}
+                      data-testid={`row-threat-${threat.id}`}
+                    >
                       <TableCell className="font-mono text-xs">
                         {safeFormatTs(threat.timestamp)}
                       </TableCell>
@@ -476,6 +714,33 @@ export default function Threats() {
                       
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
+                          <Link href={getThreatFlowHref(threat)}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-testid={`button-open-flow-${threat.id}`}
+                            >
+                              {t('threats.openFlow', 'Open Flow')}
+                            </Button>
+                          </Link>
+                          <Link href={getThreatMapHref(threat)}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-testid={`button-open-map-${threat.id}`}
+                            >
+                              {t('threats.openThreatMap', 'Open Threat Map')}
+                            </Button>
+                          </Link>
+                          <Link href={getThreatAlertsHref(threat)}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-testid={`button-open-alerts-${threat.id}`}
+                            >
+                              {t('threats.openAlerts', 'Open Alerts')}
+                            </Button>
+                          </Link>
                           {currentUser?.isAdmin && threat.status !== 'detected' && threat.status !== 'pending_review' && (
                             <Button
                               size="sm"

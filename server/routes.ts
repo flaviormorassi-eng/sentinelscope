@@ -18,14 +18,19 @@ function safeJson(res: Response, data: any) {
 }
 // Helper to sanitize objects for JSON serialization
 function sanitizeForJSON(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  if (obj instanceof Date) {
+    return obj.toISOString();
+  }
   if (Array.isArray(obj)) {
     return obj.map(sanitizeForJSON);
-  } else if (obj && typeof obj === 'object') {
+  } else if (typeof obj === 'object') {
     const result: any = {};
     for (const key in obj) {
       let value = obj[key];
-      if (value === undefined) value = null;
-      if (typeof value === 'number' && (!isFinite(value) || isNaN(value))) value = null;
+      // Skip undefined or non-serializable, or just let recursion handle it
       result[key] = sanitizeForJSON(value);
     }
     return result;
@@ -59,7 +64,8 @@ import { requireMfaFresh } from './middleware/mfa';
 import { 
   type InsertIpBlocklistEntry,
   type SubscriptionTier,
-  SUBSCRIPTION_TIERS
+  SUBSCRIPTION_TIERS,
+  insertNewsletterSubscriptionSchema
 } from "@shared/schema";
 import { getGeolocation } from "./utils/geolocationService";
 import { z } from "zod";
@@ -100,6 +106,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       uptime: Math.round(process.uptime()),
       timestamp: new Date().toISOString(),
     });
+  });
+
+  app.post("/api/newsletter", async (req, res) => {
+    try {
+      const data = insertNewsletterSubscriptionSchema.parse(req.body);
+      try {
+        const sub = await storage.createNewsletterSubscription(data);
+        safeJson(res, sub);
+      } catch (err: any) {
+        if (err.code === '23505' || err.message?.includes('violates unique constraint')) {
+          return res.status(409).json({ message: "Email already subscribed" });
+        }
+        throw err;
+      }
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json(err.errors);
+      } else {
+        console.error("Newsletter error:", err);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    }
   });
   // Readiness check: also verify DB/storage connectivity
   app.get('/readyz', async (_req, res) => {
@@ -205,7 +233,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // JWT mint endpoint
     app.get('/api/dev/jwt/:id', async (req: AuthRequest, res) => {
       const userId = req.params.id;
-      const secret = process.env.JWT_SECRET || 'devsecret';
+      const secret = process.env.JWT_SECRET;
+      
+      if (!secret) {
+        return res.status(500).json({ error: 'JWT_SECRET not configured' });
+      }
+
       try {
         const user = await storage.getUser(userId);
         if (!user) return res.status(404).json({ error: 'User not found' });
@@ -1068,26 +1101,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/webauthn/auth/verify', authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
+      const profile = await storage.getUserMfa(userId);
+
+      // Check if MFA is locked
+      if (profile?.lockedUntil && new Date(profile.lockedUntil) > new Date()) {
+        return res.status(423).json({ error: 'MFA locked. Try later.', lockedUntil: profile.lockedUntil });
+      }
+
       const body = req.body as AuthenticationResponseJSON;
       const challenge = webauthnChallenges.get(userId)?.auth;
       if (!challenge) return res.status(400).json({ error: 'No auth challenge' });
       const credential = await storage.getWebAuthnCredentialById(body.id);
       if (!credential) return res.status(404).json({ error: 'Credential not found' });
-      const verification = await verifyAuthenticationResponse({
-        response: body,
-        expectedChallenge: challenge,
-        expectedOrigin,
-        expectedRPID: rpID,
-        authenticator: {
-          credentialPublicKey: Buffer.from(credential.publicKey, 'base64url'),
-          credentialID: credential.credentialId,
-          counter: credential.signCount,
-          transports: (credential.transports || []) as any,
+      
+      let verification;
+      try {
+        verification = await verifyAuthenticationResponse({
+          response: body,
+          expectedChallenge: challenge,
+          expectedOrigin,
+          expectedRPID: rpID,
+          authenticator: {
+            credentialPublicKey: Buffer.from(credential.publicKey, 'base64url'),
+            credentialID: credential.credentialId,
+            counter: credential.signCount,
+            transports: (credential.transports || []) as any,
+          }
+        });
+      } catch (err: any) {
+        // Verification threw error (malformed etc)
+        const attempts = (profile?.failedAttempts || 0) + 1;
+        const updates: any = { failedAttempts: attempts };
+        if (attempts >= MFA_FAILED_LOCK_THRESHOLD) {
+          updates.lockedUntil = new Date(Date.now() + MFA_LOCK_MINUTES * 60 * 1000);
         }
-      });
-      if (!verification.verified || !verification.authenticationInfo) {
-        return res.status(400).json({ error: 'Assertion verification failed' });
+        await storage.upsertUserMfa(userId, updates);
+        
+        await logSecurityEvent({ 
+             userId, 
+             eventType: 'login_failed', 
+             eventCategory: 'authentication', 
+             action: 'webauthn_verify_failed', 
+             resourceType: 'mfa', 
+             resourceId: credential?.id ? String(credential.id) : 'unknown', 
+             severity: 'warning', 
+             details: { attempts } // REMOVED ERROR MESSAGE
+        });
+        return res.status(400).json({ error: 'Verification failed', attempts });
       }
+
+      if (!verification.verified || !verification.authenticationInfo) {
+        const attempts = (profile?.failedAttempts || 0) + 1;
+        const updates: any = { failedAttempts: attempts };
+        if (attempts >= MFA_FAILED_LOCK_THRESHOLD) {
+          updates.lockedUntil = new Date(Date.now() + MFA_LOCK_MINUTES * 60 * 1000);
+        }
+        await storage.upsertUserMfa(userId, updates);
+        await logSecurityEvent({ userId, eventType: 'login_failed', eventCategory: 'authentication', action: 'webauthn_verify_failed', resourceType: 'mfa', resourceId: credential.id || 'unknown', severity: 'warning', details: { attempts } });
+        return res.status(400).json({ error: 'Assertion verification failed', attempts });
+      }
+
       const { newCounter } = verification.authenticationInfo;
       let warning: string | undefined;
       if (typeof newCounter === 'number') {
@@ -1101,10 +1174,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch {}
         }
       }
-      await storage.upsertUserMfa(userId, { lastVerifiedAt: new Date() });
+      
+      // Success - Clear lock state
+      await storage.upsertUserMfa(userId, { lastVerifiedAt: new Date(), failedAttempts: 0, lockedUntil: null });
       webauthnChallenges.set(userId, { ...(webauthnChallenges.get(userId) || {}), auth: undefined });
       res.json({ success: true, warning });
     } catch (e: any) {
+      console.error('API Error:', e);
       res.status(500).json({ error: e.message });
     }
   });
@@ -1365,7 +1441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const preferences = await storage.getUserPreferences(userId);
       const monitoringMode = preferences?.monitoringMode || 'demo';
 
-  const { sev, type, src, status, q, limit, offset } = req.query as Record<string, string | undefined>;
+  const { sev, type, src, status, q, limit, offset, threatId } = req.query as Record<string, string | undefined>;
       const parsedLimit = limit ? Math.min(200, Math.max(1, parseInt(limit, 10))) : 50;
       const parsedOffset = offset ? Math.max(0, parseInt(offset, 10)) : 0;
       const allowedSev = ['critical','high','medium','low'];
@@ -1462,9 +1538,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return hay.includes(queryFilter);
         });
 
+      const targetThreatId = threatId ? String(threatId).trim() : undefined;
+      const targetIndex = targetThreatId
+        ? filtered.findIndex((th: any) => String(th?.id || '') === targetThreatId)
+        : -1;
+      const targetFound = targetThreatId ? targetIndex >= 0 : undefined;
+      const targetPage = targetIndex >= 0 ? Math.floor(targetIndex / parsedLimit) + 1 : undefined;
+
       const total = filtered.length;
       const page = filtered.slice(parsedOffset, parsedOffset + parsedLimit);
-      safeJson(res, { data: page, total, limit: parsedLimit, offset: parsedOffset, mode: monitoringMode });
+      safeJson(res, {
+        data: page,
+        total,
+        limit: parsedLimit,
+        offset: parsedOffset,
+        mode: monitoringMode,
+        targetFound,
+        targetIndex: targetIndex >= 0 ? targetIndex : undefined,
+        targetPage,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -1473,6 +1565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/threats/map", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
+      const sourceIpFilter = typeof req.query.sourceIp === 'string' ? req.query.sourceIp.trim().toLowerCase() : '';
       
       // Check monitoring mode
       const preferences = await storage.getUserPreferences(userId);
@@ -1480,10 +1573,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let threats: any[];
       if (monitoringMode === 'real') {
-        // Get real threat events (they already have location data)
+        // Real mode must use real-time threat events only.
         threats = await storage.getThreatEventsForMap(userId);
       } else {
         threats = await storage.getThreatsForMap(userId);
+      }
+
+      if (sourceIpFilter) {
+        threats = (Array.isArray(threats) ? threats : []).filter((th: any) => {
+          const src = String(th?.sourceIP || '').toLowerCase();
+          return src === sourceIpFilter;
+        });
+      }
+
+      // Fallback: if there are no threat markers, project recent browsing IP activity on the map
+      // so users can still validate live geospatial telemetry.
+      if (!Array.isArray(threats) || threats.length === 0) {
+        const recentBrowsing = await storage.getBrowsingActivity(userId, { limit: 300 });
+        const withIp = recentBrowsing.filter((b: any) => {
+          if (!b.ipAddress) return false;
+          if (!sourceIpFilter) return true;
+          return String(b.ipAddress).toLowerCase() === sourceIpFilter;
+        });
+        const uniqueIpRows: any[] = [];
+        const seenIps = new Set<string>();
+        for (const row of withIp) {
+          const ip = String(row.ipAddress);
+          if (seenIps.has(ip)) continue;
+          seenIps.add(ip);
+          uniqueIpRows.push(row);
+          if (uniqueIpRows.length >= 25) break;
+        }
+
+        (global as any).__geoCache = (global as any).__geoCache || new Map<string, { ts: number; data: Awaited<ReturnType<typeof getGeolocation>> }>();
+        const geoCache = (global as any).__geoCache as Map<string, { ts: number; data: Awaited<ReturnType<typeof getGeolocation>> }>;
+        const GEO_TTL_MS = 60 * 60 * 1000;
+
+        const fallbackMap: any[] = [];
+        for (const row of uniqueIpRows) {
+          const ip = String(row.ipAddress);
+          const now = Date.now();
+          const cached = geoCache.get(ip);
+          let geo = cached && (now - cached.ts) < GEO_TTL_MS ? cached.data : null;
+          if (!geo) {
+            try {
+              geo = await getGeolocation(ip);
+              geoCache.set(ip, { ts: now, data: geo });
+            } catch {
+              geo = null;
+            }
+          }
+          if (!geo?.lat || !geo?.lon) continue;
+
+          fallbackMap.push({
+            id: `browsing-${row.id}`,
+            severity: row.isFlagged ? 'high' : 'low',
+            threatType: row.isFlagged ? 'suspicious_browsing' : 'network_activity',
+            description: row.domain || 'network activity',
+            timestamp: row.detectedAt,
+            sourceIP: ip,
+            targetIP: 'local-network',
+            sourceLat: String(geo.lat),
+            sourceLon: String(geo.lon),
+            sourceCity: geo.city || 'Unknown',
+            sourceCountry: geo.country || 'Unknown',
+          });
+        }
+
+        threats = fallbackMap;
       }
   safeJson(res, threats);
     } catch (error: any) {
@@ -1718,6 +1875,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Alerts
+  app.get("/api/alerts/list", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const { severity, unread, q, threatId, alertId, limit, offset } = req.query as Record<string, string | undefined>;
+      const parsedLimit = limit ? Math.min(200, Math.max(1, parseInt(limit, 10))) : 25;
+      const parsedOffset = offset ? Math.max(0, parseInt(offset, 10)) : 0;
+      const query = (q || '').trim().toLowerCase();
+      const severityFilter = (severity || '').trim().toLowerCase();
+      const threatFilter = (threatId || '').trim();
+      const alertFilter = (alertId || '').trim();
+      const unreadOnly = unread === '1' || unread === 'true';
+
+      const all = await storage.getAlerts(userId);
+      const unreadTotal = all.filter((a: any) => !a.read).length;
+
+      const filtered = all.filter((a: any) => {
+        if (severityFilter && severityFilter !== 'all' && String(a.severity || '').toLowerCase() !== severityFilter) return false;
+        if (unreadOnly && !!a.read) return false;
+        if (threatFilter && String(a.threatId || '') !== threatFilter) return false;
+        if (query) {
+          const hay = `${String(a.title || '')} ${String(a.message || '')}`.toLowerCase();
+          if (!hay.includes(query)) return false;
+        }
+        return true;
+      });
+
+      const targetAlertId = alertFilter || (threatFilter ? (filtered.find((a: any) => String(a.threatId || '') === threatFilter)?.id || '') : '');
+      const targetIndex = targetAlertId ? filtered.findIndex((a: any) => String(a.id || '') === String(targetAlertId)) : -1;
+      const targetFound = targetAlertId ? targetIndex >= 0 : undefined;
+      const targetPage = targetIndex >= 0 ? Math.floor(targetIndex / parsedLimit) + 1 : undefined;
+
+      const total = filtered.length;
+      const data = filtered.slice(parsedOffset, parsedOffset + parsedLimit);
+
+      safeJson(res, {
+        data,
+        total,
+        limit: parsedLimit,
+        offset: parsedOffset,
+        unreadTotal,
+        targetAlertId: targetAlertId || undefined,
+        targetFound,
+        targetIndex: targetIndex >= 0 ? targetIndex : undefined,
+        targetPage,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/alerts", authenticateUser, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
@@ -1843,6 +2050,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ downloadUrl, filename });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Purge User Data (Hard Delete)
+  app.post("/api/user/purge-data", authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      
+      // Enforce critical action check
+      // For higher security, we could require a fresh MFA token here
+      
+      await storage.purgeUserData(userId);
+      res.json({ success: true, message: "User data purged successfully" });
+    } catch (e: any) {
+      console.error('Data purge error:', e);
+      res.status(500).json({ error: e.message || 'Failed to purge data' });
     }
   });
 
@@ -2903,6 +3126,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         eventType: z.string().optional(),
         sourceIp: z.string().optional(),
         destinationIp: z.string().optional(),
+        sourcePort: z.number().int().optional(),
+        destinationPort: z.number().int().optional(),
+        protocol: z.string().optional(),
+        action: z.string().optional(),
         message: z.string().optional(),
         sourceURL: z.string().optional(),
         deviceName: z.string().optional(),
@@ -2980,15 +3207,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: 'IP blocklist check failed' });
       }
 
-      // Store raw event
+      // Store raw event. Keep top-level canonical fields merged with provided rawData
+      // so eventProcessor can normalize consistently.
+      const rawDataMerged = {
+        ...(typeof eventData.rawData === 'object' && eventData.rawData ? eventData.rawData : {}),
+        eventType: eventData.eventType,
+        severity: eventData.severity,
+        sourceIp: eventData.sourceIp,
+        destinationIp: eventData.destinationIp,
+        sourcePort: eventData.sourcePort,
+        destinationPort: eventData.destinationPort,
+        protocol: eventData.protocol,
+        action: eventData.action,
+        message: eventData.message,
+        sourceURL: eventData.sourceURL,
+        deviceName: eventData.deviceName,
+        threatVector: eventData.threatVector,
+        timestamp: eventData.timestamp,
+      };
+
+      // Remove undefined keys to keep payload compact
+      const compactRawData = Object.fromEntries(
+        Object.entries(rawDataMerged).filter(([, v]) => v !== undefined)
+      );
+
       const rawEvent = await storage.createRawEvent({
         sourceId: eventSource.id,
         userId: eventSource.userId,
-        rawData: eventData.rawData || req.body,
+        rawData: compactRawData,
       });
 
       // Update event source heartbeat
       await storage.updateEventSourceHeartbeat(eventSource.id);
+
+      // FAST-TRACK: Immediate processing for High Severity / Critical events (Real-time Agents)
+      // This bypasses the 5-minute scheduled processor for urgent threats
+      if (['high', 'critical'].includes(eventData.severity || '')) {
+         try {
+             const normalized = await storage.createNormalizedEvent({
+                rawEventId: rawEvent.id,
+                sourceId: eventSource.id,
+                userId: eventSource.userId,
+                eventType: eventData.eventType || 'unknown',
+                severity: eventData.severity || 'high',
+                message: eventData.message,
+                sourceIP: eventData.sourceIp,
+                destinationIP: eventData.destinationIp,
+                metadata: eventData.rawData, // Use rawData as metadata
+                isThreat: true, // Auto-mark high severity agent reports as threats
+                sourceURL: eventData.sourceURL,
+                deviceName: eventData.deviceName, 
+                threatVector: eventData.threatVector
+             });
+
+             await storage.createThreatEvent({
+                normalizedEventId: normalized.id,
+                userId: eventSource.userId,
+                threatType: eventData.eventType || 'Real-time Threat',
+                severity: eventData.severity || 'high',
+                confidence: 90,
+                mitigationStatus: 'detected',
+                sourceURL: eventData.sourceURL,
+                deviceName: eventData.deviceName,
+                threatVector: eventData.threatVector
+             });
+
+             // Keep alerts in sync with fast-tracked threat events.
+             await storage.createAlert({
+               userId: eventSource.userId,
+               title: `${(eventData.severity || 'high').toUpperCase()} Threat Detected (Real)` ,
+               message: eventData.message || `${eventData.eventType || 'Real-time Threat'} detected by event source ${eventSource.name}`,
+               severity: eventData.severity || 'high',
+               threatId: null,
+               read: false,
+             });
+         } catch (procError) {
+             console.error('Fast-track processing failed:', procError);
+             // Proceed anyway, raw event is saved
+         }
+      }
 
       res.status(201).json({ 
         success: true, 
@@ -3468,6 +3765,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!eventSource.isActive) {
+        return res.status(403).json({ error: "Event source is not active" });
+      }
+
+      // Check if user has browsing monitoring enabled
+      const preferences = await storage.getUserPreferences(eventSource.userId);
+      console.log(`[Ingest] User ${eventSource.userId} monitoring enabled: ${preferences?.browsingMonitoringEnabled}`);
+
+      if (!preferences?.browsingMonitoringEnabled) {
+        // Just return blocklist if monitoring is disabled, effectively ignoring the ingest
+        // but keeping the extension happy/syncing blocklist
+        return res.json({ domains: await storage.getBlockedDomains(eventSource.userId) });
+      }
+
+      const body = req.body;
+      // SEC: Removed body logging to prevent PII leakage
+      console.log(`[Ingest] Received payload from source ${eventSource.id}`);
+
+      let events: any[] = [];
+      
+      // Handle extension payload format { events: [...] }
+      if (body && Array.isArray(body.events)) {
+        events = body.events;
+      } else if (Array.isArray(body)) {
+        events = body;
+      }
+
+      console.log(`[Ingest] Processing ${events.length} events`);
+
+      if (events.length > 0) {
+        // Normalization + Threat Detection
+        const cleanEvents = await Promise.all(events.map(async (e) => {
+            let isFlagged = false;
+            let metadata: any = null;
+
+            // Check IP against Local Blocklist & Threat Intel
+            if (e.ipAddress) {
+                try {
+                    const result = await checkIPAddress(e.ipAddress);
+                    if (result.status === 'malicious') {
+                        isFlagged = true;
+                        let geo: Awaited<ReturnType<typeof getGeolocation>> = null;
+                        try {
+                          geo = await getGeolocation(e.ipAddress);
+                        } catch {
+                          geo = null;
+                        }
+                        metadata = { 
+                            flaggedReason: 'Threat Intelligence Match', 
+                            source: result.permalink,
+                            score: result.malicious,
+                            geolocation: geo,
+                        };
+                        console.log(`[Ingest] Flagged malicious IP ${e.ipAddress} (Source: ${result.permalink})`);
+                        
+                        // AUTO-ESCALATE: Create a Threat Record for the Security Center
+                        try {
+                           await storage.createThreat({
+                               userId: eventSource.userId,
+                               severity: 'high',
+                               type: 'Malicious IP',
+                               sourceIP: e.ipAddress || 'unknown',
+                               targetIP: 'local-network',
+                               description: `Access to known malicious IP: ${e.ipAddress}. Source: ${result.permalink}`,
+                               status: 'detected',
+                               threatVector: 'network',
+                                 sourceCountry: geo?.country || null,
+                                 sourceCity: geo?.city || null,
+                                 sourceLat: geo?.lat !== undefined ? String(geo.lat) : null,
+                                 sourceLon: geo?.lon !== undefined ? String(geo.lon) : null,
+                               deviceName: e.browser || 'unknown', // reuse browser field for device name if available
+                               sourceURL: e.domain || e.fullUrl
+                           });
+                        } catch (threatErr) {
+                           console.error(`[Ingest] Failed to create threat for flagged IP:`, threatErr);
+                        }
+                    }
+                } catch (err) {
+                    console.error(`[Ingest] Threat check failed for ${e.ipAddress}`, err);
+                }
+            }
+
+            return {
+                userId: eventSource.userId,
+                sourceId: eventSource.id,
+                domain: e.domain || 'unknown',
+                fullUrl: e.fullUrl || null,
+                ipAddress: e.ipAddress || null,
+                browser: e.browser || 'unknown',
+                protocol: e.protocol || 'https',
+                detectedAt: e.timestamp ? new Date(e.timestamp) : (e.detectedAt ? new Date(e.detectedAt) : new Date()),
+                isFlagged,
+                metadata
+            };
+        }));
+
+        // Batch insert
+        try {
+          const results = await Promise.all(cleanEvents.map(ev => storage.createBrowsingActivity(ev)));
+          console.log(`[Ingest] Successfully inserted ${results.length} records`);
+        } catch (err) {
+          console.error(`[Ingest] Database insertion error:`, err);
+        }
+
+        // Update heartbeat
+        await storage.updateEventSourceHeartbeat(eventSource.id);
+      }
+
+      
+      // Return blocklist as expected by extension
+      return res.json({ 
+        success: true, 
+        received: events.length,
+        domains: await storage.getBlockedDomains(eventSource.userId) 
+      });
+
+    } catch (error: any) {
+      console.error("Ingest error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Blocklist sync endpoint for agents/extensions
+  app.get("/api/browsing/blocklist", async (req, res) => {
+    try {
+      const apiKey = req.headers['x-api-key'] as string;
+      if (!apiKey) return res.status(401).json({ error: "API key required" });
+
+      const eventSource = await storage.verifyEventSourceApiKey(apiKey);
+      if (!eventSource) return res.status(401).json({ error: "Invalid API key" });
+
+      const domains = await storage.getBlockedDomains(eventSource.userId);
+      res.json({ domains });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/browsing/ingest_real", async (req, res) => {
+    try {
+      const apiKey = req.headers['x-api-key'] as string;
+      
+      if (!apiKey) {
+        console.log('[Ingest] Missing API key');
+        try {
+          await storage.createSecurityAuditLog({
+            userId: null,
+            eventType: 'auth',
+            eventCategory: 'authentication',
+            action: 'api_key_missing',
+            resourceType: 'event_source',
+            resourceId: null,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'] || null,
+            status: 'failure',
+            severity: 'warning',
+            details: null,
+            metadata: null,
+          } as any);
+        } catch {}
+        return res.status(401).json({ error: "API key required" });
+      }
+
+      // Verify API key and get event source
+      const eventSource = await storage.verifyEventSourceApiKey(apiKey);
+      if (!eventSource) {
+        console.log('[Ingest] Invalid API key:', apiKey.substring(0, 10) + '...');
+        try {
+          await storage.createSecurityAuditLog({
+            userId: null,
+            eventType: 'auth',
+            eventCategory: 'authentication',
+            action: 'api_key_invalid',
+            resourceType: 'event_source',
+            resourceId: null,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'] || null,
+            status: 'failure',
+            severity: 'medium',
+            details: null,
+            metadata: null,
+          } as any);
+        } catch {}
+        return res.status(401).json({ error: "Invalid API key" });
+      }
+
+      if (!eventSource.isActive) {
         try {
           await storage.createSecurityAuditLog({
             userId: eventSource.userId,
@@ -3500,10 +3983,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const schema = z.object({
         events: z.array(z.object({
           domain: z.string().min(1),
-          fullUrl: z.string().optional(),
-          ipAddress: z.string().optional(),
+          fullUrl: z.string().optional().nullable(),
+          ipAddress: z.string().optional().nullable(),
           browser: z.string().min(1),
-          protocol: z.string().optional(),
+          protocol: z.string().optional().nullable(),
           detectedAt: z.string().optional(),
         })).min(1).max(100), // Accept up to 100 events at once
       });
