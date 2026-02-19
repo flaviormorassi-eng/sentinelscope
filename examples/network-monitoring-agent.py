@@ -1,221 +1,361 @@
-#!/usr/bin/env python3
-"""
-SentinelScope Network Monitoring Agent
----------------------------------------
-Este script monitora a atividade de rede e envia dados para o SentinelScope.
-
-Requisitos:
-- Python 3.7+
-- pip install requests psutil scapy (opcional)
-
-Como usar:
-1. Crie um Event Source no SentinelScope (Event Sources page)
-2. Copie a API Key gerada
-3. Execute: python network-monitoring-agent.py --api-key SUA_API_KEY
-"""
-
-import argparse
-import json
 import time
-import requests
-import psutil
+import json
 import socket
 import os
-import re
-from datetime import datetime
-from urllib.parse import urlparse
+import sys
+import datetime
+import subprocess
 
-# Configuração
-API_URL = "http://localhost:3001/api/browsing/ingest"
-BATCH_SIZE = 50  # Envia dados em lotes de 50 eventos
-CHECK_INTERVAL = 60  # Verifica a cada 60 segundos
+# Try to import requests and psutil
+try:
+    import requests
+    import psutil
+except ImportError:
+    print("Error: Missing required packages.")
+    print("Please install them using:")
+    print("pip install requests psutil")
+    sys.exit(1)
 
-API_KEY = None
+# --- Configuration ---
+API_BASE_URL = "http://localhost:3001"
+# API key must come from env; accept both canonical and legacy names.
+API_KEY = os.environ.get("SENTINELSCOPE_API_KEY") or os.environ.get("SentinelScope_API_KEY")
+EVENTS_INGEST_URL = f"{API_BASE_URL}/api/ingest/events"
 
-class NetworkMonitorAgent:
-    def __init__(self, api_key, api_url=API_URL):
-        self.api_key = api_key
-        self.api_url = api_url
-        self.event_queue = []
-        
-    def get_browser_name(self):
-        """Detecta o navegador em uso (simplificado)"""
-        import platform
-        system = platform.system()
-        
-        # Em produção, você deveria detectar o processo do navegador
-        # Este é apenas um exemplo
-        if system == "Windows":
-            return "Chrome (Windows)"
-        elif system == "Darwin":
-            return "Safari (macOS)"
-        else:
-            return "Firefox (Linux)"
-    
-    def monitor_dns_queries(self):
-        """
-        Monitora consultas DNS (requer permissões de root/admin)
-        
-        NOTA: Este é um exemplo simplificado. Em produção,
-        você deve usar ferramentas como tcpdump ou Wireshark API.
-        """
-        # Placeholder - implementação real requer scapy ou similar
-        pass
-    
-    def capture_browsing_event(self, domain, full_url=None, ip_address=None, protocol="https"):
-        """Captura um evento de navegação"""
-        event = {
-            "domain": domain,
-            "browser": self.get_browser_name(),
-            "protocol": protocol
-        }
-        
-        if full_url:
-            # Para HTTPS, enviamos apenas o domínio por privacidade
-            if protocol == "https":
-                event["fullUrl"] = None
-            else:
-                event["fullUrl"] = full_url
-        
-        if ip_address:
-            event["ipAddress"] = ip_address
+# How often to scan connections (seconds)
+SCAN_INTERVAL = 2
+# How often to flush the batch to the server (seconds)
+FLUSH_INTERVAL = 10
+# Max events per flush
+batch_size = 50
+
+# Track seen connections to avoid duplicate spam within short windows
+# Key: (remote_ip, remote_port), Value: timestamp
+recent_connections = {}
+SEEN_WINDOW = 60  # Don't report same connection for 60 seconds
+
+# Cache for DNS lookups: {ip: (hostname, timestamp)}
+dns_cache = {}
+DNS_CACHE_TTL = 3600  # 1 hour cache
+
+SUSPICIOUS_PORTS = {21, 22, 23, 25, 3389, 445, 1433, 3306, 5432}
+
+def extract_port_from_event(ev):
+    """Try to extract destination port from fullUrl (tcp://host:port)"""
+    full_url = ev.get("fullUrl")
+    if not full_url or ":" not in full_url:
+        return None
+    try:
+        tail = str(full_url).rsplit(':', 1)[1]
+        return int(tail)
+    except Exception:
+        return None
+
+def classify_connection_severity(ev):
+    port = extract_port_from_event(ev)
+    if port in SUSPICIOUS_PORTS:
+        return "medium"
+    return "low"
+
+def resolve_ip(ip):
+    """Resolve IP to hostname with caching"""
+    now = time.time()
+    if ip in dns_cache:
+        hostname, ts = dns_cache[ip]
+        if now - ts < DNS_CACHE_TTL:
+            return hostname
             
-        self.event_queue.append(event)
-        
-    def send_events(self, events, event_type):
-        """Envia eventos em lote para a API"""
-        for event in events:
-            payload = {
-                "event_type": event_type,
-                "event": event,
-            }
-            try:
-                requests.post(self.api_url, json=payload, headers={"Authorization": f"Bearer {self.api_key}"})
-            except Exception as e:
-                print(f"Falha ao enviar evento: {e}")
+    try:
+        # Set a short timeout for DNS lookups
+        original_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(2)
+        try:
+            hostname = socket.gethostbyaddr(ip)[0]
+            dns_cache[ip] = (hostname, now)
+        except Exception:
+            hostname = ip
+            dns_cache[ip] = (ip, now)
+        finally:
+            socket.setdefaulttimeout(original_timeout)
+            
+        return hostname
+    except Exception:
+        return ip
 
-    def simulate_browsing_data(self):
-        """Gera dados de exemplo para teste"""
-        example_sites = [
-            ("google.com", "192.168.1.1", "https"),
-            ("github.com", "140.82.121.4", "https"),
-            ("stackoverflow.com", "151.101.1.69", "https"),
-            ("youtube.com", "172.217.14.206", "https"),
-        ]
-        
-        for domain, ip, protocol in example_sites:
-            self.capture_browsing_event(domain, None, ip, protocol)
+def get_process_name(pid):
+    try:
+        proc = psutil.Process(pid)
+        return proc.name()
+    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+        return "unknown"
+
+def collect_connections_lsof():
+    """Fallback using lsof when psutil access is denied"""
+    events = []
+    current_time = time.time()
     
-    def collect_network_events(self):
-        """Coleta eventos de rede usando psutil"""
-        events = []
-        for conn in psutil.net_connections(kind='inet'):
+    # Clean up old entries in recent_connections
+    to_remove = [k for k, t in recent_connections.items() if current_time - t > SEEN_WINDOW]
+    for k in to_remove:
+        del recent_connections[k]
+    
+    try:
+        # -iTCP -sTCP:ESTABLISHED -P -n
+        cmd = ["lsof", "-iTCP", "-sTCP:ESTABLISHED", "-P", "-n"]
+        # Use subprocess to capturing stdout
+        output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode('utf-8')
+        
+        # Output format: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
+        lines = output.strip().split('\n')
+        for line in lines[1:]: # Skip header
+            parts = line.split()
+            if len(parts) < 8: continue
+            
+            command = parts[0]
+            
+            # Find the part that looks like a connection (contains ->)
+            name_field = ""
+            for part in parts:
+                if "->" in part:
+                    name_field = part
+                    break
+            
+            if not name_field: continue
+            
+            try:
+                # name_field is like 192.168.1.5:49448->1.1.1.1:443
+                local, remote = name_field.split("->")
+                if ":" not in remote: continue
+                
+                # Handle IPv6 brackets if present
+                r_ip, r_port = remote.rsplit(':', 1)
+                r_ip = r_ip.strip("[]")
+                
+                # Skip loopback
+                if r_ip.startswith("127.") or r_ip == "::1" or r_ip == "localhost":
+                    continue
+                    
+                conn_key = (r_ip, r_port)
+                if conn_key in recent_connections:
+                    continue
+
+                recent_connections[conn_key] = current_time
+                
+                # Resolve hostname
+                hostname = resolve_ip(r_ip)
+                
+                # Construct event
+                timestamp_iso = datetime.datetime.now().isoformat()
+                
+                # Better URL formatting using resolved hostname
+                if hostname != r_ip:
+                    domain = hostname
+                    # Try to guess protocol
+                    if str(r_port) == '443':
+                        full_url = f"https://{hostname}"
+                    elif str(r_port) == '80':
+                        full_url = f"http://{hostname}"
+                    else:
+                        full_url = f"tcp://{hostname}:{r_port}"
+                else:
+                    domain = r_ip
+                    full_url = f"tcp://{r_ip}:{r_port}"
+                
+                event = {
+                    "domain": domain,
+                    "fullUrl": full_url,
+                    "browser": command,
+                    "ipAddress": r_ip,
+                    "detectedAt": timestamp_iso
+                }
+                events.append(event)
+            except ValueError:
+                continue
+            
+    except Exception as e:
+        # lsof might not be installed or return non-zero exit code if no files found
+        pass
+        
+    return events
+
+def collect_connections():
+    """
+    Scans active TCP connections on the system.
+    Returns a list of event dictionaries suitable for the 'browsing/ingest' endpoint.
+    """
+    events = []
+    current_time = time.time()
+    
+    # Clean up old entries in recent_connections
+    to_remove = [k for k, t in recent_connections.items() if current_time - t > SEEN_WINDOW]
+    for k in to_remove:
+        del recent_connections[k]
+        
+    try:
+        # scan for established TCP connections
+        connections = psutil.net_connections(kind='inet')
+    except psutil.AccessDenied:
+        print("[!] Access Denied (psutil). Falling back to lsof...")
+        return collect_connections_lsof()
+
+    for conn in connections:
+        # We only care about ESTABLISHED connections going to remote locations
+        if conn.status == 'ESTABLISHED' and conn.raddr:
+            remote_ip = conn.raddr.ip
+            remote_port = conn.raddr.port
+            
+            # Skip loopback/local traffic usually
+            if remote_ip.startswith("127.") or remote_ip == "::1":
+                continue
+                
+            conn_key = (remote_ip, remote_port)
+            
+            # If we've seen this exact connection recently, skip it
+            if conn_key in recent_connections:
+                continue
+                
+            # Log it
+            recent_connections[conn_key] = current_time
+            
+            pid = conn.pid
+            proc_name = get_process_name(pid) if pid else "unknown"
+            
+            # Resolve hostname
+            hostname = resolve_ip(remote_ip)
+            
+            # Construct the event payload matching BrowsingActivity schema
+            timestamp_iso = datetime.datetime.now().isoformat()
+            
+            # Better URL formatting using resolved hostname
+            if hostname != remote_ip:
+                domain = hostname
+                # Try to guess protocol
+                if str(remote_port) == '443':
+                    full_url = f"https://{hostname}"
+                elif str(remote_port) == '80':
+                    full_url = f"http://{hostname}"
+                else:
+                    full_url = f"tcp://{hostname}:{remote_port}"
+            else:
+                domain = remote_ip
+                full_url = f"tcp://{remote_ip}:{remote_port}"
+            
             event = {
-                "local_address": f"{conn.laddr.ip}:{conn.laddr.port}" if conn.laddr else None,
-                "remote_address": f"{conn.raddr.ip}:{conn.raddr.port}" if conn.raddr else None,
-                "status": conn.status,
-                "pid": conn.pid,
-                "type": str(conn.type),
-                "family": str(conn.family),
+                "domain": domain,  # Use Hostname if available
+                "fullUrl": full_url,
+                "browser": proc_name,
+                "ipAddress": remote_ip,
+                "detectedAt": timestamp_iso
             }
             events.append(event)
-        return events
-    
-    def collect_process_events(self):
-        """Coleta eventos de processo usando psutil"""
-        events = []
-        for proc in psutil.process_iter(['pid', 'name', 'username', 'status', 'create_time']):
-            try:
-                event = proc.info
-                events.append(event)
-            except Exception:
-                continue
-        return events
-    
-    def collect_url_connections(self):
-        urls = set()
-        ips = set()
-        # Tenta analisar a saída do lsof para conexões estabelecidas
-        try:
-            stream = os.popen("lsof -i -nP | grep ESTABLISHED")
-            for line in stream:
-                # Linha de exemplo: python3   12345 user   10u  IPv4 0x...  TCP 127.0.0.1:5432->192.168.1.1:12345 (ESTABLISHED)
-                match = re.search(r"TCP (\S+):(\d+)->(\S+):(\d+)", line)
-                if match:
-                    local_ip, local_port, remote_ip, remote_port = match.groups()
-                    ips.add(remote_ip)
-                    urls.add(f"{remote_ip}:{remote_port}")
-        except Exception as e:
-            print(f"Falha ao analisar a saída do lsof: {e}")
-        return list(urls), list(ips)
-    
-    def run(self, simulation_mode=False):
-        """Executa o agente de monitoramento"""
-        print(f"🔍 SentinelScope Network Monitoring Agent iniciado")
-        print(f"📡 API URL: {self.api_url}")
-        print(f"{'🧪 Modo de Simulação' if simulation_mode else '✓ Modo de Produção'}")
-        print()
+            
+    return events
+
+def send_batch(events):
+    if not events:
+        return
         
+    url = f"{API_BASE_URL}/api/browsing/ingest"
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": API_KEY
+    }
+    
+    # Send as batch array which server accepts
+    print(f"[*] Sending {len(events)} events...")
+    
+    try:
+        response = requests.post(url, json=events, headers=headers, timeout=5)
+        if response.status_code in (200, 201):
+            print(f"[+] Successfully sent {len(events)} events.")
+            # Also send a subset as normalized raw events so real-mode Network Flow can stay populated.
+            send_flow_events(events[: min(10, len(events))])
+        elif response.status_code == 401:
+            print("[!] Send Failed 401: Invalid or missing API key.")
+            print("    Set SENTINELSCOPE_API_KEY (or legacy SentinelScope_API_KEY) with a valid key.")
+        else:
+            print(f"[!] Send Failed {response.status_code}: {response.text}")
+    except Exception as e:
+        print(f"[!] Error sending batch: {e}")
+
+def send_flow_events(events):
+    if not events:
+        return
+
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": API_KEY
+    }
+
+    for ev in events:
+        ip = ev.get("ipAddress")
+        if not ip:
+            continue
+
+        payload = {
+            "timestamp": ev.get("detectedAt"),
+            "severity": classify_connection_severity(ev),
+            "eventType": "network_connection",
+            "sourceIp": ip,
+            "protocol": ev.get("protocol") or "tcp",
+            "action": "observed",
+            "message": f"Outbound connection observed: {ev.get('browser','unknown')} -> {ev.get('domain','unknown')}",
+            "sourceURL": ev.get("fullUrl"),
+            "deviceName": ev.get("browser"),
+            "threatVector": "network",
+            "rawData": {
+                "connection": ev,
+                "collector": "network-monitoring-agent.py"
+            }
+        }
+
+        source_port = extract_port_from_event(ev)
+        if source_port is not None:
+            payload["sourcePort"] = source_port
+
         try:
-            while True:
-                if simulation_mode:
-                    # Modo de teste: gera dados de exemplo
-                    self.simulate_browsing_data()
-                    print(f"📊 Gerados {len(self.event_queue)} eventos de teste")
-                else:
-                    # Modo real: monitora tráfego de rede e processos
-                    net_events = self.collect_network_events()
-                    self.send_events(net_events, "network")
-                    proc_events = self.collect_process_events()
-                    self.send_events(proc_events, "process")
-                    url_list, ip_list = self.collect_url_connections()
-                    for url in url_list:
-                        self.send_events([{"url": url}], "url_connection")
-                    for ip in ip_list:
-                        self.send_events([{"ip": ip}], "ip_connection")
-                    time.sleep(CHECK_INTERVAL)  # Coleta a cada 60 segundos
-                    break
-                
-                # Envia eventos coletados
-                self.send_events()
-                
-                if simulation_mode:
-                    print(f"\n⏳ Aguardando {CHECK_INTERVAL} segundos...\n")
-                    time.sleep(CHECK_INTERVAL)
-                else:
-                    break
-                    
-        except KeyboardInterrupt:
-            print("\n\n⏹️  Agente interrompido pelo usuário")
-            # Envia eventos restantes antes de sair
-            if self.event_queue:
-                print("📤 Enviando eventos restantes...")
-                self.send_events()
+            response = requests.post(EVENTS_INGEST_URL, json=payload, headers=headers, timeout=5)
+            if response.status_code not in (200, 201):
+                print(f"[!] Flow ingest failed {response.status_code}: {response.text[:120]}")
+        except Exception as e:
+            print(f"[!] Error sending flow event: {e}")
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="SentinelScope Network Monitoring Agent"
-    )
-    parser.add_argument(
-        "--api-key",
-        required=True,
-        help="API Key do Event Source (obtenha em Event Sources > Create)"
-    )
-    parser.add_argument(
-        "--api-url",
-        default=API_URL,
-        help=f"URL da API (padrão: {API_URL})"
-    )
-    parser.add_argument(
-        "--simulate",
-        action="store_true",
-        help="Modo de simulação com dados de exemplo"
-    )
+    if not API_KEY:
+        print("[!] Missing API key.")
+        print("    Export SENTINELSCOPE_API_KEY=<your_key> and restart the agent.")
+        sys.exit(1)
+
+    print(f"--- SentinelScope Network Agent (Real Mode) ---")
+    print(f"Target: {API_BASE_URL}")
+    print(f"API Key: {API_KEY[:6]}...")
+    print(f"Scanning every {SCAN_INTERVAL}s. Ctrl+C to stop.")
     
-    args = parser.parse_args()
+    pending_events = []
+    last_flush = time.time()
     
-    agent = NetworkMonitorAgent(args.api_key, args.api_url)
-    agent.run(simulation_mode=args.simulate)
+    while True:
+        try:
+            new_events = collect_connections()
+            if new_events:
+                print(f"Found {len(new_events)} new connections.")
+                pending_events.extend(new_events)
+            
+            # Flush if time or size limit reached
+            if (time.time() - last_flush > FLUSH_INTERVAL) or (len(pending_events) >= batch_size):
+                if pending_events:
+                    send_batch(pending_events)
+                    pending_events = []
+                last_flush = time.time()
+                
+            time.sleep(SCAN_INTERVAL)
+            
+        except KeyboardInterrupt:
+            print("\nStopping agent...")
+            break
+        except Exception as e:
+            print(f"\n[!] Unexpected error: {e}")
+            time.sleep(5)
 
 if __name__ == "__main__":
     main()

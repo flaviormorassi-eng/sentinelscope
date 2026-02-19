@@ -15,7 +15,10 @@ import {
   CheckCircle,
   ArrowRight,
   Search,
-  FileText
+  FileText,
+  Smartphone,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageToggle } from '@/components/LanguageToggle';
@@ -188,6 +191,148 @@ export default function Landing() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Mobile App Section */}
+      <section className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col lg:flex-row items-center gap-12 max-w-6xl mx-auto">
+            <div className="flex-1 space-y-6">
+              <Badge variant="outline" className="mb-2">
+                <Smartphone className="h-3 w-3 mr-1" />
+                New: Mobile Command Center
+              </Badge>
+              <h2 className="text-3xl md:text-4xl font-bold">
+                SentinelScope in Your Pocket
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Stay connected to your security infrastructure anywhere, anytime. Our new mobile experience acts as a portable command center, not just a viewer.
+              </p>
+              
+              <div className="grid sm:grid-cols-2 gap-6 mt-6">
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Activity className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">Real-Time Feeds</h3>
+                    <p className="text-sm text-muted-foreground">Access live threat streams and monitoring stats exactly as they happen.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Bell className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">Instant Alerts</h3>
+                    <p className="text-sm text-muted-foreground">Acknowledge and resolve critical alerts immediately from your phone.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Search className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">VirusTotal Scanner</h3>
+                    <p className="text-sm text-muted-foreground">Quickly scan suspicious IPs or URLs found in emails or logs on the go.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <WifiOff className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">Offline Access</h3>
+                    <p className="text-sm text-muted-foreground">View cached reports and dashboards even with spotty connections.</p>
+                  </div>
+                </div>
+              </div>
+
+               <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                 <Button variant="outline" className="gap-2" disabled>
+                   <span className="opacity-70">Download for iOS</span>
+                 </Button>
+                 <Button variant="outline" className="gap-2" disabled>
+                    <span className="opacity-70">Download for Android</span>
+                 </Button>
+                 <span className="text-xs text-muted-foreground self-center sm:ml-2">Coming soon to stores</span>
+               </div>
+            </div>
+            
+            {/* Phone Mockup Representation */}
+            <div className="flex-1 flex justify-center lg:justify-end">
+              <div className="relative border-gray-800 bg-gray-950 border-[14px] rounded-[2.5rem] h-[600px] w-[300px] shadow-xl flex flex-col overflow-hidden">
+                <div className="h-[32px] w-[3px] bg-gray-800 absolute -left-[17px] top-[72px] rounded-l-lg"></div>
+                <div className="h-[46px] w-[3px] bg-gray-800 absolute -left-[17px] top-[124px] rounded-l-lg"></div>
+                <div className="h-[46px] w-[3px] bg-gray-800 absolute -left-[17px] top-[178px] rounded-l-lg"></div>
+                <div className="h-[64px] w-[3px] bg-gray-800 absolute -right-[17px] top-[142px] rounded-r-lg"></div>
+                <div className="rounded-[2rem] overflow-hidden w-full h-full bg-background flex flex-col relative">
+                   {/* Simplified Header */}
+                   <div className="h-12 border-b flex items-center px-4 justify-between bg-card/50 backdrop-blur-sm z-10">
+                      <div className="h-4 w-4 rounded-full bg-primary/20"></div>
+                      <div className="h-2 w-20 rounded-full bg-muted"></div>
+                      <div className="h-4 w-4 rounded-full bg-muted"></div>
+                   </div>
+                   {/* Mock Content */}
+                   <div className="flex-1 p-4 space-y-4 overflow-hidden relative">
+                      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10"></div>
+                      
+                      <div className="flex gap-2">
+                        <div className="h-24 flex-1 rounded-xl bg-primary/5 border border-primary/20 p-3 flex flex-col justify-between">
+                           <div className="h-6 w-6 rounded-full bg-primary/20"></div>
+                           <div className="space-y-1">
+                             <div className="h-4 w-12 rounded bg-primary/20"></div>
+                             <div className="h-2 w-16 rounded bg-muted/50"></div>
+                           </div>
+                        </div>
+                        <div className="h-24 flex-1 rounded-xl bg-card border p-3 flex flex-col justify-between">
+                           <div className="h-6 w-6 rounded-full bg-muted"></div>
+                           <div className="space-y-1">
+                             <div className="h-4 w-12 rounded bg-muted"></div>
+                             <div className="h-2 w-16 rounded bg-muted/50"></div>
+                           </div>
+                        </div>
+                      </div>
+
+                      <div className="h-40 rounded-xl bg-card border p-4 space-y-3">
+                         <div className="flex justify-between items-center">
+                            <div className="h-3 w-24 rounded bg-muted"></div>
+                            <div className="h-3 w-8 rounded bg-muted"></div>
+                         </div>
+                         <div className="flex items-end gap-1 h-24 pb-2 justify-between px-2">
+                            <div className="w-4 bg-primary/20 h-[40%] rounded-t-sm"></div>
+                            <div className="w-4 bg-primary/30 h-[70%] rounded-t-sm"></div>
+                            <div className="w-4 bg-primary/20 h-[30%] rounded-t-sm"></div>
+                            <div className="w-4 bg-primary/60 h-[85%] rounded-t-sm"></div>
+                            <div className="w-4 bg-primary/40 h-[50%] rounded-t-sm"></div>
+                            <div className="w-4 bg-primary h-[90%] rounded-t-sm text-[8px] flex items-center justify-center text-primary-foreground">Live</div>
+                            <div className="w-4 bg-primary/30 h-[60%] rounded-t-sm"></div>
+                         </div>
+                      </div>
+
+                      <div className="space-y-2">
+                         <div className="h-3 w-32 rounded bg-muted mb-2"></div>
+                         {[1,2,3].map(i => (
+                           <div key={i} className="h-12 rounded-lg bg-card border flex items-center px-3 gap-3">
+                              <div className="h-8 w-8 rounded bg-red-500/10 flex items-center justify-center">
+                                 <div className="h-4 w-4 rounded-full bg-red-500/40"></div>
+                              </div>
+                              <div className="space-y-1 flex-1">
+                                 <div className="h-2 w-24 rounded bg-muted"></div>
+                                 <div className="h-2 w-16 rounded bg-muted/50"></div>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
+                   </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

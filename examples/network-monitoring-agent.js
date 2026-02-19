@@ -31,14 +31,16 @@ class NetworkMonitorAgent {
 
   getBrowserName() {
     const platform = os.platform();
+    const browsers = ['Chrome', 'Firefox', 'Safari', 'Edge'];
+    const randomBrowser = browsers[Math.floor(Math.random() * browsers.length)];
     
-    // Em produção, detectar o processo real do navegador
+    // Simulate different browsers for variety, or default to Chrome if preferred
     if (platform === 'win32') {
-      return 'Chrome (Windows)';
+      return `${randomBrowser} (Windows)`;
     } else if (platform === 'darwin') {
-      return 'Safari (macOS)';
+      return `${randomBrowser} (macOS)`;
     } else {
-      return 'Firefox (Linux)';
+      return `${randomBrowser} (Linux)`;
     }
   }
 
@@ -210,12 +212,12 @@ const getArg = (name) => {
   return index !== -1 ? args[index + 1] : null;
 };
 
-const apiKey = getArg('--api-key');
+const apiKey = getArg('--api-key') || process.env.SENTINELSCOPE_API_KEY || process.env.SentinelScope_API_KEY;
 const apiUrl = getArg('--api-url') || API_URL;
 const simulate = args.includes('--simulate');
 
 if (!apiKey) {
-  console.error('❌ Erro: --api-key é obrigatório\n');
+  console.error('❌ Erro: --api-key é obrigatório (ou defina SENTINELSCOPE_API_KEY)\n');
   console.log('Uso:');
   console.log('  node network-monitoring-agent.js --api-key SUA_API_KEY [--simulate] [--api-url URL]\n');
   console.log('Opções:');
