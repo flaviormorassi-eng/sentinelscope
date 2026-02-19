@@ -1,3 +1,5 @@
+import { storage } from '../storage';
+
 const VIRUSTOTAL_API_KEY = process.env.VIRUSTOTAL_API_KEY;
 const VT_BASE_URL = 'https://www.virustotal.com/api/v3';
 
@@ -31,9 +33,16 @@ export function validateURL(url: string): boolean {
 }
 
 async function makeVTRequest(endpoint: string): Promise<any> {
-  if (!VIRUSTOTAL_API_KEY) {
+  // Check if key is missing OR if it's the known placeholder hash often found in .env examples
+  const isInvalidKey = !VIRUSTOTAL_API_KEY || VIRUSTOTAL_API_KEY === 'ad5018008a4ca1aa7111c8fcab5e3143516227023f238eccc1df6146dafa7899';
+  
+  if (isInvalidKey) {
     if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-      console.warn('VirusTotal API key missing. Returning mock data for development.');
+      if (!VIRUSTOTAL_API_KEY) {
+         console.warn('VirusTotal API key missing. Returning mock data for development.');
+      } else {
+         console.debug('VirusTotal API key is a placeholder/test hash. Returning mock data.');
+      }
       
       // Check for specific test hash to simulate malicious result
       // Hash: ad5018008a4ca1aa7111c8fcab5e3143516227023f238eccc1df6146dafa7899
@@ -204,9 +213,30 @@ export async function checkURL(url: string): Promise<VirusTotalResult> {
 }
 
 /**
- * Check an IP address against VirusTotal database
+ * Check an IP address against Local Blocklist first, then VirusTotal
  */
 export async function checkIPAddress(ip: string): Promise<VirusTotalResult> {
+  // 1. Check Local Intelligence ("Self-Hosted API")
+  try {
+    const isBlocked = await storage.checkIpBlocklist(ip);
+    if (isBlocked) {
+      console.log(`[ZeroTrust] IP ${ip} found in local blocklist. Skipping external API.`);
+      return {
+        status: 'malicious',
+        malicious: 100, // Synthetic score for local blocking
+        suspicious: 0,
+        harmless: 0,
+        undetected: 0,
+        total: 100,
+        permalink: '#local-blocklist',
+        analysisDate: new Date().toISOString()
+      };
+    }
+  } catch (err) {
+    console.warn('[ZeroTrust] Local blocklist lookup failed, falling back to API', err);
+  }
+
+  // 2. Fallback to VirusTotal API
   try {
     const data = await makeVTRequest(`/ip_addresses/${ip}`);
     

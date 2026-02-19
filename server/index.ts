@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import helmet from 'helmet';
+import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { DbStorage } from "./storage";
 import { registerRoutes } from "./routes";
@@ -16,6 +17,10 @@ declare module 'http' {
     rawBody: unknown
   }
 }
+
+// Enable CORS for all routes (essential for Chrome Extension)
+app.use(cors());
+
 app.use(express.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;
@@ -108,7 +113,7 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // --- Event Processor: run every 5 minutes ---
+  // --- Event Processor: run every 5 seconds for real-time analysis ---
   import('./eventProcessor').then(({ runEventProcessor }) => {
     setInterval(() => {
       runEventProcessor().catch((err) => {
@@ -116,8 +121,8 @@ app.use((req, res, next) => {
         // Optional: send error notification (console, email, etc.)
         // For now, just log to console. To email, integrate with your emailService here.
       });
-    }, 300000); // 5 minutes
-    log('[Processor] Automatic event processing started (every 5 min)');
+    }, 5000); // 5 seconds
+    log('[Processor] Automatic event processing started (every 5 sec)');
 
     // Rotation cleanup every 10 minutes
     setInterval(async () => {

@@ -131,6 +131,10 @@ async function main() {
   await runEventProcessor();
   const threatEvents = await storage.getThreatEvents(userId, 50);
   let alertsCreated = 0;
+  // The eventProcessor already creates alerts for detected threats.
+  // We do not need to manually create duplicate alerts here, which also avoids
+  // the foreign key violation between threat_events and threats tables.
+  /*
   if (includeAlerts) {
     for (const te of threatEvents) {
       const sev = (te as any).severity?.toLowerCase();
@@ -148,6 +152,7 @@ async function main() {
       }
     }
   }
+  */
   let domainsFlagged: string[] = [];
   for (const d of autoFlagDomains) {
     try {

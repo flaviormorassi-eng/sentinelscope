@@ -4,12 +4,22 @@ import { generateMockThreat } from './utils/threatGenerator';
 import { checkIPAddress } from './utils/virusTotalService';
 import type { RawEvent, InsertNormalizedEvent, NormalizedEvent } from '@shared/schema';
 
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 500; // Increased throughput for real-time processing
 
 // Helper to check for private IPs
 function isPrivateIP(ip: string): boolean {
   return /^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|127\.)/.test(ip);
 }
+
+const THREAT_PATTERNS = [
+  { type: 'Brute Force Attempt', severity: 'medium', keywords: ['failed login', 'authentication failure', 'invalid password', 'bad credentials', 'login failed'] },
+  { type: 'SQL Injection', severity: 'high', keywords: ['sql syntax', 'union select', '1=1', 'database error', 'information_schema', 'select * from', 'drop table'] },
+  { type: 'XSS Attack', severity: 'high', keywords: ['xss', '<script>', 'javascript:', 'onerror=', 'onload=', 'alert('] },
+  { type: 'Command Injection', severity: 'critical', keywords: ['; cat ', '| wget', '| curl', '$(', '; ls', 'powershell -encodedcommand'] },
+  { type: 'Path Traversal', severity: 'high', keywords: ['../', '..\\', '/etc/passwd', 'c:\\windows\\', 'boot.ini', 'win.ini'] },
+  { type: 'Sensitive File Access', severity: 'critical', keywords: ['.env', 'wp-config.php', 'id_rsa', '.git/config'] },
+  { type: 'Scanner Activity', severity: 'medium', keywords: ['sqlmap', 'nikto', 'nmap', 'burp collab', 'acunetix', 'nessus', 'gobuster'] },
+];
 
 async function detectThreats(normalized: InsertNormalizedEvent): Promise<{ type: string; severity: string } | null> {
   // 1. Check VirusTotal if IP is public and available
@@ -24,16 +34,13 @@ async function detectThreats(normalized: InsertNormalizedEvent): Promise<{ type:
      }
   }
 
-  // 2. Check keywords in message
+  // 2. Check keywords in message against defined patterns
   const msg = normalized.message?.toLowerCase() || '';
-  if (msg.includes('failed login') || msg.includes('authentication failure')) {
-    return { type: 'Brute Force Attempt', severity: 'medium' };
-  }
-  if (msg.includes('sql syntax') || msg.includes('union select')) {
-    return { type: 'SQL Injection', severity: 'high' };
-  }
-  if (msg.includes('xss') || msg.includes('script>')) {
-    return { type: 'XSS Attack', severity: 'high' };
+  
+  for (const pattern of THREAT_PATTERNS) {
+    if (pattern.keywords.some(k => msg.includes(k))) {
+      return { type: pattern.type, severity: pattern.severity };
+    }
   }
 
   // 3. Check threat vector from source
@@ -49,25 +56,35 @@ async function processRawEvent(event: RawEvent) {
 
   try {
     const rawData = event.rawData as Record<string, any>;
+    const conn = (rawData?.connection && typeof rawData.connection === 'object') ? rawData.connection : {};
+
+    const eventType = rawData.eventType || rawData.type || conn.eventType || 'network_connection';
+    const severity = rawData.severity || conn.severity || 'low';
+    const protocol = rawData.protocol || conn.protocol || null;
+    const action = rawData.action || conn.action || 'observed';
 
     // Basic normalization
     const normalized: InsertNormalizedEvent = {
       rawEventId: event.id,
       sourceId: event.sourceId,
       userId: event.userId,
-      eventType: rawData.eventType || 'unknown',
-      severity: rawData.severity || 'low',
+      eventType,
+      severity,
       message: rawData.message || 'No message provided',
       metadata: rawData.metadata || {},
       sourceURL: rawData.sourceURL,
       deviceName: rawData.deviceName,
       threatVector: rawData.threatVector,
+      protocol,
+      action,
+      sourcePort: rawData.sourcePort || conn.sourcePort || null,
+      destinationPort: rawData.destinationPort || conn.destinationPort || null,
       // Use timestamp only if present and valid
       ...(rawData.timestamp ? { timestamp: new Date(rawData.timestamp) } : {}),
     };
 
     // IP Enrichment
-    const sourceIp = rawData.sourceIp || rawData.sourceIP;
+    const sourceIp = rawData.sourceIp || rawData.sourceIP || rawData.ipAddress || conn.ipAddress || conn.sourceIp || conn.sourceIP;
     if (sourceIp) {
       normalized.sourceIP = sourceIp;
       const geoData = await getGeolocation(sourceIp);
@@ -79,7 +96,7 @@ async function processRawEvent(event: RawEvent) {
       }
     }
 
-    const destinationIp = rawData.destinationIp || rawData.destinationIP;
+    const destinationIp = rawData.destinationIp || rawData.destinationIP || conn.destinationIp || conn.destinationIP;
     if (destinationIp) {
       normalized.destinationIP = destinationIp;
     }

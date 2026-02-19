@@ -6,11 +6,19 @@ import { storage } from '../storage';
 export interface AuthRequest extends Request { userId?: string }
 
 const JWT_SECRET = process.env.JWT_SECRET;
-// Default to allowing legacy headers/cookies in non-production and test environments
-const IS_TEST = process.env.NODE_ENV === 'test' || !!process.env.VITEST || !!process.env.VITEST_WORKER_ID;
-const ALLOW_LEGACY = (
-  process.env.ALLOW_LEGACY_X_USER_ID ?? (process.env.NODE_ENV !== 'production' || IS_TEST ? 'true' : 'false')
-) === 'true';
+
+// SEC: Enforce strict auth in production. Require explicit override for legacy auth.
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const IS_TEST = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
+
+// Only allow legacy auth if explicitly enabled env var is set, or if we are in test mode.
+// Default to FALSE for safety.
+const ALLOW_LEGACY = process.env.ALLOW_LEGACY_X_USER_ID === 'true' || IS_TEST;
+
+if (IS_PRODUCTION && !JWT_SECRET) {
+  console.error("FATAL: JWT_SECRET is not set in production environment.");
+  process.exit(1); // Fail secure
+}
 
 function extractToken(authHeader?: string): string | null {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;

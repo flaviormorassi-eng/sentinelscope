@@ -702,3 +702,17 @@ export const SUBSCRIPTION_TIERS = {
 } as const;
 
 export type SubscriptionTier = keyof typeof SUBSCRIPTION_TIERS;
+
+// Newsletter Subscriptions
+export const newsletterSubscriptions = pgTable("newsletter_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const insertNewsletterSubscriptionSchema = createInsertSchema(newsletterSubscriptions).pick({
+  email: true,
+});
+
+export type NewsletterSubscription = typeof newsletterSubscriptions.$inferSelect;
+export type InsertNewsletterSubscription = typeof newsletterSubscriptions.$inferInsert;
