@@ -1,3 +1,0 @@
--- Template migration (rename this file when used)
--- Example: ALTER TABLE browsing_activity ADD COLUMN IF NOT EXISTS referrer text;
--- Write SQL below this line:
