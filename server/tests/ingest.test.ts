@@ -43,6 +43,9 @@ vi.mock('../storage', () => {
       const browserBreakdown = Array.from(brMap.entries()).map(([browser,count])=>({browser, count}));
       return { totalVisits, uniqueDomains, flaggedDomains, topDomains, browserBreakdown };
     },
+    async getBlockedDomains(_userId: string) {
+      return [];
+    },
     // Stubs not used in these tests
     async getEventSources() { return []; },
     async getEventSource() { return undefined; },
@@ -111,14 +114,20 @@ describe('Browsing ingest pipeline', () => {
     await ensureUser();
   });
 
-  it('rejects ingest before prefs enabled', async () => {
+  it('returns success (blocklist only) before prefs enabled', async () => {
+    // We haven't called enablePrefs() yet.
+    // The previous behavior was 403; new behavior is 200 so extension stays green.
     const apiKey = await createEventSource();
     const res = await agent
       .post('/api/browsing/ingest')
       .set('x-api-key', apiKey)
       .send({ events: [{ domain: 'example.com', browser: 'Chrome' }] });
-    expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/not enabled/i);
+    
+    expect(res.status).toBe(200);
+    expect(res.body.domains).toBeDefined();
+    // Verify NOT ingested
+    const stored = await storageRef.getBrowsingActivity(TEST_USER_ID);
+    expect(stored.length).toBe(0);
   });
 
   it('enables prefs and ingests events successfully', async () => {
@@ -155,13 +164,15 @@ describe('Browsing ingest pipeline', () => {
     expect(stats.totalVisits).toBeGreaterThanOrEqual(2);
   });
 
-  it('validates ingest schema (empty events)', async () => {
+  it('validates ingest schema (empty events allowed)', async () => {
     const apiKey = await createEventSource();
-    const badRes = await agent
+    const emptyRes = await agent
       .post('/api/browsing/ingest')
       .set('x-api-key', apiKey)
       .send({ events: [] });
-    expect(badRes.status).toBe(400);
-    expect(badRes.body.error).toMatch(/Invalid request format/i);
+    
+    // Now returns 200 for empty list to allow syncing blocked domains easily
+    expect(emptyRes.status).toBe(200);
+    expect(emptyRes.body.success).toBe(true);
   });
 });

@@ -35,6 +35,7 @@ vi.mock('../storage', () => {
     async createBrowsingActivity(a: any) { const rec = { id: 'ba_'+Math.random().toString(36).slice(2), detectedAt: new Date(), isFlagged: false, ...a }; browsing.push(rec); return rec; },
     async getBrowsingActivity(userId: string) { return browsing.filter(b => b.userId === userId).sort((a,b)=>+new Date(b.detectedAt)-+new Date(a.detectedAt)); },
     async getBrowsingStats(userId: string) { return { totalVisits: 0, uniqueDomains: 0, flaggedDomains: 0, topDomains: [], browserBreakdown: [] }; },
+    async getBlockedDomains(_userId: string) { return []; },
     // Stubs for unused paths
     async getEventSources() { return []; },
     async getEventSource() { return undefined; },
