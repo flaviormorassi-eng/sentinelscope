@@ -24,3 +24,7 @@ nohup.out
 *.swp
 *.swo
 *.pid
+
+# Python cache artifacts
+__pycache__/
+*.pyc
