@@ -13,7 +13,7 @@ import type { User, Alert } from '@shared/schema';
 export async function sendCriticalAlertEmail(user: User, alert: Alert): Promise<void> {
   const email = {
     to: user.email,
-    from: 'alerts@sentinelscope.com',
+    from: 'contact@sentinel-scope.com',
     subject: `[CRITICAL] SentinelScope Alert: ${alert.title}`,
     html: `
       <h1>Critical Security Alert</h1>

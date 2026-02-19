@@ -216,7 +216,7 @@ export default function SecurityPage() {
                       {t('security.disclosure.contact.title', 'Contact')}
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      Email: security@sentinelscope.com
+                      Email: contact@sentinel-scope.com
                     </p>
                   </div>
                   <div>

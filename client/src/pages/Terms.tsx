@@ -203,8 +203,8 @@ export default function Terms() {
                   </p>
                   <div className="p-4 bg-muted rounded-md">
                     <p className="font-semibold">SentinelScope Legal Team</p>
-                    <p className="text-muted-foreground">Email: legal@sentinelscope.com</p>
-                    <p className="text-muted-foreground">Support: support@sentinelscope.com</p>
+                    <p className="text-muted-foreground">Email: contact@sentinel-scope.com</p>
+                    <p className="text-muted-foreground">Support: contact@sentinel-scope.com</p>
                   </div>
                 </section>
               </CardContent>

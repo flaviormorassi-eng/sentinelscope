@@ -7,6 +7,7 @@ Unified cybersecurity monitoring: network flow visibility, threat detection, bro
 - Event ingestion API (agents, extension)
 - Alerts with mark-as-read and filters
 - Subscriptions (Stripe) and billing portal
+- Newsletter subscriptions
 - VirusTotal lookup integration
 - Admin analytics and compliance tools
 

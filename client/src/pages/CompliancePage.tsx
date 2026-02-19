@@ -288,7 +288,7 @@ export default function CompliancePage() {
                   </p>
                   <div className="bg-muted p-4 rounded-md">
                     <p className="font-semibold">SentinelScope Compliance Team</p>
-                    <p className="text-sm text-muted-foreground">Email: compliance@sentinelscope.com</p>
+                    <p className="text-sm text-muted-foreground">Email: contact@sentinel-scope.com</p>
                     <p className="text-sm text-muted-foreground">Response time: Within 30 days</p>
                   </div>
                 </div>

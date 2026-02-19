@@ -142,7 +142,7 @@ export default function Privacy() {
                     <li><strong>{t('privacy.rights.objection.title', 'Objection:')}</strong> {t('privacy.rights.objection.desc', 'Object to processing of your data')}</li>
                   </ul>
                   <p className="text-muted-foreground mt-4">
-                    {t('privacy.rights.exercise', 'To exercise these rights, contact us at privacy@sentinelscope.com')}
+                    {t('privacy.rights.exercise', 'To exercise these rights, contact us at contact@sentinel-scope.com')}
                   </p>
                 </section>
 
@@ -191,8 +191,8 @@ export default function Privacy() {
                   </p>
                   <div className="mt-4 p-4 bg-muted rounded-md">
                     <p className="font-semibold">SentinelScope Privacy Team</p>
-                    <p className="text-muted-foreground">Email: privacy@sentinelscope.com</p>
-                    <p className="text-muted-foreground">Support: support@sentinelscope.com</p>
+                    <p className="text-muted-foreground">Email: contact@sentinel-scope.com</p>
+                    <p className="text-muted-foreground">Support: contact@sentinel-scope.com</p>
                   </div>
                 </section>
               </CardContent>

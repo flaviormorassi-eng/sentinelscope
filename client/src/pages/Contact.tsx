@@ -29,7 +29,7 @@ export default function Contact() {
     {
       icon: Mail,
       title: t('contact.methods.email.title', 'Email Support'),
-      description: 'support@sentinelscope.com',
+      description: 'contact@sentinel-scope.com',
       action: t('contact.methods.email.action', 'Send Email'),
     },
     {
