@@ -43,6 +43,16 @@ async function handleRequest(
 ): Promise<any> {
   // Get Firebase user for authentication (used in production only)
   const user = auth.currentUser;
+  
+  // Construct full URL if it's a relative API path
+  let fullUrl = url;
+  if (url.startsWith('/api')) {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+    // ensure we don't double slash if base ends with / and url starts with /
+    const cleanBase = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
+    fullUrl = cleanBase ? `${cleanBase}${url}` : url;
+  }
+
   const isDev = typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV;
   const disableFirebaseAuth = typeof import.meta !== 'undefined' && (
     (import.meta as any).env?.VITE_DISABLE_FIREBASE_AUTH === '1' ||
@@ -79,7 +89,7 @@ async function handleRequest(
     delete headers["Content-Type"];
   }
 
-  const res = await fetch(url, {
+  const res = await fetch(fullUrl, {
     ...options,
     headers: {
       ...headers,

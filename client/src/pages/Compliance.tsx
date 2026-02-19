@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,9 +33,8 @@ export default function Compliance() {
   const { data: logs, isLoading: logsLoading } = useQuery<SecurityAuditLog[]>({
     queryKey: ["/api/compliance/audit-logs", eventCategory, eventType, startDate, endDate, limit],
     queryFn: async () => {
-      const response = await fetch(`/api/compliance/audit-logs?${buildQueryString()}`);
-      if (!response.ok) throw new Error("Failed to fetch audit logs");
-      return response.json();
+      // Use apiRequest to ensure auth headers and MFA handling
+      return apiRequest('GET', `/api/compliance/audit-logs?${buildQueryString()}`);
     },
   });
 
@@ -44,9 +44,7 @@ export default function Compliance() {
       const params = new URLSearchParams();
       if (startDate) params.append("startDate", startDate);
       if (endDate) params.append("endDate", endDate);
-      const response = await fetch(`/api/compliance/report?${params.toString()}`);
-      if (!response.ok) throw new Error("Failed to fetch compliance report");
-      return response.json();
+      return apiRequest('GET', `/api/compliance/report?${params.toString()}`);
     },
   });
 
@@ -295,7 +293,13 @@ export default function Compliance() {
                     logs.map((log) => (
                       <TableRow key={log.id}>
                         <TableCell className="text-sm">
-                          {format(new Date(log.timestamp), "MMM dd, yyyy HH:mm:ss")}
+                          {(() => {
+                            try {
+                              return log.timestamp ? format(new Date(log.timestamp), "MMM dd, yyyy HH:mm:ss") : "-";
+                            } catch (e) {
+                              return "Invalid Date";
+                            }
+                          })()}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{log.eventCategory}</Badge>

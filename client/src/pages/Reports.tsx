@@ -59,9 +59,9 @@ export default function Reports() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 md:p-6 pb-20 md:pb-6">
       <div>
-        <h1 className="text-3xl font-bold">{t('reports.title')}</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">{t('reports.title')}</h1>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

@@ -1,5 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'wouter';
+import { useState } from 'react';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +10,39 @@ import { Shield, ArrowLeft, Calendar, User, ArrowRight } from 'lucide-react';
 
 export default function Blog() {
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (!email || !email.includes('@')) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await apiRequest("POST", "/api/newsletter", { email });
+      toast({
+        title: "Subscribed!",
+        description: "Thank you for subscribing to our newsletter.",
+      });
+      setEmail("");
+    } catch (error: any) {
+       toast({
+        title: "Error",
+        description: error.message || "Failed to subscribe.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const posts = [
     {
@@ -155,9 +191,16 @@ export default function Blog() {
                 placeholder={t('blog.newsletter.placeholder', 'Enter your email')}
                 className="flex-1 px-4 py-2 rounded-md border bg-background"
                 data-testid="input-newsletter-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
               />
-              <Button data-testid="button-subscribe">
-                {t('blog.newsletter.subscribe', 'Subscribe')}
+              <Button 
+                data-testid="button-subscribe" 
+                onClick={handleSubscribe}
+                disabled={loading}
+              >
+                {loading ? "..." : t('blog.newsletter.subscribe', 'Subscribe')}
               </Button>
             </div>
           </div>

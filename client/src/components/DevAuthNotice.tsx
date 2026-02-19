@@ -19,8 +19,10 @@ export function DevAuthNotice() {
   if (!isLegacyAuthEnabled() || hidden) return null;
 
   function applyUserId(next: string) {
+    const val = next || 'demo';
     try {
-      localStorage.setItem('devUserId', next || 'demo');
+      localStorage.setItem('devUserId', val);
+      document.cookie = `x-user-id=${encodeURIComponent(val)}; path=/; max-age=31536000; SameSite=Lax`;
     } catch {}
   }
 
@@ -49,6 +51,7 @@ export function DevAuthNotice() {
         <button
           onClick={() => {
             localStorage.removeItem('devUserId');
+            document.cookie = 'x-user-id=; path=/; max-age=0';
             window.location.reload();
           }}
           className="h-7 rounded border border-amber-600 px-2 text-amber-900 hover:bg-amber-100"

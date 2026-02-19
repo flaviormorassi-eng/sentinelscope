@@ -28,7 +28,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { Save, AlertCircle, Clock, CreditCard, Phone, Shield, Loader2 } from 'lucide-react';
+import { Save, AlertCircle, Clock, CreditCard, Phone, Shield, Loader2, Trash2, FileText } from 'lucide-react';
 import MfaSettings from '@/components/settings/MfaSettings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'wouter';
@@ -93,6 +93,48 @@ export default function Settings() {
   const [verificationCode, setVerificationCode] = useState('');
   const [language, setLanguage] = useState(i18n.language);
   const [selectedTheme, setSelectedTheme] = useState(theme);
+  const [isPurgeDialogOpen, setIsPurgeDialogOpen] = useState(false);
+  const [hasExported, setHasExported] = useState(false);
+
+  const generateReportMutation = useMutation({
+    mutationFn: async () => {
+      // Force PDF for this mandatory backup
+      return await apiRequest('POST', '/api/reports/generate', { type: 'detailed', period: 'custom', format: 'pdf' });
+    },
+    onSuccess: (data: any) => {
+      if (data.downloadUrl) {
+         const link = document.createElement('a');
+         link.href = data.downloadUrl;
+         link.download = data.filename || `security-history-backup-${Date.now()}.pdf`;
+         document.body.appendChild(link);
+         link.click();
+         document.body.removeChild(link);
+      }
+      setHasExported(true);
+      toast({ title: t('common.success', "Success"), description: "Backup downloaded. You may now purge your data." });
+    },
+    onError: (e: any) => {
+       toast({ title: t('common.error', "Error"), description: e.message || "Export failed", variant: "destructive" });
+    }
+  });
+
+  const purgeDataMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/user/purge-data');
+    },
+    onSuccess: () => {
+      setIsPurgeDialogOpen(false);
+      setHasExported(false); // Reset
+      toast({ title: "Data Purged", description: "All security history has been permanently deleted." });
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['/api/threats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+    },
+    onError: (e: any) => {
+      toast({ title: t('common.error', "Error"), description: e.message, variant: "destructive" });
+    }
+  });
 
   const { data: preferences } = useQuery<UserPreferences>({
     queryKey: ['/api/user/preferences'],
@@ -481,6 +523,82 @@ export default function Settings() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Data Management
+            </CardTitle>
+            <CardDescription>
+              Manage your security logs and history retention.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Purge Security History</Label>
+                <p className="text-sm text-muted-foreground">
+                  Permanently delete all threat logs, alerts, and browsing activity.
+                </p>
+              </div>
+              <Dialog open={isPurgeDialogOpen} onOpenChange={setIsPurgeDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">Purge Data</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Purge Security Data</DialogTitle>
+                    <DialogDescription>
+                      This action cannot be undone. All your security history will be permanently deleted from our servers.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4 py-4">
+                    <Alert variant={hasExported ? "default" : "destructive"}>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Requirement</AlertTitle>
+                      <AlertDescription>
+                        To prevent accidental data loss, you must download a PDF report of your history before purging.
+                      </AlertDescription>
+                    </Alert>
+
+                    {!hasExported && (
+                      <Button 
+                        onClick={() => generateReportMutation.mutate()} 
+                        disabled={generateReportMutation.isPending}
+                        className="w-full"
+                        variant="secondary"
+                      >
+                        {generateReportMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <FileText className="mr-2 h-4 w-4" />
+                        Step 1: Download PDF Backup
+                      </Button>
+                    )}
+
+                    {hasExported && (
+                      <div className="flex items-center gap-2 text-green-600 text-sm font-medium p-3 bg-green-50 rounded-md border border-green-200">
+                         <Shield className="h-4 w-4" /> Backup Verified
+                      </div>
+                    )}
+                  </div>
+
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsPurgeDialogOpen(false)}>Cancel</Button>
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => purgeDataMutation.mutate()}
+                      disabled={!hasExported || purgeDataMutation.isPending}
+                    >
+                      {purgeDataMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Step 2: Confirm Purge
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardContent>
+        </Card>
 
       <Card className="border-destructive">
         <CardHeader>

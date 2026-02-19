@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, KeyRound, RotateCcw } from 'lucide-react';
-import { useMfaStatus, useVerifyTotp, useConsumeRecoveryCode } from '@/hooks/useMfa';
+import { startAuthentication } from '@simplewebauthn/browser';
+import { useMfaStatus, useVerifyTotp, useConsumeRecoveryCode, useWebAuthnAuthOptions, useWebAuthnAuthVerify } from '@/hooks/useMfa';
 import { replayAllMfaFailedRequests, hasPendingMfaReplay } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,6 +22,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
+import { Separator } from '@/components/ui/separator';
 
 export function MfaChallenge({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
@@ -28,6 +30,8 @@ export function MfaChallenge({ open, onClose }: { open: boolean; onClose: () => 
   const { data: status } = useMfaStatus();
   const verify = useVerifyTotp();
   const consumeRecovery = useConsumeRecoveryCode();
+  const getWebAuthnOptions = useWebAuthnAuthOptions();
+  const verifyWebAuthn = useWebAuthnAuthVerify();
   const { toast } = useToast();
   const [totpCode, setTotpCode] = useState('');
   const [recoveryCode, setRecoveryCode] = useState('');
@@ -35,37 +39,57 @@ export function MfaChallenge({ open, onClose }: { open: boolean; onClose: () => 
 
   const lockedUntil = status?.lockedUntil ? new Date(status.lockedUntil) : null;
   const isLocked = lockedUntil ? lockedUntil.getTime() > Date.now() : false;
+  const hasWebAuthn = (status?.webauthnCredsCount || 0) > 0;
+
+  const handleSuccess = async () => {
+    // Refetch queries globally to recover blocked admin/compliance requests
+    if (hasPendingMfaReplay()) {
+      const { successCount, total } = await replayAllMfaFailedRequests();
+      if (successCount > 0) {
+        toast({ title: t('mfa.toast.replaySuccess.title'), description: t('mfa.toast.replaySuccess.desc', { success: successCount, total }) });
+      }
+    }
+    await qc.invalidateQueries();
+    onClose();
+  };
 
   const handleVerifyTotp = async () => {
     if (totpCode.length === 6 && !isLocked) {
-      await verify.mutateAsync({ token: totpCode });
-      // Refetch queries globally to recover blocked admin/compliance requests
-      if (hasPendingMfaReplay()) {
-        const { successCount, total } = await replayAllMfaFailedRequests();
-        if (successCount > 0) {
-          toast({ title: t('mfa.toast.replaySuccess.title'), description: t('mfa.toast.replaySuccess.desc', { success: successCount, total }) });
-        }
+      try {
+        await verify.mutateAsync({ token: totpCode });
+        await handleSuccess();
+      } catch (err) {
+        // Error handled by query mutation logic (toast usually)
       }
-      await qc.invalidateQueries();
-      onClose();
     }
   };
 
   const handleConsumeRecovery = async () => {
     if (recoveryCode.trim().length > 0) {
-      await consumeRecovery.mutateAsync({ code: recoveryCode.trim() });
-      if (hasPendingMfaReplay()) {
-        const { successCount, total } = await replayAllMfaFailedRequests();
-        if (successCount > 0) {
-          toast({ title: t('mfa.toast.replaySuccess.title'), description: t('mfa.toast.replaySuccess.desc', { success: successCount, total }) });
-        }
-      }
-      await qc.invalidateQueries();
-      onClose();
+      try {
+        await consumeRecovery.mutateAsync({ code: recoveryCode.trim() });
+        await handleSuccess();
+      } catch (err) { }
     }
   };
 
-  const loading = verify.isPending || consumeRecovery.isPending;
+  const handleWebAuthn = async () => {
+    try {
+      const options = await getWebAuthnOptions.mutateAsync();
+      const asseResp = await startAuthentication(options);
+      await verifyWebAuthn.mutateAsync(asseResp);
+      await handleSuccess();
+    } catch (error: any) {
+      console.error(error);
+      const isLockedError = error.message?.includes('423') || error.response?.status === 423;
+      toast({ 
+        title: isLockedError ? t('mfa.error.locked') : t('mfa.error.verificationFailed'), 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const loading = verify.isPending || consumeRecovery.isPending || getWebAuthnOptions.isPending || verifyWebAuthn.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -107,6 +131,25 @@ export function MfaChallenge({ open, onClose }: { open: boolean; onClose: () => 
               <Input id="recovery" value={recoveryCode} onChange={(e) => setRecoveryCode(e.target.value)} placeholder={t('mfa.challenge.recoveryPlaceholder') as string} />
               <Button variant="ghost" size="sm" onClick={() => setMode('totp')} className="text-xs underline">{t('mfa.challenge.backToTotp')}</Button>
             </div>
+          )}
+
+          {hasWebAuthn && !isLocked && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    {t('common.or')}
+                  </span>
+                </div>
+              </div>
+              <Button variant="secondary" className="w-full" onClick={handleWebAuthn} disabled={loading}>
+                <KeyRound className="mr-2 h-4 w-4" />
+                {t('mfa.challenge.useSecurityKey')}
+              </Button>
+            </>
           )}
         </div>
         <DialogFooter className="flex justify-between">

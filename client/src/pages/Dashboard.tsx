@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -39,58 +40,21 @@ export default function Dashboard() {
   const handleDownloadReport = async () => {
     try {
       setIsGeneratingReport(true);
-      const token = await user?.getIdToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-
-      // Handle Dev/Mock User Authentication
-      // If token is the dummy 'dev-token' or we are in implicit dev mode, prefer legacy header
-      const isDevToken = token === 'dev-token';
       
-      if (token && !isDevToken) {
-        headers['Authorization'] = `Bearer ${token}`;
-      } else {
-        // Fallback for dev mode/mock user
-        const devUserId = localStorage.getItem('devUserId') || 'demo';
-        headers['x-user-id'] = user?.uid || devUserId;
-      }
-
-      const res = await fetch('/api/reports/generate', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          type: 'executive', // Default report type
-          period: '24h',
-          format: 'pdf'
-        })
+      const res = await apiRequest('POST', '/api/reports/generate', {
+        type: 'executive', // Default report type
+        period: '24h',
+        format: 'pdf'
       });
 
-      if (!res.ok) throw new Error('Failed to generate report');
-
-      // The backend returns a JSON with { downloadUrl, filename } or a raw buffer if we changed it.
-      // Based on my previous scan of routes.ts, it seemingly returned JSON with base64 dataUrl.
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-         const { downloadUrl, filename } = await res.json();
-         const a = document.createElement('a');
-         a.href = downloadUrl;
-         a.download = filename;
-         document.body.appendChild(a);
-         a.click();
-         document.body.removeChild(a);
-      } else {
-         // Fallback for direct binary response
-         const blob = await res.blob();
-         const url = window.URL.createObjectURL(blob);
-         const a = document.createElement('a');
-         a.href = url;
-         a.download = `SentinelScope_Executive_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
-         document.body.appendChild(a);
-         a.click();
-         window.URL.revokeObjectURL(url);
-         document.body.removeChild(a);
-      }
+      // The backend returns a JSON with { downloadUrl, filename }
+      const { downloadUrl, filename } = res;
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
 
       toast({
         title: "Report Generated",
@@ -121,6 +85,7 @@ export default function Dashboard() {
   }>({
     queryKey: ['/api/stats'],
     enabled: enabled,
+    refetchInterval: 5000,
   });
 
   const { 
@@ -129,16 +94,19 @@ export default function Dashboard() {
   } = useQuery<(Threat | ThreatEvent)[]>({
     queryKey: [`/api/threats/recent?limit=${pageSize}`],
     enabled: enabled,
+    refetchInterval: 5000,
   });
 
   const { data: timelineData = [] } = useQuery<any[]>({
     queryKey: ['/api/threats/timeline'],
     enabled: enabled,
+    refetchInterval: 10000,
   });
 
   const { data: typeDistribution = [] } = useQuery<any[]>({
     queryKey: ['/api/threats/by-type'],
     enabled: enabled,
+    refetchInterval: 10000,
   });
 
   const getSeverityBadgeVariant = (severity: string) => {
@@ -171,32 +139,32 @@ export default function Dashboard() {
   const trafficTrend = (stats?.totalEvents || 0) > 0 ? "+18%" : "0%";
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
+    <div className="flex-1 space-y-4 p-4 pt-4 md:p-8 md:pt-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-2">
         <div>
-          <div className="flex items-center gap-4">
-            <h2 className="text-3xl font-bold tracking-tight">{t('dashboard.title')}</h2>
+          <div className="flex items-center gap-4 flex-wrap">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">{t('dashboard.title')}</h2>
             {preferences?.monitoringMode === 'real' ? (
-              <Badge variant="destructive" className="animate-pulse gap-1.5 shadow-md shadow-red-500/20">
+              <Badge variant="destructive" className="animate-pulse gap-1.5 shadow-md shadow-red-500/20 whitespace-nowrap">
                 <span className="h-2 w-2 rounded-full bg-white" />
-                LIVE MONITORING
+                LIVE
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-muted-foreground gap-1.5">
+              <Badge variant="outline" className="text-muted-foreground gap-1.5 whitespace-nowrap">
                 <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
-                DEMO MODE
+                DEMO
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground">
-            {t('app.tagline')} - Welcome back, {user?.username}
+          <p className="text-sm md:text-base text-muted-foreground mt-1">
+            {t('app.tagline')} - Welcome back, {user?.displayName || user?.email}
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
             {isAdmin && (
-                <Button variant="default" onClick={() => setLocation('/admin')}>
+                <Button variant="default" size="sm" onClick={() => setLocation('/admin')}>
                     <Shield className="mr-2 h-4 w-4" />
-                    Admin Dashboard
+                    <span className="hidden md:inline">Admin</span>
                 </Button>
             )}
             <Button variant="outline" size="sm" className="hidden sm:flex">
@@ -209,18 +177,20 @@ export default function Dashboard() {
                 ) : (
                     <Download className="mr-2 h-4 w-4" />
                 )}
-                {isGeneratingReport ? 'Generating...' : 'Download Report'}
+                <span className="hidden md:inline">{isGeneratingReport ? 'Generating...' : 'Download Report'}</span>
             </Button>
         </div>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto pb-1">
+            <TabsList className="w-full justify-start md:w-auto">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="reports">Reports</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            </TabsList>
+        </div>
         
         <TabsContent value="analytics" className="space-y-4">
             <Card>
@@ -336,18 +306,18 @@ export default function Dashboard() {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             {/* Main Chart Section */}
-            <Card className="col-span-4">
+            <Card className="col-span-4 lg:col-span-4">
               <CardHeader>
                 <CardTitle>{t('dashboard.threatTimeline')}</CardTitle>
                 <CardDescription>
                     Live threat detection volume over the last 24 hours.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="pl-2">
-                 <div className="h-[350px]">
+              <CardContent className="pl-0 md:pl-2">
+                 <div className="h-[250px] md:h-[350px]">
                   {timelineData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={timelineData}>
+                      <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                          <defs>
                             <linearGradient id="colorThreats" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
@@ -381,7 +351,7 @@ export default function Dashboard() {
             </Card>
 
             {/* Side Distribution Chart */}
-            <Card className="col-span-3">
+            <Card className="col-span-4 lg:col-span-3">
               <CardHeader>
                 <CardTitle>{t('dashboard.threatsByType')}</CardTitle>
                 <CardDescription>
@@ -389,7 +359,7 @@ export default function Dashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                 <div className="h-[350px]">
+                 <div className="h-[250px] md:h-[350px]">
                   {typeDistribution.length > 0 ? (
                      <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -449,6 +419,7 @@ export default function Dashboard() {
                                 // Add logic to look real
                                 const srcIp = tObj.sourceIP || `10.0.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
                                 const dstIp = tObj.destinationIP || `192.168.1.${Math.floor(Math.random()*255)}`;
+                                const sourceUrl = tObj.sourceURL || tObj.sourceUrl;
                                 
                                 return (
                                     <div key={tObj.id || i} className="flex items-center justify-between space-x-4 rounded-md border p-4">
@@ -465,6 +436,11 @@ export default function Dashboard() {
                                                     <span>→</span> 
                                                     <span className="text-green-600 dark:text-green-400">{dstIp}</span>
                                                 </div>
+                                                {sourceUrl && (
+                                                    <div className="text-xs text-muted-foreground font-mono truncate max-w-[400px] mt-1" title={sourceUrl}>
+                                                        {sourceUrl}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex items-center space-x-4">
