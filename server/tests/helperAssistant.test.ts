@@ -5,6 +5,7 @@ import request from 'supertest';
 process.env.ALLOW_LEGACY_X_USER_ID = 'true';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
 process.env.OPENAI_API_KEY = '';
+process.env.HELPER_ASSISTANT_RATE_LIMIT_PER_MIN = '2';
 
 vi.mock('../storage', () => ({
   storage: {
@@ -55,5 +56,29 @@ describe('/api/helper/assistant', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Invalid request payload');
+  });
+
+  it('enforces per-user rate limit', async () => {
+    const userId = 'helper-rate-user';
+    await agent
+      .post('/api/helper/assistant')
+      .set('x-user-id', userId)
+      .send({ question: 'How do I run safely?', language: 'en' })
+      .expect(200);
+
+    await agent
+      .post('/api/helper/assistant')
+      .set('x-user-id', userId)
+      .send({ question: 'How do I implement API safely?', language: 'en' })
+      .expect(200);
+
+    const limited = await agent
+      .post('/api/helper/assistant')
+      .set('x-user-id', userId)
+      .send({ question: 'How do I validate before deploy?', language: 'en' })
+      .expect(429);
+
+    expect(limited.body.error).toContain('Rate limit exceeded');
+    expect(typeof limited.body.retryAfterSeconds).toBe('number');
   });
 });

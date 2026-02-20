@@ -95,12 +95,53 @@ if (!process.env.STRIPE_SECRET_KEY) {
 const upload = multer({ storage: multer.memoryStorage() });
 
 let aiClient: OpenAI | null = null;
+const HELPER_RATE_LIMIT_WINDOW_MS = 60_000;
+const HELPER_RATE_LIMIT_PER_MIN = Math.max(
+  1,
+  Number(process.env.HELPER_ASSISTANT_RATE_LIMIT_PER_MIN || '20'),
+);
+const helperAssistantRateBuckets = new Map<string, { windowStart: number; count: number }>();
 
 function getAiClient(): OpenAI | null {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   if (!aiClient) aiClient = new OpenAI({ apiKey });
   return aiClient;
+}
+
+function checkHelperAssistantRateLimit(userId: string): {
+  allowed: boolean;
+  retryAfterSeconds: number;
+  remaining: number;
+} {
+  const now = Date.now();
+  const current = helperAssistantRateBuckets.get(userId);
+
+  if (!current || now - current.windowStart >= HELPER_RATE_LIMIT_WINDOW_MS) {
+    helperAssistantRateBuckets.set(userId, { windowStart: now, count: 1 });
+    return {
+      allowed: true,
+      retryAfterSeconds: 0,
+      remaining: Math.max(0, HELPER_RATE_LIMIT_PER_MIN - 1),
+    };
+  }
+
+  if (current.count >= HELPER_RATE_LIMIT_PER_MIN) {
+    const retryAfterMs = HELPER_RATE_LIMIT_WINDOW_MS - (now - current.windowStart);
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1000)),
+      remaining: 0,
+    };
+  }
+
+  current.count += 1;
+  helperAssistantRateBuckets.set(userId, current);
+  return {
+    allowed: true,
+    retryAfterSeconds: 0,
+    remaining: Math.max(0, HELPER_RATE_LIMIT_PER_MIN - current.count),
+  };
 }
 
 type HelperCommand = {
@@ -4284,16 +4325,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Interactive helper AI coach (API/terminal/safe-run guidance)
   app.post('/api/helper/assistant', authenticateUser, async (req: AuthRequest, res) => {
     try {
+      const userId = req.userId!;
       const schema = z.object({
         question: z.string().trim().min(3).max(2000),
         language: z.enum(['en', 'pt']).optional().default('en'),
       });
 
       const parsed = schema.parse(req.body || {});
+      const limit = checkHelperAssistantRateLimit(userId);
+      res.setHeader('X-RateLimit-Limit', String(HELPER_RATE_LIMIT_PER_MIN));
+      res.setHeader('X-RateLimit-Remaining', String(limit.remaining));
+
+      if (!limit.allowed) {
+        res.setHeader('Retry-After', String(limit.retryAfterSeconds));
+        await logSecurityEvent({
+          userId,
+          eventType: 'security_alert',
+          eventCategory: 'security',
+          action: 'helper_assistant_rate_limited',
+          resourceType: 'assistant',
+          resourceId: 'interactive_helper',
+          status: 'failure',
+          severity: 'warning',
+          details: {
+            questionLength: parsed.question.length,
+            language: parsed.language,
+            limitPerMinute: HELPER_RATE_LIMIT_PER_MIN,
+            retryAfterSeconds: limit.retryAfterSeconds,
+          },
+          req,
+        });
+        return res.status(429).json({
+          error: 'Rate limit exceeded. Please retry shortly.',
+          retryAfterSeconds: limit.retryAfterSeconds,
+        });
+      }
+
       const base = buildFallbackHelperAnswer(parsed.question, parsed.language);
       const client = getAiClient();
 
       if (!client) {
+        await logSecurityEvent({
+          userId,
+          eventType: 'security_alert',
+          eventCategory: 'security',
+          action: 'helper_assistant_fallback_local',
+          resourceType: 'assistant',
+          resourceId: 'interactive_helper',
+          status: 'success',
+          severity: 'info',
+          details: {
+            questionLength: parsed.question.length,
+            language: parsed.language,
+            poweredByAi: false,
+          },
+          req,
+        });
         return safeJson(res, base);
       }
 
@@ -4317,8 +4404,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const output = aiResponse.output_text?.trim();
         if (!output) {
+          await logSecurityEvent({
+            userId,
+            eventType: 'security_alert',
+            eventCategory: 'security',
+            action: 'helper_assistant_empty_ai_output_fallback',
+            resourceType: 'assistant',
+            resourceId: 'interactive_helper',
+            status: 'error',
+            severity: 'warning',
+            details: {
+              questionLength: parsed.question.length,
+              language: parsed.language,
+              poweredByAi: false,
+            },
+            req,
+          });
           return safeJson(res, base);
         }
+
+        await logSecurityEvent({
+          userId,
+          eventType: 'security_alert',
+          eventCategory: 'security',
+          action: 'helper_assistant_ai_response',
+          resourceType: 'assistant',
+          resourceId: 'interactive_helper',
+          status: 'success',
+          severity: 'info',
+          details: {
+            questionLength: parsed.question.length,
+            language: parsed.language,
+            poweredByAi: true,
+          },
+          req,
+        });
 
         return safeJson(res, {
           ...base,
@@ -4327,6 +4447,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (aiErr) {
         console.warn('[helper-assistant] OpenAI call failed, using fallback:', (aiErr as any)?.message || aiErr);
+        await logSecurityEvent({
+          userId,
+          eventType: 'security_alert',
+          eventCategory: 'security',
+          action: 'helper_assistant_ai_error_fallback',
+          resourceType: 'assistant',
+          resourceId: 'interactive_helper',
+          status: 'error',
+          severity: 'warning',
+          details: {
+            questionLength: parsed.question.length,
+            language: parsed.language,
+            poweredByAi: false,
+          },
+          req,
+        });
         return safeJson(res, base);
       }
     } catch (error: any) {
