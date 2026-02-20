@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 // Add other Firebase products here as needed (e.g., Firestore, Functions)
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -23,6 +23,19 @@ if (!firebaseConfig.apiKey) {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+
+// Analytics is optional and not available in some environments (e.g. tests/jsdom).
+if (typeof window !== "undefined") {
+  void isSupported()
+    .then((supported) => {
+      if (supported) {
+        getAnalytics(app);
+      }
+    })
+    .catch(() => {
+      // no-op: gracefully skip analytics when unsupported
+    });
+}
+
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
