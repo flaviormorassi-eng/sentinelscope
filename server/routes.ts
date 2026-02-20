@@ -70,6 +70,7 @@ import {
 import { getGeolocation } from "./utils/geolocationService";
 import { z } from "zod";
 import Stripe from "stripe";
+import OpenAI from "openai";
 
 // Stripe initialization: in production require secret; in development allow a lightweight stub
 let stripe: Stripe | { customers: any; checkout: any; subscriptions: any; billingPortal: any; webhookEndpoints?: any };
@@ -92,6 +93,116 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 // Setup for file uploads
 const upload = multer({ storage: multer.memoryStorage() });
+
+let aiClient: OpenAI | null = null;
+
+function getAiClient(): OpenAI | null {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  if (!aiClient) aiClient = new OpenAI({ apiKey });
+  return aiClient;
+}
+
+type HelperCommand = {
+  command: string;
+  purpose: string;
+  safe: boolean;
+};
+
+function buildFallbackHelperAnswer(question: string, language: 'en' | 'pt') {
+  const q = question.toLowerCase();
+  const isPt = language === 'pt';
+
+  const commands: HelperCommand[] = [
+    {
+      command: 'npm run db:migrate',
+      purpose: isPt ? 'Aplicar migrações antes de iniciar o servidor.' : 'Apply database migrations before starting the server.',
+      safe: true,
+    },
+    {
+      command: 'npm run dev:bg',
+      purpose: isPt ? 'Iniciar o projeto em background.' : 'Start the project in background mode.',
+      safe: true,
+    },
+    {
+      command: 'npm run check',
+      purpose: isPt ? 'Validar TypeScript sem executar deploy.' : 'Validate TypeScript before pushing changes.',
+      safe: true,
+    },
+    {
+      command: 'npm test',
+      purpose: isPt ? 'Executar testes automatizados.' : 'Run automated tests.',
+      safe: true,
+    },
+    {
+      command: 'npm run probe:endpoints',
+      purpose: isPt ? 'Validar endpoints críticos após mudanças.' : 'Probe critical API endpoints after changes.',
+      safe: true,
+    },
+    {
+      command: 'npm run dev:stop',
+      purpose: isPt ? 'Parar processo local com segurança.' : 'Stop local dev server safely.',
+      safe: true,
+    },
+  ];
+
+  if (q.includes('api') || q.includes('endpoint') || q.includes('route')) {
+    commands.unshift({
+      command: 'npm run check && npm test',
+      purpose: isPt
+        ? 'Validar tipagem e regressões ao criar/alterar endpoints.'
+        : 'Validate typing and regressions while implementing endpoints.',
+      safe: true,
+    });
+  }
+
+  if (q.includes('prod') || q.includes('production') || q.includes('safe')) {
+    commands.push({
+      command: 'npm run build',
+      purpose: isPt ? 'Confirmar build de produção antes de release.' : 'Confirm production build before release.',
+      safe: true,
+    });
+  }
+
+  const answer = isPt
+    ? [
+        'Plano seguro sugerido:',
+        '1) Aplique migrações com `npm run db:migrate`.',
+        '2) Implemente/ajuste endpoint com autenticação e resposta sanitizada.',
+        '3) Rode `npm run check`, `npm test` e `npm run probe:endpoints`.',
+        '4) Suba local com `npm run dev:bg` e pare com `npm run dev:stop`.',
+        '5) Evite comandos destrutivos em produção sem backup (ex.: purge/rollback).',
+      ].join('\n')
+    : [
+        'Suggested safe plan:',
+        '1) Apply migrations with `npm run db:migrate`.',
+        '2) Implement/update endpoint with auth and sanitized JSON responses.',
+        '3) Run `npm run check`, `npm test`, and `npm run probe:endpoints`.',
+        '4) Run locally with `npm run dev:bg` and stop with `npm run dev:stop`.',
+        '5) Avoid destructive production operations without backup (e.g., purge/rollback).',
+      ].join('\n');
+
+  const safetyChecklist = isPt
+    ? [
+        'Nunca exponha chaves (JWT, Stripe, API keys) em logs ou respostas.',
+        'Use autenticação em endpoints internos.',
+        'Use `safeJson` para respostas que possam conter BigInt.',
+        'Valide entradas com `zod` antes de persistir.',
+      ]
+    : [
+        'Never expose secrets (JWT, Stripe, API keys) in logs or responses.',
+        'Use authentication middleware for internal endpoints.',
+        'Use `safeJson` for payloads that may include BigInt.',
+        'Validate inputs with `zod` before persistence.',
+      ];
+
+  return {
+    answer,
+    commands,
+    safetyChecklist,
+    poweredByAi: false,
+  };
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Lightweight health check for uptime monitoring and deploy probes
@@ -4167,6 +4278,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(results);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Interactive helper AI coach (API/terminal/safe-run guidance)
+  app.post('/api/helper/assistant', authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const schema = z.object({
+        question: z.string().trim().min(3).max(2000),
+        language: z.enum(['en', 'pt']).optional().default('en'),
+      });
+
+      const parsed = schema.parse(req.body || {});
+      const base = buildFallbackHelperAnswer(parsed.question, parsed.language);
+      const client = getAiClient();
+
+      if (!client) {
+        return safeJson(res, base);
+      }
+
+      try {
+        const aiResponse = await client.responses.create({
+          model: process.env.OPENAI_HELPER_MODEL || 'gpt-4.1-mini',
+          input: [
+            {
+              role: 'system',
+              content:
+                parsed.language === 'pt'
+                  ? 'Você é um assistente de engenharia de software focado em segurança operacional. Dê instruções práticas para implementação de APIs, execução de comandos no terminal e operação segura. Nunca forneça credenciais, nunca recomende ações destrutivas sem backup e priorize comandos seguros.'
+                  : 'You are a software engineering assistant focused on operational security. Provide practical guidance for API implementation, terminal workflows, and safe project operation. Never reveal credentials, never recommend destructive actions without backup, and prioritize safe commands.',
+            },
+            {
+              role: 'user',
+              content: `${parsed.question}\n\nBase project-safe plan:\n${base.answer}`,
+            },
+          ],
+        });
+
+        const output = aiResponse.output_text?.trim();
+        if (!output) {
+          return safeJson(res, base);
+        }
+
+        return safeJson(res, {
+          ...base,
+          answer: output,
+          poweredByAi: true,
+        });
+      } catch (aiErr) {
+        console.warn('[helper-assistant] OpenAI call failed, using fallback:', (aiErr as any)?.message || aiErr);
+        return safeJson(res, base);
+      }
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid request payload', details: error.errors });
+      }
+      return res.status(500).json({ error: error?.message || 'Assistant request failed' });
     }
   });
 

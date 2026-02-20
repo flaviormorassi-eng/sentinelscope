@@ -980,5 +980,159 @@
     "copyFailedTitle": "Falha ao copiar",
     "copyFailedDescription": "Não foi possível copiar o IP para a área de transferência.",
     "focusedAlertTitle": "Alerta em foco"
+  },
+  "interactiveHelper": {
+    "title": "Assistente Interativo",
+    "step": "Passo {{current}} de {{total}}",
+    "closeAria": "Fechar assistente",
+    "enable": "Ativar assistente",
+    "disable": "Desativar assistente",
+    "prev": "Anterior",
+    "next": "Próximo",
+    "open": "Abrir",
+    "modeGuide": "Guia rápido",
+    "modeBeginner": "Modo iniciante",
+    "modeAi": "Coach de IA",
+    "beginnerSubtitle": "Treino para iniciantes: aprenda a identificar ameaças",
+    "beginnerHowToTitle": "Como identificar uma ameaça (checklist iniciante)",
+    "beginnerHowToDescription": "Selecione os sinais observados. O assistente estima o risco para ajudar a priorizar a triagem.",
+    "riskScore": "Pontuação estimada de risco",
+    "risk": {
+      "low": "Risco baixo",
+      "medium": "Risco médio",
+      "high": "Risco alto"
+    },
+    "quizTitle": "Mini cenário",
+    "quizQuestion": "Um IP de origem aparece em Alertas com severidade alta, a mesma origem está no Mapa de Ameaças e o Fluxo mostra várias falhas de login. Qual é a melhor primeira ação?",
+    "quizOptions": {
+      "ignore": "Ignorar até chegar mais dados",
+      "triage": "Iniciar triagem imediatamente e fazer pivô entre Registro, Mapa e Fluxo",
+      "delete": "Apagar todos os alertas para reduzir ruído"
+    },
+    "quizSuccess": "Correto. Evidências correlacionadas entre telas geralmente indicam ameaça real e exigem triagem imediata.",
+    "quizFail": "Não é o ideal. Na triagem iniciante, priorize sinais correlacionados de alta severidade e investigue imediatamente.",
+    "resetLesson": "Reiniciar lição",
+    "practiceNow": "Praticar na Central de Segurança",
+    "ai": {
+      "title": "Coach de IA para API e Terminal",
+      "description": "Pergunte como implementar endpoints de API e executar o projeto com segurança pelo terminal.",
+      "placeholder": "Pergunte sobre implementação de API, comandos de terminal ou execução segura...",
+      "ask": "Perguntar ao Coach de IA",
+      "loading": "Pensando...",
+      "powered": "Orientação gerada por IA",
+      "fallback": "Orientação segura do projeto",
+      "commands": "Comandos sugeridos",
+      "safety": "Checklist de segurança",
+      "error": "Falha na solicitação ao assistente.",
+      "errorMissingEndpoint": "O endpoint do Coach de IA ainda não está disponível no servidor em execução. Reinicie o servidor da aplicação (npm run dev:restart) e tente novamente.",
+      "quick": {
+        "api": "Como adiciono um endpoint de API seguro neste projeto?",
+        "terminal": "Quais comandos de terminal devo rodar para validar e subir com segurança?",
+        "prod": "Como posso executar este projeto com segurança antes do release em produção?"
+      }
+    },
+    "beginnerSignals": {
+      "unknown_source": {
+        "label": "IP ou domínio de origem desconhecido",
+        "description": "A origem do tráfego é nova, rara ou fora da infraestrutura esperada."
+      },
+      "high_severity": {
+        "label": "Evento com severidade Alta/Crítica",
+        "description": "A severidade do evento está como alta ou crítica em alertas/registro de ameaças."
+      },
+      "suspicious_pattern": {
+        "label": "Padrão suspeito na mensagem",
+        "description": "Indicadores como SQL injection, XSS, command injection ou comportamento de varredura."
+      },
+      "repeated_activity": {
+        "label": "Atividade repetida em pouco tempo",
+        "description": "Múltiplos eventos parecidos da mesma origem em curto intervalo (possível brute-force/scan)."
+      },
+      "cross_page_confirmation": {
+        "label": "Confirmação em múltiplas telas",
+        "description": "As evidências aparecem em Alertas + Registro de Ameaças + contexto de Mapa/Fluxo."
+      }
+    },
+    "actions": {
+      "openSecurityCenter": "Abrir Central de Segurança"
+    },
+    "default": {
+      "sidebar": {
+        "title": "Use a barra lateral como centro de controle",
+        "description": "Navegue entre Painel, Central de Segurança, Atividade de Rede, Relatórios e Configurações pelo menu lateral."
+      },
+      "triage": {
+        "title": "Siga o fluxo de triagem",
+        "description": "Comece por Alertas ou Registro de Ameaças, investigue no Mapa de Ameaças e depois vá para o Fluxo de Rede para contexto completo."
+      },
+      "search": {
+        "title": "Use a Busca Global",
+        "description": "Use a busca do topo para navegar rapidamente pelos dados e reduzir o tempo de investigação."
+      }
+    },
+    "dashboard": {
+      "kpi": {
+        "title": "Comece pelos KPIs",
+        "description": "Acompanhe Ameaças Ativas, Ameaças Bloqueadas e Alertas para entender a postura de risco atual."
+      },
+      "trends": {
+        "title": "Aprofunde-se nas tendências",
+        "description": "Use a linha do tempo e os gráficos por tipo para identificar picos e depois abra a Central de Segurança para detalhes."
+      }
+    },
+    "securityCenter": {
+      "tabs": {
+        "title": "Troque as abas para triagem",
+        "description": "Use as abas de Ameaças e Alertas para priorizar e revisar o contexto dos eventos rapidamente."
+      },
+      "actions": {
+        "title": "Use ações rápidas por linha",
+        "description": "Abra Mapa, Fluxo e páginas relacionadas diretamente dos registros selecionados para manter o contexto."
+      },
+      "filters": {
+        "title": "Limpe filtros se o alvo não aparecer",
+        "description": "Se uma ameaça/alerta em foco não for encontrado, limpe os filtros e deixe o salto de página localizar o item."
+      }
+    },
+    "networkActivity": {
+      "sources": {
+        "title": "Revise primeiro as fontes de risco",
+        "description": "Use visão apenas suspeitos e agrupamento por fonte para focar em padrões de tráfego de maior risco."
+      },
+      "pivot": {
+        "title": "Faça pivôs com links de contexto",
+        "description": "Navegue para Registro de Ameaças, Alertas e Mapa preservando o contexto da fonte/ameaça selecionada."
+      }
+    },
+    "map": {
+      "context": {
+        "title": "Use o contexto de foco do mapa",
+        "description": "Ao chegar de Alertas/Ameaças/Fluxo, use as ações de retorno para continuar a mesma investigação."
+      },
+      "popup": {
+        "title": "Abra registros relacionados no popup",
+        "description": "Use ações no popup do marcador para inspecionar a mesma fonte no Registro de Ameaças ou Alertas."
+      }
+    },
+    "eventSources": {
+      "create": {
+        "title": "Crie e valide fontes de ingestão",
+        "description": "Use Fontes de Eventos para gerar chaves de API e validar o fluxo de dados do agente/extensão."
+      },
+      "rotate": {
+        "title": "Rotacione chaves com segurança",
+        "description": "Use rotação de chave com janela de tolerância para evitar interrupção de ingestão durante trocas de credencial."
+      }
+    },
+    "settings": {
+      "mfa": {
+        "title": "Revise monitoramento e MFA",
+        "description": "Mantenha modo de monitoramento e configuração de MFA alinhados com sua política de segurança."
+      },
+      "data": {
+        "title": "Use o gerenciamento de dados com cuidado",
+        "description": "Exporte o histórico antes de ações de limpeza para preservar rastreabilidade quando necessário."
+      }
+    }
   }
 }

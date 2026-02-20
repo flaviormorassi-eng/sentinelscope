@@ -16,6 +16,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { GlobalSearch } from '@/components/GlobalSearch';
 import { Button } from '@/components/ui/button';
+import { InteractiveHelper } from '@/components/InteractiveHelper';
 import "@/i18n/config";
 
 import Landing from "@/pages/Landing";
@@ -153,6 +154,20 @@ function AppContent() {
     "--sidebar-width-icon": "3rem",
   };
   const [mfaOpen, setMfaOpen] = React.useState(false);
+  const [helperOpen, setHelperOpen] = React.useState<boolean>(() => {
+    try {
+      return localStorage.getItem('interactive-helper-open') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('interactive-helper-open', helperOpen ? '1' : '0');
+    } catch {}
+  }, [helperOpen]);
+
   React.useEffect(() => {
     const unsub = subscribeMfa(() => setMfaOpen(true));
     return unsub;
@@ -197,7 +212,15 @@ function AppContent() {
               )}
               <GlobalSearch />
               <LanguageToggle />
-              {/* Help button tour removed */}
+              <Button
+                variant={helperOpen ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => setHelperOpen((v) => !v)}
+                title={helperOpen ? t('interactiveHelper.disable', { defaultValue: 'Disable helper' }) : t('interactiveHelper.enable', { defaultValue: 'Enable helper' })}
+                aria-label={helperOpen ? t('interactiveHelper.disable', { defaultValue: 'Disable helper' }) : t('interactiveHelper.enable', { defaultValue: 'Enable helper' })}
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
               <ThemeToggle />
             </div>
           </header>
@@ -207,6 +230,7 @@ function AppContent() {
           </main>
         </div>
       </div>
+      <InteractiveHelper open={helperOpen} onOpenChange={setHelperOpen} />
       <MfaChallenge open={mfaOpen} onClose={() => setMfaOpen(false)} />
     </SidebarProvider>
   );

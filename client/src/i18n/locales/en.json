@@ -992,5 +992,159 @@
     "copyFailedTitle": "Copy failed",
     "copyFailedDescription": "Unable to copy IP to clipboard.",
     "focusedAlertTitle": "Focused alert"
+  },
+  "interactiveHelper": {
+    "title": "Interactive Helper",
+    "step": "Step {{current}} of {{total}}",
+    "closeAria": "Close helper",
+    "enable": "Enable helper",
+    "disable": "Disable helper",
+    "prev": "Prev",
+    "next": "Next",
+    "open": "Open",
+    "modeGuide": "Quick Guide",
+    "modeBeginner": "Beginner Mode",
+    "modeAi": "AI Coach",
+    "beginnerSubtitle": "Beginner training: learn how to identify threats",
+    "beginnerHowToTitle": "How to identify a threat (beginner checklist)",
+    "beginnerHowToDescription": "Select the signals you observe. The helper estimates risk so you can decide triage priority.",
+    "riskScore": "Estimated risk score",
+    "risk": {
+      "low": "Low risk",
+      "medium": "Medium risk",
+      "high": "High risk"
+    },
+    "quizTitle": "Mini scenario",
+    "quizQuestion": "A source IP appears in Alerts with high severity, the same source is visible on Threat Map, and Flow shows repeated failed logins. What is the best first action?",
+    "quizOptions": {
+      "ignore": "Ignore it until more data arrives",
+      "triage": "Start triage immediately and pivot across Threat Log, Map, and Flow",
+      "delete": "Delete all alerts to reduce noise"
+    },
+    "quizSuccess": "Correct. Correlated evidence across views usually indicates a real threat that should be triaged immediately.",
+    "quizFail": "Not ideal. For beginner triage, prioritize correlated high-severity signals and investigate immediately.",
+    "resetLesson": "Reset lesson",
+    "practiceNow": "Practice in Security Center",
+    "ai": {
+      "title": "AI API & Terminal Coach",
+      "description": "Ask how to implement API endpoints and run the project safely from terminal.",
+      "placeholder": "Ask about API implementation, terminal commands, or safe run steps...",
+      "ask": "Ask AI Coach",
+      "loading": "Thinking...",
+      "powered": "AI-generated guidance",
+      "fallback": "Project-safe guidance",
+      "commands": "Suggested commands",
+      "safety": "Safety checklist",
+      "error": "Assistant request failed.",
+      "errorMissingEndpoint": "AI Coach endpoint is not available on the running server yet. Restart the app server (npm run dev:restart) and try again.",
+      "quick": {
+        "api": "How do I add a secure API endpoint in this project?",
+        "terminal": "Which terminal commands should I run to validate and launch safely?",
+        "prod": "How can I run this project safely before production release?"
+      }
+    },
+    "beginnerSignals": {
+      "unknown_source": {
+        "label": "Unknown source IP or domain",
+        "description": "Traffic origin is new, rare, or not part of expected infrastructure."
+      },
+      "high_severity": {
+        "label": "High/Critical severity event",
+        "description": "Event severity is high or critical in alerts/threat logs."
+      },
+      "suspicious_pattern": {
+        "label": "Suspicious pattern in message",
+        "description": "Indicators like SQL injection, XSS, command injection, or scanning behavior."
+      },
+      "repeated_activity": {
+        "label": "Repeated activity in short time",
+        "description": "Multiple similar events from the same source over a short period (possible brute-force or scan)."
+      },
+      "cross_page_confirmation": {
+        "label": "Confirmed across multiple views",
+        "description": "Evidence appears in Alerts + Threat Log + Map/Flow context."
+      }
+    },
+    "actions": {
+      "openSecurityCenter": "Open Security Center"
+    },
+    "default": {
+      "sidebar": {
+        "title": "Use the sidebar as your control center",
+        "description": "Navigate between Dashboard, Security Center, Network Activity, Reports, and Settings from the left menu."
+      },
+      "triage": {
+        "title": "Follow the triage flow",
+        "description": "Start with Alerts or Threat Log, investigate on Threat Map, then pivot to Network Flow for full context."
+      },
+      "search": {
+        "title": "Use Global Search",
+        "description": "Use the top search to jump quickly across data and reduce investigation time."
+      }
+    },
+    "dashboard": {
+      "kpi": {
+        "title": "Start with KPIs",
+        "description": "Watch Active Threats, Blocked threats, and Alerts to understand current risk posture."
+      },
+      "trends": {
+        "title": "Drill down from trends",
+        "description": "Use timeline and threat-type charts to identify spikes, then open Security Center for details."
+      }
+    },
+    "securityCenter": {
+      "tabs": {
+        "title": "Switch tabs to triage",
+        "description": "Use the Threats and Alerts tabs to assess priority and review event context quickly."
+      },
+      "actions": {
+        "title": "Use row quick actions",
+        "description": "Open Map, Flow, and related pages directly from selected records to keep context."
+      },
+      "filters": {
+        "title": "Clear filters if target is missing",
+        "description": "If a focused threat/alert is not found, clear filters and let target-page jump locate it."
+      }
+    },
+    "networkActivity": {
+      "sources": {
+        "title": "Review risky sources first",
+        "description": "Use suspicious-only and grouped source views to focus on high-risk traffic patterns."
+      },
+      "pivot": {
+        "title": "Pivot with context links",
+        "description": "Jump to Threat Log, Alerts, and Map while preserving selected source/threat context."
+      }
+    },
+    "map": {
+      "context": {
+        "title": "Use focused map context",
+        "description": "When arriving from Alerts/Threats/Flow, use return actions to continue the same investigation path."
+      },
+      "popup": {
+        "title": "Open related records from popup",
+        "description": "Use marker popup actions to inspect the same source in Threat Log or Alerts."
+      }
+    },
+    "eventSources": {
+      "create": {
+        "title": "Create and verify ingestion sources",
+        "description": "Use Event Sources to issue API keys and validate data flow from agent/extension."
+      },
+      "rotate": {
+        "title": "Rotate keys safely",
+        "description": "Use key rotation with grace windows to avoid ingestion interruption during credential changes."
+      }
+    },
+    "settings": {
+      "mfa": {
+        "title": "Review monitoring and MFA settings",
+        "description": "Keep monitoring mode and MFA configuration aligned with your security policy."
+      },
+      "data": {
+        "title": "Use Data Management carefully",
+        "description": "Export history before purge actions to preserve audit traceability when needed."
+      }
+    }
   }
 }
