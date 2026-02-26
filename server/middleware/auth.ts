@@ -25,6 +25,48 @@ function extractToken(authHeader?: string): string | null {
   return authHeader.slice('Bearer '.length).trim() || null;
 }
 
+function extractLegacyUserId(req: Request): string | undefined {
+  const legacyId = req.headers['x-user-id'] as string | undefined;
+  if (legacyId && typeof legacyId === 'string' && legacyId.trim()) return legacyId;
+
+  // Fallback to dev cookie when enabled (for browser-based testing)
+  const cookieHeader = req.headers['cookie'];
+  if (!cookieHeader) return undefined;
+
+  // minimal cookie parsing to avoid extra deps
+  const parts = cookieHeader.split(';').map(s => s.trim());
+  for (const p of parts) {
+    const idx = p.indexOf('=');
+    if (idx > 0) {
+      const k = p.slice(0, idx);
+      const v = decodeURIComponent(p.slice(idx + 1));
+      if (k === 'x-user-id' && v.trim()) return v;
+    }
+  }
+
+  return undefined;
+}
+
+async function resolveUserIdFromToken(token: string): Promise<string | undefined> {
+  // 1) Try Firebase Admin verification (for real Firebase tokens)
+  try {
+    const decodedToken = await firebaseAuth.verifyIdToken(token);
+    if (decodedToken?.uid) return decodedToken.uid;
+  } catch {
+    // ignore and try local JWT verification
+  }
+
+  // 2) Fallback to local JWT verification (for dev/local tokens)
+  if (!JWT_SECRET) return undefined;
+  try {
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    const userId = decoded?.sub || decoded?.uid || decoded?.userId;
+    return typeof userId === 'string' && userId.trim() ? userId : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function authenticateUser(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const token = extractToken(req.headers.authorization);
@@ -35,46 +77,13 @@ export async function authenticateUser(req: AuthRequest, res: Response, next: Ne
 
     let userId: string | undefined;
     if (token) {
-      // 1. Try Firebase Admin verification (for real Google/Firebase tokens)
-      try {
-        const decodedToken = await firebaseAuth.verifyIdToken(token);
-        userId = decodedToken.uid;
-      } catch (firebaseError) {
-        // 2. Fallback to local JWT verification (for dev tokens or legacy)
-        if (JWT_SECRET) {
-          try {
-            const decoded: any = jwt.verify(token, JWT_SECRET);
-            userId = decoded.sub || decoded.uid || decoded.userId;
-          } catch (jwtError) {
-            // Both verifications failed
-            await logAuthFailure('invalid_or_expired_token', req, 'medium');
-            return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
-          }
-        } else {
-          // No local secret to fallback to
-          await logAuthFailure('invalid_or_expired_token', req, 'medium');
-          return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
-        }
+      userId = await resolveUserIdFromToken(token);
+      if (!userId) {
+        await logAuthFailure('invalid_or_expired_token', req, 'medium');
+        return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
       }
     } else if (ALLOW_LEGACY) {
-        const legacyId = req.headers['x-user-id'] as string | undefined;
-        if (legacyId) userId = legacyId;
-        // Fallback to dev cookie when enabled (for browser-based testing)
-        if (!userId) {
-          const cookieHeader = req.headers['cookie'];
-          if (cookieHeader) {
-            // minimal cookie parsing to avoid extra deps
-            const parts = cookieHeader.split(';').map(s => s.trim());
-            for (const p of parts) {
-              const idx = p.indexOf('=');
-              if (idx > 0) {
-                const k = p.slice(0, idx);
-                const v = decodeURIComponent(p.slice(idx + 1));
-                if (k === 'x-user-id') { userId = v; break; }
-              }
-            }
-          }
-        }
+      userId = extractLegacyUserId(req);
     }
 
     if (!userId) {
@@ -93,17 +102,16 @@ export async function authenticateUser(req: AuthRequest, res: Response, next: Ne
 export async function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction) {
   try {
     const token = extractToken(req.headers.authorization);
-    if (token && JWT_SECRET) {
-      try {
-        const decoded: any = jwt.verify(token, JWT_SECRET);
-        req.userId = decoded.sub || decoded.uid || decoded.userId;
-      } catch (e) {
+    if (token) {
+      const userId = await resolveUserIdFromToken(token);
+      if (userId) {
+        req.userId = userId;
+      } else {
         // optional auth: log but do not block
         await logAuthFailure('optional_invalid_token', req, 'low');
       }
     } else if (ALLOW_LEGACY) {
-      const legacyId = req.headers['x-user-id'] as string | undefined;
-      if (legacyId) req.userId = legacyId;
+      req.userId = extractLegacyUserId(req);
     }
     next();
   } catch (_) {
