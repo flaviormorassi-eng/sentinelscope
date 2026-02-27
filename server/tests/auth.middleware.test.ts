@@ -23,8 +23,11 @@ process.env.NODE_ENV = 'test';
 
 describe('auth middleware', () => {
   beforeEach(() => {
+    vi.resetModules();
     verifyIdToken.mockReset();
     createSecurityAuditLog.mockReset();
+    delete process.env.JWT_EXPECTED_ISSUER;
+    delete process.env.JWT_EXPECTED_AUDIENCE;
   });
 
   it('authenticates with local JWT bearer token', async () => {
@@ -87,5 +90,21 @@ describe('auth middleware', () => {
       .expect(200);
 
     expect(res.body.userId).toBe('cookie-user-1');
+  });
+
+  it('rejects local JWT when issuer does not match configured issuer', async () => {
+    verifyIdToken.mockRejectedValue(new Error('firebase unavailable'));
+    process.env.JWT_EXPECTED_ISSUER = 'sentinelscope-prod';
+
+    const { authenticateUser } = await import('../middleware/auth');
+    const app = express();
+    app.get('/secure', authenticateUser, (req: any, res) => res.json({ userId: req.userId }));
+
+    const token = jwt.sign({ sub: 'jwt-user-issuer', iss: 'other-issuer' }, process.env.JWT_SECRET as string, { expiresIn: '10m' });
+
+    await supertest(app)
+      .get('/secure')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
   });
 });

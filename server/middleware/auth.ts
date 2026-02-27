@@ -6,6 +6,8 @@ import { storage } from '../storage';
 export interface AuthRequest extends Request { userId?: string }
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPECTED_ISSUER = process.env.JWT_EXPECTED_ISSUER;
+const JWT_EXPECTED_AUDIENCE = process.env.JWT_EXPECTED_AUDIENCE;
 
 // SEC: Enforce strict auth in production. Require explicit override for legacy auth.
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -59,7 +61,10 @@ async function resolveUserIdFromToken(token: string): Promise<string | undefined
   // 2) Fallback to local JWT verification (for dev/local tokens)
   if (!JWT_SECRET) return undefined;
   try {
-    const decoded: any = jwt.verify(token, JWT_SECRET);
+    const verifyOptions: jwt.VerifyOptions = {};
+    if (JWT_EXPECTED_ISSUER) verifyOptions.issuer = JWT_EXPECTED_ISSUER;
+    if (JWT_EXPECTED_AUDIENCE) verifyOptions.audience = JWT_EXPECTED_AUDIENCE;
+    const decoded: any = jwt.verify(token, JWT_SECRET, verifyOptions);
     const userId = decoded?.sub || decoded?.uid || decoded?.userId;
     return typeof userId === 'string' && userId.trim() ? userId : undefined;
   } catch {
