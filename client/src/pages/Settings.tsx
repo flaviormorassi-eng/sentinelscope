@@ -42,6 +42,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Badge } from '@/components/ui/badge';
+import { getSecurityResponseSettings, setSecurityResponseSettings } from '@/lib/securityResponseSettings';
 
 interface UserPreferences {
   emailNotifications: boolean;
@@ -95,6 +96,9 @@ export default function Settings() {
   const [selectedTheme, setSelectedTheme] = useState(theme);
   const [isPurgeDialogOpen, setIsPurgeDialogOpen] = useState(false);
   const [hasExported, setHasExported] = useState(false);
+  const [alertToneEnabled, setAlertToneEnabled] = useState(true);
+  const [manualDecisionEnabled, setManualDecisionEnabled] = useState(true);
+  const [autoBlockEnabled, setAutoBlockEnabled] = useState(false);
 
   const generateReportMutation = useMutation({
     mutationFn: async () => {
@@ -164,6 +168,13 @@ export default function Settings() {
     }
   }, [preferences]);
 
+  useEffect(() => {
+    const sec = getSecurityResponseSettings();
+    setAlertToneEnabled(sec.alertToneEnabled);
+    setManualDecisionEnabled(sec.manualDecisionEnabled);
+    setAutoBlockEnabled(sec.autoBlockEnabled);
+  }, []);
+
   const updatePreferencesMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest('PUT', '/api/user/preferences', data);
@@ -208,6 +219,13 @@ export default function Settings() {
       onError: (error) => {
         // Additional UI hint near the Monitoring section can be added later
       }
+    });
+
+    // Save live security response behavior (local UI controls)
+    setSecurityResponseSettings({
+      alertToneEnabled,
+      manualDecisionEnabled,
+      autoBlockEnabled,
     });
   };
 
@@ -382,6 +400,64 @@ export default function Settings() {
             <p className="text-sm text-muted-foreground">
               Control which threats trigger notifications
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Security Response</CardTitle>
+          <CardDescription>Control suspicious-alert flag behavior, tone, and automated blocking.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="security-alert-tone">Play alert tone</Label>
+              <p className="text-sm text-muted-foreground">
+                Play a short tone when a new suspicious alert appears.
+              </p>
+            </div>
+            <Switch
+              id="security-alert-tone"
+              checked={alertToneEnabled}
+              onCheckedChange={setAlertToneEnabled}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="security-manual-decision">Manual decision prompt</Label>
+              <p className="text-sm text-muted-foreground">
+                Ask whether to block or pass when suspicious activity is detected.
+              </p>
+            </div>
+            <Switch
+              id="security-manual-decision"
+              checked={manualDecisionEnabled}
+              onCheckedChange={setManualDecisionEnabled}
+              disabled={autoBlockEnabled}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="security-auto-block">Automatic blocking</Label>
+              <p className="text-sm text-muted-foreground">
+                Automatically block newly detected suspicious alerts (can be undone from Threats/IP blocklist).
+              </p>
+            </div>
+            <Switch
+              id="security-auto-block"
+              checked={autoBlockEnabled}
+              onCheckedChange={(checked) => {
+                setAutoBlockEnabled(checked);
+                if (checked) setManualDecisionEnabled(false);
+              }}
+            />
           </div>
         </CardContent>
       </Card>

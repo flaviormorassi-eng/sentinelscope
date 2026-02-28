@@ -15,6 +15,7 @@ import { subscribe as subscribeMfa } from '@/lib/mfaBus';
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { GlobalSearch } from '@/components/GlobalSearch';
+import { SecurityAlertFlag } from '@/components/SecurityAlertFlag';
 import { Button } from '@/components/ui/button';
 import { InteractiveHelper } from '@/components/InteractiveHelper';
 import "@/i18n/config";
@@ -211,6 +212,7 @@ function AppContent() {
                 </>
               )}
               <GlobalSearch />
+              <SecurityAlertFlag />
               <LanguageToggle />
               <Button
                 variant={helperOpen ? 'secondary' : 'ghost'}
