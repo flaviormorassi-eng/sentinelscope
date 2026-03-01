@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Download, Search, Filter, Unlock, History, ExternalLink, Monitor, Mail, Usb, Globe, Network, XCircle } from 'lucide-react';
+import { Download, Search, Filter, Unlock, History, ExternalLink, Monitor, Mail, Usb, Globe, Network, XCircle, Eye } from 'lucide-react';
 import { Threat, User } from '@shared/schema';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -93,6 +93,7 @@ export default function Threats() {
     clearFilters,
   } = useThreatFilters(user?.uid);
   const [historyThreatId, setHistoryThreatId] = useState<string | null>(null);
+  const [detailsThreat, setDetailsThreat] = useState<Threat | null>(null);
   const selectedThreatRowRef = useRef<HTMLTableRowElement | null>(null);
 
   // Value adapters: select expects 'all' when undefined in hook
@@ -647,20 +648,17 @@ export default function Threats() {
                 <TableRow>
                   <TableHead className="w-[180px]">{t('threats.timestamp')}</TableHead>
                   <TableHead className="w-[100px]">{t('threats.severity')}</TableHead>
-                  <TableHead>{t('threats.type')}</TableHead>
-                  <TableHead className="w-[140px]">{t('threats.source')}</TableHead>
-                  <TableHead className="w-[120px]">{t('threats.device')}</TableHead>
-                  <TableHead className="w-[80px]">{t('threats.vector')}</TableHead>
-                  <TableHead className="w-[200px]">{t('threats.sourceURL')}</TableHead>
+                  <TableHead className="w-[120px]">{t('threats.type')}</TableHead>
+                  <TableHead className="w-[150px]">{t('threats.source')}</TableHead>
                   <TableHead className="w-[120px]">{t('threats.status')}</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right w-[160px]">{t('admin.actions')}</TableHead>
+                  <TableHead>{t('threats.description', 'Details')}</TableHead>
+                  <TableHead className="text-right w-[220px]">{t('admin.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={currentUser?.isAdmin ? 11 : 10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {t('common.loading')}
                     </TableCell>
                   </TableRow>
@@ -682,65 +680,35 @@ export default function Threats() {
                       </TableCell>
                       <TableCell>{t(`threats.types.${threat.type}`)}</TableCell>
                       <TableCell className="font-mono text-xs">{threat.sourceIP}</TableCell>
-                      <TableCell className="font-mono text-xs">{threat.deviceName || '-'}</TableCell>
-                      <TableCell>
-                        {threat.threatVector ? (
-                          <div className="flex items-center gap-1" title={threat.threatVector}>
-                            {getThreatVectorIcon(threat.threatVector)}
-                            <span className="text-xs capitalize">{threat.threatVector}</span>
-                          </div>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {threat.sourceURL ? (
-                          <a 
-                            href={threat.sourceURL} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-primary hover:underline text-xs"
-                            data-testid={`link-source-url-${threat.id}`}
-                          >
-                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">{threat.sourceURL}</span>
-                          </a>
-                        ) : '-'}
-                      </TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(threat.status)}>
                           {t(`threats.statuses.${threat.status}`)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm">{threat.description}</TableCell>
+                      <TableCell className="text-sm max-w-[420px]">
+                        <div className="space-y-1">
+                          <p className="truncate" title={threat.description}>{threat.description}</p>
+                          <div className="text-xs text-muted-foreground flex flex-wrap gap-3">
+                            <span>Device: {threat.deviceName || '-'}</span>
+                            <span>Vector: {threat.threatVector || '-'}</span>
+                            <span className="truncate max-w-[220px]" title={threat.sourceURL || ''}>
+                              URL: {threat.sourceURL || '-'}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
                       
                       <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                          <Link href={getThreatFlowHref(threat)}>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              data-testid={`button-open-flow-${threat.id}`}
-                            >
-                              {t('threats.openFlow', 'Open Flow')}
-                            </Button>
-                          </Link>
-                          <Link href={getThreatMapHref(threat)}>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              data-testid={`button-open-map-${threat.id}`}
-                            >
-                              {t('threats.openThreatMap', 'Open Threat Map')}
-                            </Button>
-                          </Link>
-                          <Link href={getThreatAlertsHref(threat)}>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              data-testid={`button-open-alerts-${threat.id}`}
-                            >
-                              {t('threats.openAlerts', 'Open Alerts')}
-                            </Button>
-                          </Link>
+                        <div className="flex gap-2 justify-end flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setDetailsThreat(threat)}
+                            data-testid={`button-details-${threat.id}`}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            {t('common.details', 'Details')}
+                          </Button>
                           {currentUser?.isAdmin && threat.status !== 'detected' && threat.status !== 'pending_review' && (
                             <Button
                               size="sm"
@@ -792,7 +760,7 @@ export default function Threats() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {t('threats.noThreats')}
                     </TableCell>
                   </TableRow>
@@ -854,6 +822,66 @@ export default function Threats() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!detailsThreat} onOpenChange={(open) => !open && setDetailsThreat(null)}>
+        <DialogContent data-testid="dialog-threat-details" className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('common.details', 'Details')}</DialogTitle>
+            <DialogDescription>
+              {t('threats.detailsDescription', 'Threat context, source information, and related actions.')}
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailsThreat && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><span className="text-muted-foreground">Timestamp:</span> {safeFormatTs(detailsThreat.timestamp)}</div>
+                <div><span className="text-muted-foreground">Severity:</span> {detailsThreat.severity}</div>
+                <div><span className="text-muted-foreground">Type:</span> {detailsThreat.type}</div>
+                <div><span className="text-muted-foreground">Status:</span> {detailsThreat.status}</div>
+                <div><span className="text-muted-foreground">Source IP:</span> <span className="font-mono text-xs">{detailsThreat.sourceIP}</span></div>
+                <div><span className="text-muted-foreground">Target IP:</span> <span className="font-mono text-xs">{detailsThreat.targetIP}</span></div>
+                <div><span className="text-muted-foreground">Device:</span> {detailsThreat.deviceName || '-'}</div>
+                <div><span className="text-muted-foreground">Vector:</span> {detailsThreat.threatVector || '-'}</div>
+              </div>
+
+              <div>
+                <p className="text-muted-foreground mb-1">Description</p>
+                <p className="rounded-md border p-3">{detailsThreat.description}</p>
+              </div>
+
+              <div>
+                <p className="text-muted-foreground mb-1">Source URL</p>
+                {detailsThreat.sourceURL ? (
+                  <a
+                    href={detailsThreat.sourceURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-primary hover:underline break-all"
+                  >
+                    <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                    {detailsThreat.sourceURL}
+                  </a>
+                ) : (
+                  <p>-</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 flex-wrap">
+                <Link href={getThreatFlowHref(detailsThreat)}>
+                  <Button size="sm" variant="outline">{t('threats.openFlow', 'Open Flow')}</Button>
+                </Link>
+                <Link href={getThreatMapHref(detailsThreat)}>
+                  <Button size="sm" variant="outline">{t('threats.openThreatMap', 'Open Threat Map')}</Button>
+                </Link>
+                <Link href={getThreatAlertsHref(detailsThreat)}>
+                  <Button size="sm" variant="outline">{t('threats.openAlerts', 'Open Alerts')}</Button>
+                </Link>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!historyThreatId} onOpenChange={(open) => !open && setHistoryThreatId(null)}>
         <DialogContent data-testid="dialog-threat-history">

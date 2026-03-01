@@ -8,6 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { getSecurityResponseSettings } from '@/lib/securityResponseSettings';
+import { Link } from 'wouter';
+import type { Threat } from '@shared/schema';
 
 type AlertItem = {
   id: string;
@@ -21,6 +23,13 @@ type AlertItem = {
 
 type AlertListResponse = {
   data: AlertItem[];
+};
+
+type ThreatListResponse = {
+  data: Threat[];
+  total: number;
+  limit: number;
+  offset: number;
 };
 
 const suspiciousLevels = new Set(['medium', 'high', 'critical']);
@@ -67,8 +76,20 @@ export function SecurityAlertFlag() {
 
   const blockMutation = useMutation({
     mutationFn: async (alert: AlertItem) => {
-      if (!alert.threatId) return;
-      await apiRequest('POST', `/api/threats/${alert.threatId}/decide`, {
+      let targetThreatId = alert.threatId;
+
+      // Real-mode alerts may not have direct threatId linkage; resolve a best-effort candidate.
+      if (!targetThreatId) {
+        const sev = String(alert.severity || '').toLowerCase();
+        const list = await apiRequest('GET', `/api/threats/list?limit=10${sev ? `&sev=${encodeURIComponent(sev)}` : ''}`) as ThreatListResponse;
+        targetThreatId = list?.data?.[0]?.id || null;
+      }
+
+      if (!targetThreatId) {
+        throw new Error('No related threat found to block. Open Threat Log and block manually.');
+      }
+
+      await apiRequest('POST', `/api/threats/${targetThreatId}/decide`, {
         decision: 'block',
         reason: 'Blocked from live suspicious-alert workflow',
       });
@@ -168,11 +189,16 @@ export function SecurityAlertFlag() {
                 <p className="text-xs text-muted-foreground">Threat ID: {alert.threatId || 'n/a'}</p>
                 <Separator />
                 <div className="flex gap-2">
-                  <Button size="sm" variant="destructive" onClick={() => blockMutation.mutate(alert)} disabled={blockMutation.isPending || !alert.threatId}>
+                  <Button size="sm" variant="destructive" onClick={() => blockMutation.mutate(alert)} disabled={blockMutation.isPending}>
                     Block
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => allowMutation.mutate(alert)} disabled={allowMutation.isPending}>
                     Pass
+                  </Button>
+                  <Button size="sm" variant="secondary" asChild>
+                    <Link href={`/security-center?tab=threats&from=alerts&alertId=${encodeURIComponent(alert.id)}`}>
+                      Open Threat Log
+                    </Link>
                   </Button>
                 </div>
               </div>
@@ -194,6 +220,11 @@ export function SecurityAlertFlag() {
               <p className="text-sm">{activeAlert.message}</p>
               <p className="text-xs text-muted-foreground">Severity: {activeAlert.severity}</p>
               <p className="text-xs text-muted-foreground">Threat ID: {activeAlert.threatId || 'n/a'}</p>
+              {!activeAlert.threatId && (
+                <p className="text-xs text-amber-600">
+                  This alert has no direct threat link. Block will target the most recent matching threat.
+                </p>
+              )}
               <div className="flex gap-2">
                 <Button
                   variant="destructive"
@@ -201,7 +232,7 @@ export function SecurityAlertFlag() {
                     blockMutation.mutate(activeAlert);
                     setPromptOpen(false);
                   }}
-                  disabled={blockMutation.isPending || !activeAlert.threatId}
+                  disabled={blockMutation.isPending}
                 >
                   Block
                 </Button>
@@ -214,6 +245,11 @@ export function SecurityAlertFlag() {
                   disabled={allowMutation.isPending}
                 >
                   Pass
+                </Button>
+                <Button variant="secondary" asChild>
+                  <Link href={`/security-center?tab=threats&from=alerts&alertId=${encodeURIComponent(activeAlert.id)}`}>
+                    Open Threat Log
+                  </Link>
                 </Button>
               </div>
             </div>

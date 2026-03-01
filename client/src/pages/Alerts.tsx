@@ -407,6 +407,22 @@ export default function Alerts() {
                                 </Button>
                               </>
                             )}
+                            {!alert.threatId && (
+                              <>
+                                <Link href={`/security-center?tab=threats&from=alerts&alertId=${encodeURIComponent(alert.id)}`}>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    data-testid={`open-threat-log-unlinked-${alert.id}`}
+                                  >
+                                    {t('alerts.openThreatLog', 'Open Threat Log')}
+                                  </Button>
+                                </Link>
+                                <Badge variant="secondary" className="text-xs">
+                                  {t('alerts.noLinkedThreat', 'No linked threat')}
+                                </Badge>
+                              </>
+                            )}
                             {!alert.read && (
                               <Button
                                 variant="outline"
@@ -414,6 +430,11 @@ export default function Alerts() {
                                 onClick={() => markRead.mutate(alert.id)}
                                 data-testid={`mark-read-${alert.id}`}
                               >{t('alerts.markRead', 'Mark Read')}</Button>
+                            )}
+                            {alert.read && !alert.threatId && (
+                              <span className="text-xs text-muted-foreground">
+                                {t('alerts.noActionsAvailable', 'No direct action available')}
+                              </span>
                             )}
                           </div>
                         </TableCell>
