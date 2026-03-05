@@ -12,6 +12,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { AlertTriangle, Bell, CheckCircle, CircleDot, RefreshCw, XCircle } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
+import type { Threat } from '@shared/schema';
 
 interface AlertItem {
   id: string;
@@ -34,6 +35,13 @@ type AlertListResponse = {
   targetFound?: boolean;
   targetIndex?: number;
   targetPage?: number;
+};
+
+type ThreatListResponse = {
+  data: Threat[];
+  total: number;
+  limit: number;
+  offset: number;
 };
 
 // Map severity to badge styles
@@ -193,6 +201,45 @@ export default function Alerts() {
       await fetch('/api/alerts/clear-all', { method: 'DELETE' });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/alerts'] })
+  });
+
+  const blockAlert = useMutation({
+    mutationFn: async (alert: AlertItem) => {
+      let threatId = alert.threatId;
+      if (!threatId) {
+        const sev = String(alert.severity || '').toLowerCase();
+        const list = await fetch(`/api/threats/list?limit=10${sev ? `&sev=${encodeURIComponent(sev)}` : ''}`).then(r => r.json()) as ThreatListResponse;
+        threatId = list?.data?.[0]?.id || null;
+      }
+      if (!threatId) throw new Error('No related threat found to block');
+      await fetch(`/api/threats/${threatId}/decide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision: 'block', reason: 'Blocked from alerts view' }),
+      });
+      await fetch(`/api/alerts/${alert.id}/read`, { method: 'POST' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['threats/list'] });
+    },
+  });
+
+  const passAlert = useMutation({
+    mutationFn: async (alert: AlertItem) => {
+      if (alert.threatId) {
+        await fetch(`/api/threats/${alert.threatId}/decide`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision: 'allow', reason: 'Allowed from alerts view' }),
+        });
+      }
+      await fetch(`/api/alerts/${alert.id}/read`, { method: 'POST' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['threats/list'] });
+    },
   });
 
   const openAlertThreatLog = (alert: AlertItem) => {
@@ -407,6 +454,24 @@ export default function Alerts() {
                                 </Button>
                               </>
                             )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => blockAlert.mutate(alert)}
+                              disabled={blockAlert.isPending}
+                              data-testid={`block-alert-${alert.id}`}
+                            >
+                              {t('admin.blockThreat', 'Block')}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => passAlert.mutate(alert)}
+                              disabled={passAlert.isPending}
+                              data-testid={`pass-alert-${alert.id}`}
+                            >
+                              {t('admin.markNotThreat', 'Pass')}
+                            </Button>
                             {!alert.threatId && (
                               <>
                                 <Link href={`/security-center?tab=threats&from=alerts&alertId=${encodeURIComponent(alert.id)}`}>
