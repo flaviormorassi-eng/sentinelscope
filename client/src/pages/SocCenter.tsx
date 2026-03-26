@@ -310,17 +310,15 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
 
   const aiAssessmentMutation = useMutation({
     mutationFn: async () => {
-      if (!selected) throw new Error('No incident selected');
-
       const payload: Record<string, any> = {
-        message: aiPrompt.trim() || `Assess incident ${selected.id} and provide investigation guidance.`,
+        message: aiPrompt.trim() || `Assess current SOC context and provide investigation guidance.`,
         language: i18n.language?.startsWith('pt') ? 'pt' : 'en',
         includeRecent: true,
       };
 
-      if (data?.mode === 'real') {
+      if (selected && data?.mode === 'real') {
         payload.threatEventId = selected.id;
-      } else {
+      } else if (selected) {
         payload.threatId = selected.threatId || selected.id;
       }
 
@@ -560,6 +558,7 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
           <Button size="sm" variant="outline" onClick={() => document.getElementById('soc-section-filters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('soc.filters', 'Filters')}</Button>
           <Button size="sm" variant="outline" onClick={() => document.getElementById('soc-section-dns')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('soc.dnsPolicyTitle', 'DNS Security Policy')}</Button>
           <Button size="sm" variant="outline" onClick={() => document.getElementById('soc-section-kpis')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('soc.kpis', 'KPIs')}</Button>
+          <Button size="sm" variant="outline" onClick={() => document.getElementById('soc-section-ai')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('soc.ai.title', 'AI Investigation')}</Button>
           <Button size="sm" variant="outline" onClick={() => document.getElementById('soc-section-incidents')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('soc.incidents', 'Incidents')}</Button>
           {selected && (
             <Button size="sm" variant="outline" onClick={() => document.getElementById('soc-section-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('soc.details', 'Incident Details')}</Button>
@@ -740,6 +739,98 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
         </Card>
       </div>
 
+      <Card id="soc-section-ai" data-testid="soc-ai-card">
+        <CardHeader className="pb-2">
+          <CardTitle>{t('soc.ai.title', 'AI Investigation')}</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              {selected
+                ? t('soc.ai.selectedContext', 'Using selected incident context for analysis.')
+                : t('soc.ai.globalContext', 'No incident selected. AI will analyze recent SOC context.')}
+            </p>
+            <Badge variant="outline">{t('soc.ai.hitl', 'Human approval required')}</Badge>
+          </div>
+
+          <Textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            rows={3}
+            placeholder={t('soc.ai.promptPlaceholder', 'Ask AI to analyze this incident context and suggest next steps')}
+            data-testid="soc-ai-prompt"
+          />
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => aiAssessmentMutation.mutate()}
+              disabled={aiAssessmentMutation.isPending}
+              data-testid="soc-ai-run"
+            >
+              {aiAssessmentMutation.isPending
+                ? t('soc.ai.generating', 'Generating...')
+                : t('soc.ai.generate', 'Generate AI Assessment')}
+            </Button>
+            {aiAssessment?.riskLevel && (
+              <Badge variant={riskLevelVariant(String(aiAssessment.riskLevel))} data-testid="soc-ai-risk-level">
+                {t('soc.ai.risk', 'Risk')}: {aiAssessment.riskLevel}
+              </Badge>
+            )}
+            {typeof aiAssessment?.confidence === 'number' && (
+              <Badge variant="outline" data-testid="soc-ai-confidence">
+                {t('soc.ai.confidence', 'Confidence')}: {aiAssessment.confidence}%
+              </Badge>
+            )}
+          </div>
+
+          {aiAssessment && (
+            <div className="rounded border bg-muted/20 p-3 space-y-2" data-testid="soc-ai-response">
+              <p className="text-sm">{aiAssessment.summary}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('soc.ai.suggestedAction', 'Suggested action')}: {aiAssessment.recommendation?.suggestedAction || '-'}
+                {' • '}
+                {t('soc.ai.status', 'Status')}: {aiAssessment.recommendation?.status || '-'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {aiAssessment.recommendation?.reason || '-'}
+              </p>
+
+              {Array.isArray(aiAssessment.evidence) && aiAssessment.evidence.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">{t('soc.ai.evidence', 'Evidence')}</p>
+                  <ul className="space-y-1">
+                    {aiAssessment.evidence.slice(0, 4).map((item, index) => (
+                      <li key={`${item.label}-${index}`} className="text-xs text-muted-foreground">
+                        • {item.label}: {item.detail}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {Array.isArray(aiAssessment.nextSteps) && aiAssessment.nextSteps.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">{t('soc.ai.nextSteps', 'Next steps')}</p>
+                  <ul className="space-y-1">
+                    {aiAssessment.nextSteps.slice(0, 4).map((step, index) => (
+                      <li key={`${step}-${index}`} className="text-xs text-muted-foreground">
+                        {index + 1}. {step}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <p className="text-[11px] text-muted-foreground">
+                {aiAssessment.enforcement?.reason || t('soc.ai.noAutoEnforcement', 'No automatic enforcement executed. Human decision is required.')}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card id="soc-section-incidents">
         <CardHeader className="pb-2">
           <CardTitle>
@@ -902,87 +993,6 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
                   <Badge variant="destructive" data-testid="soc-case-escalated-badge">
                     {t('soc.escalated', 'Escalated')}
                   </Badge>
-                )}
-              </div>
-
-              <div className="space-y-2 pt-2 border-t" data-testid="soc-ai-investigation">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-muted-foreground">{t('soc.ai.title', 'AI Investigation')}</p>
-                  <Badge variant="outline">{t('soc.ai.hitl', 'Human approval required')}</Badge>
-                </div>
-                <Textarea
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  rows={3}
-                  placeholder={t('soc.ai.promptPlaceholder', 'Ask AI to analyze this incident context and suggest next steps')}
-                  data-testid="soc-ai-prompt"
-                />
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => aiAssessmentMutation.mutate()}
-                    disabled={aiAssessmentMutation.isPending}
-                    data-testid="soc-ai-run"
-                  >
-                    {aiAssessmentMutation.isPending
-                      ? t('soc.ai.generating', 'Generating...')
-                      : t('soc.ai.generate', 'Generate AI Assessment')}
-                  </Button>
-                  {aiAssessment?.riskLevel && (
-                    <Badge variant={riskLevelVariant(String(aiAssessment.riskLevel))} data-testid="soc-ai-risk-level">
-                      {t('soc.ai.risk', 'Risk')}: {aiAssessment.riskLevel}
-                    </Badge>
-                  )}
-                  {typeof aiAssessment?.confidence === 'number' && (
-                    <Badge variant="outline" data-testid="soc-ai-confidence">
-                      {t('soc.ai.confidence', 'Confidence')}: {aiAssessment.confidence}%
-                    </Badge>
-                  )}
-                </div>
-
-                {aiAssessment && (
-                  <div className="rounded border bg-muted/20 p-3 space-y-2" data-testid="soc-ai-response">
-                    <p className="text-sm">{aiAssessment.summary}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t('soc.ai.suggestedAction', 'Suggested action')}: {aiAssessment.recommendation?.suggestedAction || '-'}
-                      {' • '}
-                      {t('soc.ai.status', 'Status')}: {aiAssessment.recommendation?.status || '-'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {aiAssessment.recommendation?.reason || '-'}
-                    </p>
-
-                    {Array.isArray(aiAssessment.evidence) && aiAssessment.evidence.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium">{t('soc.ai.evidence', 'Evidence')}</p>
-                        <ul className="space-y-1">
-                          {aiAssessment.evidence.slice(0, 4).map((item, index) => (
-                            <li key={`${item.label}-${index}`} className="text-xs text-muted-foreground">
-                              • {item.label}: {item.detail}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {Array.isArray(aiAssessment.nextSteps) && aiAssessment.nextSteps.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium">{t('soc.ai.nextSteps', 'Next steps')}</p>
-                        <ul className="space-y-1">
-                          {aiAssessment.nextSteps.slice(0, 4).map((step, index) => (
-                            <li key={`${step}-${index}`} className="text-xs text-muted-foreground">
-                              {index + 1}. {step}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    <p className="text-[11px] text-muted-foreground">
-                      {aiAssessment.enforcement?.reason || t('soc.ai.noAutoEnforcement', 'No automatic enforcement executed. Human decision is required.')}
-                    </p>
-                  </div>
                 )}
               </div>
 
