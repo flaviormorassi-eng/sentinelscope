@@ -1,41 +1,49 @@
 # SentinelScope v1.1.2 Release Notes (2026-03-26)
 
-## Highlights
-- SOC hardening with RBAC enforcement on sensitive SOC write operations.
-- Immutable signed compliance audit export with online and offline verification.
-- CI integrity gates extended with fast-fail audit export smoke checks.
-- Threat Map upgraded for performance and usability (lazy load, viewport optimization, clustering, interactive details panel).
+## 🚀 Release Highlights
+- SOC Center is now significantly faster to navigate with a compact command layout and keyboard-first incident triage.
+- Real monitoring mode was enforced platform-wide and validated on live API data paths.
+- Security hardening expanded across SOC workflows, compliance export integrity, and CI checks.
+- Core security surfaces now ship with a consistent command-center visual language.
 
-## Security & Compliance
-- Added SOC role-based protection and deny-path auditing (`soc_rbac_denied`).
-- Added signed export endpoint and verification endpoint for audit bundles.
-- Added offline verification commands:
+## 🔐 Security & Compliance
+- Enforced SOC RBAC protections on sensitive SOC write operations, including deny-path audit events.
+- Added signed compliance audit export with verification and tamper-detection flows.
+- Added audit verification tooling and smoke checks to strengthen release safety:
   - `npm run audit:verify -- --file <bundle.json>`
   - `npm run audit:verify:tamper -- --file <bundle.json>`
   - `npm run audit:verify:smoke`
-- Added CI smoke validation across key jobs in `.github/workflows/ci.yml`.
+- Extended CI workflow safeguards in [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
-## Threat Map Improvements
-- Reduced render overhead with marker capping + memoized icons.
-- Added viewport optimization mode and visible marker count.
-- Added zoom-aware cluster mode with drill-in behavior.
-- Added lazy map mount with manual load override.
-- Added visible threat details panel with click-to-focus map synchronization.
-- Added selected-threat state, clear-focus control, and marker↔panel sync.
+## 🛰️ Real-Mode Operations
+- Monitoring preferences were migrated to real mode across users.
+- Real ingestion pipeline was validated with active agent traffic and live endpoint checks.
+- Confirmed real-mode serving on key operational endpoints (SOC, Threats, Stats, Preferences).
 
-## Reliability Fixes
-- Fixed full-suite rotation test instability by completing mock coverage for `getUserPreferences` in `server/tests/rotation.test.ts`.
+## 🧭 SOC UX & Navigation Improvements
+- Compacted SOC Center layout for reduced scroll depth and quicker analyst flow.
+- Added sticky quick-navigation bar for jumping between Filters, DNS Policy, KPIs, Incidents, and Details.
+- Densified incidents view with tighter row spacing and bounded scroll container.
+- Added keyboard incident triage support:
+  - Arrow Up / Arrow Down: move row focus
+  - Enter / Space: open incident details
 
-## Localization
-- Added all new map interaction/performance strings in:
-  - `client/src/i18n/locales/en.json`
-  - `client/src/i18n/locales/pt.json`
+## 🗺️ Threat Map & Security Surface Upgrades
+- Improved Threat Map performance with viewport optimization, clustering, lazy map mounting, and marker/selection synchronization.
+- Added richer focused-context navigation between Alerts, Threat Log, Flow, and Map.
+- Unified dashboard and security sections with command-center style shells and consistent visual hierarchy.
 
-## Validation Status
-- `npm run quality:security` ✅
-- `npm test` ✅
-- `npm run check` ✅
-- `npm run build` ✅
+## 🌍 Localization & Theme Consistency
+- Extended translation coverage for newly introduced SOC/security/network UI states.
+- Removed remaining hardcoded style/text patterns in updated components where feasible.
+- Improved theme-token alignment for consistent light/dark rendering.
 
-## Manual Signoff
-- Use `THREAT_MAP_QA_CHECKLIST.md` for final visual interaction confirmation on real data.
+## ✅ Validation Summary
+- `npm run quality:security` passed
+- `npm test` passed
+- `npm run check` passed
+- `npm run build` passed
+- Endpoint probing and real-mode smoke checks passed
+
+## 📎 QA References
+- [THREAT_MAP_QA_CHECKLIST.md](THREAT_MAP_QA_CHECKLIST.md)
