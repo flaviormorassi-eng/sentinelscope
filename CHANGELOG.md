@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## v1.1.2 - 2026-03-26
 
+Customer summary: see [RELEASE_NOTES_PUBLIC_v1.1.2.md](RELEASE_NOTES_PUBLIC_v1.1.2.md).
+
 ### Added
 - SOC RBAC middleware for write-protected SOC routes with role-based deny auditing (`soc_rbac_denied`).
 - Signed immutable compliance audit export endpoint and offline verification tooling (`audit:verify`, `audit:verify:tamper`, `audit:verify:smoke`).
