@@ -70,6 +70,7 @@ import {
   insertNewsletterSubscriptionSchema
 } from "@shared/schema";
 import { getGeolocation } from "./utils/geolocationService";
+import { aiThreatChatRequestSchema, generateAiThreatAssessment } from './utils/aiThreatAssessment';
 import { z } from "zod";
 import Stripe from "stripe";
 import OpenAI from "openai";
@@ -102,7 +103,13 @@ const HELPER_RATE_LIMIT_PER_MIN = Math.max(
   1,
   Number(process.env.HELPER_ASSISTANT_RATE_LIMIT_PER_MIN || '20'),
 );
+const AI_CHAT_RATE_LIMIT_WINDOW_MS = 60_000;
+const AI_CHAT_RATE_LIMIT_PER_MIN = Math.max(
+  1,
+  Number(process.env.AI_CHAT_RATE_LIMIT_PER_MIN || '15'),
+);
 const helperAssistantRateBuckets = new Map<string, { windowStart: number; count: number }>();
+const aiChatRateBuckets = new Map<string, { windowStart: number; count: number }>();
 
 function getAiClient(): OpenAI | null {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -143,6 +150,41 @@ function checkHelperAssistantRateLimit(userId: string): {
     allowed: true,
     retryAfterSeconds: 0,
     remaining: Math.max(0, HELPER_RATE_LIMIT_PER_MIN - current.count),
+  };
+}
+
+function checkAiChatRateLimit(userId: string): {
+  allowed: boolean;
+  retryAfterSeconds: number;
+  remaining: number;
+} {
+  const now = Date.now();
+  const current = aiChatRateBuckets.get(userId);
+
+  if (!current || now - current.windowStart >= AI_CHAT_RATE_LIMIT_WINDOW_MS) {
+    aiChatRateBuckets.set(userId, { windowStart: now, count: 1 });
+    return {
+      allowed: true,
+      retryAfterSeconds: 0,
+      remaining: Math.max(0, AI_CHAT_RATE_LIMIT_PER_MIN - 1),
+    };
+  }
+
+  if (current.count >= AI_CHAT_RATE_LIMIT_PER_MIN) {
+    const retryAfterMs = AI_CHAT_RATE_LIMIT_WINDOW_MS - (now - current.windowStart);
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1000)),
+      remaining: 0,
+    };
+  }
+
+  current.count += 1;
+  aiChatRateBuckets.set(userId, current);
+  return {
+    allowed: true,
+    retryAfterSeconds: 0,
+    remaining: Math.max(0, AI_CHAT_RATE_LIMIT_PER_MIN - current.count),
   };
 }
 
@@ -5090,6 +5132,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(results);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Interactive helper AI coach (API/terminal/safe-run guidance)
+  app.post('/api/ai/chat', authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const parsed = aiThreatChatRequestSchema.parse(req.body || {});
+
+      const limit = checkAiChatRateLimit(userId);
+      res.setHeader('X-RateLimit-Limit', String(AI_CHAT_RATE_LIMIT_PER_MIN));
+      res.setHeader('X-RateLimit-Remaining', String(limit.remaining));
+
+      if (!limit.allowed) {
+        res.setHeader('Retry-After', String(limit.retryAfterSeconds));
+        await logSecurityEvent({
+          userId,
+          eventType: 'security_alert',
+          eventCategory: 'security',
+          action: 'ai_chat_rate_limited',
+          resourceType: 'assistant',
+          resourceId: 'threat_investigation',
+          status: 'failure',
+          severity: 'warning',
+          details: {
+            messageLength: parsed.message.length,
+            limitPerMinute: AI_CHAT_RATE_LIMIT_PER_MIN,
+            retryAfterSeconds: limit.retryAfterSeconds,
+          },
+          req,
+        });
+        return res.status(429).json({
+          error: 'Rate limit exceeded. Please retry shortly.',
+          retryAfterSeconds: limit.retryAfterSeconds,
+        });
+      }
+
+      let selectedThreat: any | undefined;
+      let selectedThreatEvent: any | undefined;
+      let selectedAlert: any | undefined;
+
+      if (parsed.threatId) {
+        selectedThreat = await storage.getThreatById(parsed.threatId);
+        if (!selectedThreat) {
+          return res.status(404).json({ error: 'Threat not found' });
+        }
+        if (selectedThreat.userId !== userId) {
+          return res.status(403).json({ error: 'Unauthorized to access this threat' });
+        }
+      }
+
+      if (parsed.threatEventId) {
+        selectedThreatEvent = await storage.getThreatEventById(parsed.threatEventId);
+        if (!selectedThreatEvent) {
+          return res.status(404).json({ error: 'Threat event not found' });
+        }
+        if (selectedThreatEvent.userId !== userId) {
+          return res.status(403).json({ error: 'Unauthorized to access this threat event' });
+        }
+      }
+
+      if (parsed.alertId) {
+        const userAlerts = await storage.getAlerts(userId);
+        selectedAlert = userAlerts.find((a: any) => String(a.id) === String(parsed.alertId));
+        if (!selectedAlert) {
+          return res.status(404).json({ error: 'Alert not found' });
+        }
+      }
+
+      let recentThreats: any[] = [];
+      let recentThreatEvents: any[] = [];
+      let recentAlerts: any[] = [];
+
+      if (parsed.includeRecent) {
+        const [threats, events, alerts] = await Promise.all([
+          storage.getRecentThreats(userId, 5),
+          storage.getRecentThreatEventsLimit(userId, 5),
+          storage.getRecentAlerts(userId, 5),
+        ]);
+        recentThreats = threats || [];
+        recentThreatEvents = events || [];
+        recentAlerts = alerts || [];
+      }
+
+      const assessment = await generateAiThreatAssessment({
+        client: getAiClient(),
+        model: process.env.OPENAI_THREAT_MODEL || process.env.OPENAI_HELPER_MODEL || 'gpt-4.1-mini',
+        context: {
+          request: parsed,
+          threat: selectedThreat,
+          threatEvent: selectedThreatEvent,
+          alert: selectedAlert,
+          recentThreats,
+          recentThreatEvents,
+          recentAlerts,
+        },
+      });
+
+      await logSecurityEvent({
+        userId,
+        eventType: 'security_alert',
+        eventCategory: 'security',
+        action: assessment.poweredByAi ? 'ai_chat_assessment_created' : 'ai_chat_assessment_fallback',
+        resourceType: 'assistant',
+        resourceId: 'threat_investigation',
+        status: 'success',
+        severity: 'info',
+        details: {
+          language: parsed.language,
+          messageLength: parsed.message.length,
+          threatId: parsed.threatId || null,
+          threatEventId: parsed.threatEventId || null,
+          alertId: parsed.alertId || null,
+          includeRecent: parsed.includeRecent,
+          poweredByAi: assessment.poweredByAi,
+          decisionStatus: assessment.recommendation.status,
+        },
+        req,
+      });
+
+      return safeJson(res, {
+        ...assessment,
+        enforcement: {
+          executed: false,
+          reason:
+            parsed.language === 'pt'
+              ? 'Nenhuma ação automática executada. Decisão humana obrigatória.'
+              : 'No automatic action executed. Human decision required.',
+        },
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid request payload', details: error.errors });
+      }
+      return res.status(500).json({ error: error?.message || 'AI chat request failed' });
     }
   });
 
