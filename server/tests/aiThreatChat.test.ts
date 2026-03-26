@@ -6,6 +6,9 @@ process.env.ALLOW_LEGACY_X_USER_ID = 'true';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
 process.env.OPENAI_API_KEY = '';
 process.env.AI_CHAT_RATE_LIMIT_PER_MIN = '20';
+process.env.AI_TENANT_POLICY_JSON = JSON.stringify({
+  'ai-user': 'prefilled_actions',
+});
 
 vi.mock('../storage', () => ({
   storage: {
@@ -92,6 +95,12 @@ describe('/api/ai/chat', () => {
     expect(res.body.recommendation?.status).toBe('awaiting_human_decision');
     expect(res.body.poweredByAi).toBe(false);
     expect(res.body.enforcement?.executed).toBe(false);
+    expect(res.body.advisoryNotice).toBe(
+      'This recommendation is advisory only and requires user approval before any enforcement action is taken.',
+    );
+    expect(res.body.tenantPolicy?.mode).toBe('prefilled_actions');
+    expect(res.body.tenantPolicy?.humanConfirmationRequired).toBe(true);
+    expect(res.body.actionDraft?.requiresHumanConfirmation).toBe(true);
   });
 
   it('enforces ownership checks for threat context', async () => {

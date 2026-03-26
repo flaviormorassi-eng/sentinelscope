@@ -2,6 +2,9 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import type { Alert, Threat, ThreatEvent } from '@shared/schema';
 
+export const SENSITIVE_AI_ADVISORY_NOTICE =
+  'This recommendation is advisory only and requires user approval before any enforcement action is taken.';
+
 export const aiThreatChatRequestSchema = z
   .object({
     message: z.string().trim().min(3).max(4000),
@@ -152,12 +155,28 @@ function buildFallbackAssessment(context: ThreatContext): AiThreatAssessment {
         ? [
             'A IA não executa bloqueio ou liberação automaticamente.',
             'Decisão final deve ser tomada por operador autenticado.',
+            SENSITIVE_AI_ADVISORY_NOTICE,
           ]
         : [
             'AI does not execute block/allow actions automatically.',
             'Final action must be taken by an authenticated operator.',
+            SENSITIVE_AI_ADVISORY_NOTICE,
           ],
     poweredByAi: false,
+  };
+}
+
+function withMandatoryAdvisory(assessment: AiThreatAssessment): AiThreatAssessment {
+  const current = Array.isArray(assessment.constraints) ? assessment.constraints.filter(Boolean) : [];
+  const hasAdvisory = current.some((line) => String(line).trim() === SENSITIVE_AI_ADVISORY_NOTICE);
+  if (hasAdvisory) {
+    return assessment;
+  }
+
+  const nextConstraints = [...current, SENSITIVE_AI_ADVISORY_NOTICE].slice(-6);
+  return {
+    ...assessment,
+    constraints: nextConstraints,
   };
 }
 
@@ -176,7 +195,7 @@ export async function generateAiThreatAssessment(params: {
   model: string;
   context: ThreatContext;
 }): Promise<AiThreatAssessment> {
-  const fallback = buildFallbackAssessment(params.context);
+  const fallback = withMandatoryAdvisory(buildFallbackAssessment(params.context));
 
   if (!params.client) {
     return fallback;
@@ -234,5 +253,5 @@ export async function generateAiThreatAssessment(params: {
     return fallback;
   }
 
-  return parsed.data;
+  return withMandatoryAdvisory(parsed.data);
 }

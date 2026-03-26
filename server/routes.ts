@@ -70,7 +70,7 @@ import {
   insertNewsletterSubscriptionSchema
 } from "@shared/schema";
 import { getGeolocation } from "./utils/geolocationService";
-import { aiThreatChatRequestSchema, generateAiThreatAssessment } from './utils/aiThreatAssessment';
+import { aiThreatChatRequestSchema, generateAiThreatAssessment, SENSITIVE_AI_ADVISORY_NOTICE } from './utils/aiThreatAssessment';
 import { z } from "zod";
 import Stripe from "stripe";
 import OpenAI from "openai";
@@ -110,6 +110,22 @@ const AI_CHAT_RATE_LIMIT_PER_MIN = Math.max(
 );
 const helperAssistantRateBuckets = new Map<string, { windowStart: number; count: number }>();
 const aiChatRateBuckets = new Map<string, { windowStart: number; count: number }>();
+
+type TenantAiMode = 'recommendation_only' | 'prefilled_actions';
+
+function getTenantAiMode(userId: string): TenantAiMode {
+  const raw = process.env.AI_TENANT_POLICY_JSON;
+  if (!raw) return 'recommendation_only';
+  try {
+    const parsed = JSON.parse(raw) as Record<string, { mode?: string } | string>;
+    const value = parsed?.[userId];
+    const mode = typeof value === 'string' ? value : value?.mode;
+    if (mode === 'prefilled_actions') return 'prefilled_actions';
+    return 'recommendation_only';
+  } catch {
+    return 'recommendation_only';
+  }
+}
 
 function getAiClient(): OpenAI | null {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -5230,6 +5246,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
 
+      const tenantAiMode = getTenantAiMode(userId);
+      const actionDraft = tenantAiMode === 'prefilled_actions'
+        ? {
+            threatId: parsed.threatId || null,
+            threatEventId: parsed.threatEventId || null,
+            suggestedDecision: assessment.recommendation?.suggestedAction || 'investigate',
+            reason: assessment.recommendation?.reason || null,
+            requiresHumanConfirmation: true,
+          }
+        : null;
+
       await logSecurityEvent({
         userId,
         eventType: 'security_alert',
@@ -5254,12 +5281,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return safeJson(res, {
         ...assessment,
+        advisoryNotice: SENSITIVE_AI_ADVISORY_NOTICE,
+        tenantPolicy: {
+          mode: tenantAiMode,
+          humanConfirmationRequired: true,
+          allowActionPrefill: tenantAiMode === 'prefilled_actions',
+        },
+        actionDraft,
         enforcement: {
           executed: false,
-          reason:
-            parsed.language === 'pt'
-              ? 'Nenhuma ação automática executada. Decisão humana obrigatória.'
-              : 'No automatic action executed. Human decision required.',
+          reason: SENSITIVE_AI_ADVISORY_NOTICE,
         },
       });
     } catch (error: any) {

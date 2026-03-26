@@ -153,6 +153,19 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
     nextSteps?: string[];
     constraints?: string[];
     poweredByAi?: boolean;
+    advisoryNotice?: string;
+    tenantPolicy?: {
+      mode: 'recommendation_only' | 'prefilled_actions' | string;
+      humanConfirmationRequired: boolean;
+      allowActionPrefill: boolean;
+    };
+    actionDraft?: {
+      threatId?: string | null;
+      threatEventId?: string | null;
+      suggestedDecision?: string | null;
+      reason?: string | null;
+      requiresHumanConfirmation?: boolean;
+    } | null;
     enforcement?: { executed: boolean; reason?: string };
   } | null>(null);
   const incidentRowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
@@ -424,6 +437,9 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
     if (riskLevel === 'medium') return 'secondary';
     return 'outline';
   };
+
+  const fixedAdvisoryNotice =
+    'This recommendation is advisory only and requires user approval before any enforcement action is taken.';
 
   const copyEvidence = async () => {
     if (!selected) return;
@@ -794,6 +810,9 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
                 {t('soc.ai.status', 'Status')}: {aiAssessment.recommendation?.status || '-'}
               </p>
               <p className="text-xs text-muted-foreground">
+                {t('soc.ai.tenantMode', 'Tenant mode')}: {aiAssessment.tenantPolicy?.mode || 'recommendation_only'}
+              </p>
+              <p className="text-xs text-muted-foreground">
                 {aiAssessment.recommendation?.reason || '-'}
               </p>
 
@@ -824,7 +843,17 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
               )}
 
               <p className="text-[11px] text-muted-foreground">
-                {aiAssessment.enforcement?.reason || t('soc.ai.noAutoEnforcement', 'No automatic enforcement executed. Human decision is required.')}
+                {aiAssessment.advisoryNotice || fixedAdvisoryNotice}
+              </p>
+              {aiAssessment.tenantPolicy?.mode === 'prefilled_actions' && aiAssessment.actionDraft?.suggestedDecision && (
+                <p className="text-[11px] text-muted-foreground">
+                  {t('soc.ai.prefillHint', 'Action prefill available')}: {aiAssessment.actionDraft.suggestedDecision}
+                  {' • '}
+                  {t('soc.ai.prefillHumanRequired', 'human confirmation required')}
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                {aiAssessment.enforcement?.reason || fixedAdvisoryNotice}
               </p>
             </div>
           )}
