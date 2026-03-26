@@ -123,7 +123,7 @@ type SocCenterProps = {
 };
 
 export default function SocCenter({ embedded = false }: SocCenterProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [q, setQ] = useState('');
@@ -139,6 +139,22 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
   const [caseSlaDueAt, setCaseSlaDueAt] = useState('');
   const [trustedResolversInput, setTrustedResolversInput] = useState('');
   const [dnsDetectionEnabled, setDnsDetectionEnabled] = useState(true);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiAssessment, setAiAssessment] = useState<{
+    summary: string;
+    riskLevel: 'low' | 'medium' | 'high' | 'critical' | string;
+    confidence: number;
+    recommendation: {
+      status: 'awaiting_human_decision' | string;
+      suggestedAction: 'block' | 'allow' | 'monitor' | 'investigate' | string;
+      reason: string;
+    };
+    evidence?: Array<{ label: string; detail: string; relevance: 'low' | 'medium' | 'high' | string }>;
+    nextSteps?: string[];
+    constraints?: string[];
+    poweredByAi?: boolean;
+    enforcement?: { executed: boolean; reason?: string };
+  } | null>(null);
   const incidentRowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
 
   const queryString = useMemo(() => {
@@ -183,6 +199,18 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
     setCaseStatus(socCase?.caseStatus || 'open');
     setCaseSlaDueAt(socCase?.slaDueAt ? new Date(socCase.slaDueAt).toISOString().slice(0, 16) : '');
   }, [socCaseData?.data?.id, selected?.id]);
+
+  useEffect(() => {
+    if (!selected) {
+      setAiPrompt('');
+      setAiAssessment(null);
+      return;
+    }
+    setAiAssessment(null);
+    setAiPrompt(
+      `Assess this incident and provide triage guidance. Threat type: ${selected.threatType || 'unknown'}, severity: ${selected.severity || 'unknown'}, source: ${selected.sourceType || 'unknown'}.`,
+    );
+  }, [selected?.id]);
 
   useEffect(() => {
     setTrustedResolversInput(dnsPolicyResp?.data?.trustedDnsResolvers || '');
@@ -280,6 +308,40 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
     },
   });
 
+  const aiAssessmentMutation = useMutation({
+    mutationFn: async () => {
+      if (!selected) throw new Error('No incident selected');
+
+      const payload: Record<string, any> = {
+        message: aiPrompt.trim() || `Assess incident ${selected.id} and provide investigation guidance.`,
+        language: i18n.language?.startsWith('pt') ? 'pt' : 'en',
+        includeRecent: true,
+      };
+
+      if (data?.mode === 'real') {
+        payload.threatEventId = selected.id;
+      } else {
+        payload.threatId = selected.threatId || selected.id;
+      }
+
+      return await apiRequest('POST', '/api/ai/chat', payload);
+    },
+    onSuccess: (result) => {
+      setAiAssessment(result);
+      toast({
+        title: t('soc.ai.readyTitle', 'AI assessment ready'),
+        description: t('soc.ai.readyDescription', 'Review the recommendations and keep human approval before action.'),
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: t('common.error', 'Error'),
+        description: error?.message || t('soc.ai.error', 'Failed to generate AI assessment.'),
+        variant: 'destructive',
+      });
+    },
+  });
+
   const slaTimerText = useMemo(() => {
     if (!caseSlaDueAt) return t('soc.slaNotSet', 'No SLA set');
     const dueMs = new Date(caseSlaDueAt).getTime();
@@ -357,6 +419,12 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
       decision,
       reason: playbookReasons[decision],
     });
+  };
+
+  const riskLevelVariant = (riskLevel: string): 'destructive' | 'secondary' | 'default' | 'outline' => {
+    if (riskLevel === 'critical' || riskLevel === 'high') return 'destructive';
+    if (riskLevel === 'medium') return 'secondary';
+    return 'outline';
   };
 
   const copyEvidence = async () => {
@@ -834,6 +902,87 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
                   <Badge variant="destructive" data-testid="soc-case-escalated-badge">
                     {t('soc.escalated', 'Escalated')}
                   </Badge>
+                )}
+              </div>
+
+              <div className="space-y-2 pt-2 border-t" data-testid="soc-ai-investigation">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">{t('soc.ai.title', 'AI Investigation')}</p>
+                  <Badge variant="outline">{t('soc.ai.hitl', 'Human approval required')}</Badge>
+                </div>
+                <Textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  rows={3}
+                  placeholder={t('soc.ai.promptPlaceholder', 'Ask AI to analyze this incident context and suggest next steps')}
+                  data-testid="soc-ai-prompt"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => aiAssessmentMutation.mutate()}
+                    disabled={aiAssessmentMutation.isPending}
+                    data-testid="soc-ai-run"
+                  >
+                    {aiAssessmentMutation.isPending
+                      ? t('soc.ai.generating', 'Generating...')
+                      : t('soc.ai.generate', 'Generate AI Assessment')}
+                  </Button>
+                  {aiAssessment?.riskLevel && (
+                    <Badge variant={riskLevelVariant(String(aiAssessment.riskLevel))} data-testid="soc-ai-risk-level">
+                      {t('soc.ai.risk', 'Risk')}: {aiAssessment.riskLevel}
+                    </Badge>
+                  )}
+                  {typeof aiAssessment?.confidence === 'number' && (
+                    <Badge variant="outline" data-testid="soc-ai-confidence">
+                      {t('soc.ai.confidence', 'Confidence')}: {aiAssessment.confidence}%
+                    </Badge>
+                  )}
+                </div>
+
+                {aiAssessment && (
+                  <div className="rounded border bg-muted/20 p-3 space-y-2" data-testid="soc-ai-response">
+                    <p className="text-sm">{aiAssessment.summary}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('soc.ai.suggestedAction', 'Suggested action')}: {aiAssessment.recommendation?.suggestedAction || '-'}
+                      {' • '}
+                      {t('soc.ai.status', 'Status')}: {aiAssessment.recommendation?.status || '-'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {aiAssessment.recommendation?.reason || '-'}
+                    </p>
+
+                    {Array.isArray(aiAssessment.evidence) && aiAssessment.evidence.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium">{t('soc.ai.evidence', 'Evidence')}</p>
+                        <ul className="space-y-1">
+                          {aiAssessment.evidence.slice(0, 4).map((item, index) => (
+                            <li key={`${item.label}-${index}`} className="text-xs text-muted-foreground">
+                              • {item.label}: {item.detail}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {Array.isArray(aiAssessment.nextSteps) && aiAssessment.nextSteps.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium">{t('soc.ai.nextSteps', 'Next steps')}</p>
+                        <ul className="space-y-1">
+                          {aiAssessment.nextSteps.slice(0, 4).map((step, index) => (
+                            <li key={`${step}-${index}`} className="text-xs text-muted-foreground">
+                              {index + 1}. {step}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <p className="text-[11px] text-muted-foreground">
+                      {aiAssessment.enforcement?.reason || t('soc.ai.noAutoEnforcement', 'No automatic enforcement executed. Human decision is required.')}
+                    </p>
+                  </div>
                 )}
               </div>
 
