@@ -6,6 +6,7 @@ process.env.ALLOW_LEGACY_X_USER_ID = 'true';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
 
 const TEST_USER_ID = 'decision-user';
+const TEST_ADMIN_ID = 'decision-admin';
 
 const mockThreat = {
   id: 'threat-1',
@@ -34,6 +35,7 @@ const storageMock = {
   getThreatEventById: vi.fn(),
   updateThreatEventStatus: vi.fn(),
   createAuditLog: vi.fn(),
+  getUser: vi.fn(),
   getUserPreferences: vi.fn().mockResolvedValue({ userId: TEST_USER_ID, monitoringMode: 'demo' }),
 };
 
@@ -55,6 +57,7 @@ describe('/api/threats/:id/decide', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    storageMock.getUser.mockResolvedValue({ id: TEST_ADMIN_ID, isAdmin: true });
   });
 
   it('handles classic Threat decision (Demo Mode)', async () => {
@@ -108,5 +111,24 @@ describe('/api/threats/:id/decide', () => {
       .set('x-user-id', TEST_USER_ID)
       .send({ decision: 'block' })
       .expect(404);
+  });
+
+  it('creates admin audit log for admin threat decision', async () => {
+    storageMock.getThreatById.mockResolvedValue({ ...mockThreat, id: 'threat-admin-1' });
+
+    await agent
+      .post('/api/admin/threats/threat-admin-1/decide')
+      .set('x-user-id', TEST_ADMIN_ID)
+      .send({ decision: 'block', reason: 'admin review' })
+      .expect(200);
+
+    expect(storageMock.getUser).toHaveBeenCalledWith(TEST_ADMIN_ID);
+    expect(storageMock.updateThreatStatus).toHaveBeenCalledWith('threat-admin-1', 'blocked', true);
+    expect(storageMock.createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adminId: TEST_ADMIN_ID,
+        action: 'threat_block',
+      })
+    );
   });
 });

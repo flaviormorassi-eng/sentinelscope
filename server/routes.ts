@@ -43,10 +43,12 @@ import multer from 'multer';
 import { storage } from "./storage";
 import { authenticateUser, type AuthRequest } from "./middleware/auth";
 import { requireAdmin } from "./middleware/adminAuth";
+import { requireSocPermission } from "./middleware/socRbac";
 import { generateMockThreat, generateMultipleThreats } from "./utils/threatGenerator";
 import { generatePDFReport, generateCSVReport, generateJSONReport } from "./utils/reportGenerator";
 import { checkFileHash, checkURL, checkIPAddress, submitURL, validateHash, validateIP, validateURL } from "./utils/virusTotalService";
 import { hashApiKey, generateApiKey, generatePhoneVerificationCode } from "./utils/security";
+import { buildSignedAuditExport, verifySignedAuditExport } from "./utils/auditExport";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -741,6 +743,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           browsingHistoryEnabled: false,
           browsingConsentGivenAt: null,
           flaggedOnlyDefault: false,
+          trustedDnsResolvers: '',
+          dnsDetectionEnabled: true,
         };
       }
 
@@ -1708,6 +1712,579 @@ export async function registerRoutes(app: Express): Promise<Server> {
         targetFound,
         targetIndex: targetIndex >= 0 ? targetIndex : undefined,
         targetPage,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/soc/incidents', authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const preferences = await storage.getUserPreferences(userId);
+      const monitoringMode = preferences?.monitoringMode || 'demo';
+
+      const {
+        source,
+        sev,
+        q,
+        hours,
+        emailOnly,
+        downloadOnly,
+        limit,
+        offset,
+      } = req.query as Record<string, string | undefined>;
+
+      const parsedLimit = limit ? Math.min(200, Math.max(1, parseInt(limit, 10))) : 50;
+      const parsedOffset = offset ? Math.max(0, parseInt(offset, 10)) : 0;
+      const parsedHours = hours ? Math.min(24 * 30, Math.max(1, parseInt(hours, 10))) : 24;
+      const allowedSev = ['critical', 'high', 'medium', 'low'];
+      const severityFilter = sev && allowedSev.includes(sev) ? sev : undefined;
+      const sourceFilter = source ? source.toLowerCase() : undefined;
+      const queryFilter = q ? q.toLowerCase() : undefined;
+      const requireEmail = emailOnly === '1' || emailOnly === 'true';
+      const requireDownload = downloadOnly === '1' || downloadOnly === 'true';
+      const cutoffTs = Date.now() - parsedHours * 60 * 60 * 1000;
+
+      const pickString = (...values: any[]): string | null => {
+        for (const value of values) {
+          if (typeof value === 'string' && value.trim().length > 0) {
+            return value.trim();
+          }
+        }
+        return null;
+      };
+
+      const toTimestampMs = (...values: any[]): number | null => {
+        for (const value of values) {
+          if (value === null || value === undefined) continue;
+          if (value instanceof Date) {
+            const dateMs = value.getTime();
+            if (!Number.isNaN(dateMs)) return dateMs;
+            continue;
+          }
+          if (typeof value === 'number' && Number.isFinite(value)) {
+            if (value <= 0) continue;
+            return value < 1_000_000_000_000 ? value * 1000 : value;
+          }
+          if (typeof value === 'string') {
+            const parsed = Date.parse(value);
+            if (!Number.isNaN(parsed)) return parsed;
+          }
+        }
+        return null;
+      };
+
+      const getMeta = (meta: any, ...keys: string[]) => {
+        if (!meta || typeof meta !== 'object') return null;
+        for (const key of keys) {
+          const value = (meta as any)[key];
+          if (value !== undefined && value !== null) return value;
+        }
+        return null;
+      };
+
+      let base: any[] = [];
+      if (monitoringMode === 'real') {
+        const anyStorage: any = storage as any;
+        if (typeof anyStorage.getThreatEvents === 'function') {
+          base = await anyStorage.getThreatEvents(userId, 500);
+        } else if (typeof anyStorage.getRecentThreatEvents === 'function') {
+          base = await anyStorage.getRecentThreatEvents(userId, 24);
+        }
+      } else {
+        base = await storage.getThreats(userId);
+      }
+
+      const normalized = (base || []).map((entry: any) => {
+        const metadata = entry?.metadata && typeof entry.metadata === 'object' ? entry.metadata : {};
+
+        const sourceURL = pickString(
+          entry.sourceURL,
+          getMeta(metadata, 'sourceURL', 'sourceUrl', 'url', 'link', 'fullUrl'),
+        );
+        const emailFrom = pickString(
+          getMeta(metadata, 'emailFrom', 'senderEmail', 'from'),
+          getMeta(metadata?.email, 'from', 'sender', 'address'),
+        );
+        const emailSubject = pickString(
+          getMeta(metadata, 'emailSubject', 'subject'),
+          getMeta(metadata?.email, 'subject'),
+        );
+        const downloadName = pickString(
+          getMeta(metadata, 'downloadName', 'fileName', 'filename', 'file', 'attachmentName'),
+          getMeta(metadata?.download, 'name', 'fileName'),
+        );
+        const localPath = pickString(
+          getMeta(metadata, 'localPath', 'path', 'filePath', 'location', 'downloadPath'),
+          getMeta(metadata?.download, 'path', 'location'),
+        );
+        const processName = pickString(
+          getMeta(metadata, 'processName', 'process', 'processPath', 'parentProcess'),
+          getMeta(metadata?.process, 'name', 'path'),
+        );
+        const sha256 = pickString(
+          getMeta(metadata, 'sha256', 'hash', 'fileHash', 'urlHash'),
+          getMeta(metadata?.download, 'sha256', 'hash'),
+        );
+        const dnsQuery = pickString(
+          getMeta(metadata, 'dnsQuery', 'domain', 'queryName', 'hostname'),
+          getMeta(metadata?.dns, 'query', 'queryName', 'domain'),
+        );
+        const dnsQueryType = pickString(
+          getMeta(metadata, 'dnsQueryType', 'queryType', 'type'),
+          getMeta(metadata?.dns, 'queryType', 'type'),
+        );
+        const dnsResponseCode = pickString(
+          getMeta(metadata, 'dnsResponseCode', 'rcode', 'responseCode'),
+          getMeta(metadata?.dns, 'responseCode', 'rcode'),
+        );
+        const dnsResolver = pickString(
+          getMeta(metadata, 'dnsResolver', 'resolver', 'resolverIp'),
+          getMeta(metadata?.dns, 'resolver', 'resolverIp'),
+        );
+        const dnsProtocol = pickString(
+          getMeta(metadata, 'dnsProtocol', 'protocol'),
+          getMeta(metadata?.dns, 'protocol'),
+        );
+        const dnsEncryptedValue = getMeta(metadata, 'dnsEncrypted');
+        const dnsEncrypted = typeof dnsEncryptedValue === 'boolean'
+          ? dnsEncryptedValue
+          : (typeof dnsProtocol === 'string' ? /doh|dot|doq/i.test(dnsProtocol) : null);
+
+        const timestampMs = toTimestampMs(
+          entry.timestamp,
+          entry.createdAt,
+          getMeta(metadata, 'timestamp', 'eventTimestamp', 'observedAt', 'detectedAt'),
+        ) ?? Date.now();
+        const timestamp = new Date(timestampMs).toISOString();
+        const message = pickString(entry.message, entry.description, entry.threatType, entry.type) || '';
+        const sourceType = dnsQuery || /dns|nxdomain|resolver|doh|dot|doq/i.test(message)
+          ? 'dns'
+          : emailFrom || emailSubject
+          ? 'email'
+          : downloadName || localPath || /download|attachment|file/i.test(message)
+            ? 'download'
+            : sourceURL
+              ? 'link'
+              : 'system';
+
+        return {
+          id: entry.id,
+          threatId: entry.id,
+          timestamp,
+          timestampMs,
+          severity: entry.severity || 'low',
+          threatType: entry.threatType || entry.type || 'unknown',
+          status: entry.mitigationStatus || entry.status || 'detected',
+          sourceType,
+          sourceIP: entry.sourceIP || null,
+          sourceURL,
+          deviceName: entry.deviceName || null,
+          description: message,
+          emailFrom,
+          emailSubject,
+          downloadName,
+          localPath,
+          processName,
+          hash: sha256,
+          dnsQuery,
+          dnsQueryType,
+          dnsResponseCode,
+          dnsResolver,
+          dnsProtocol,
+          dnsEncrypted,
+        };
+      });
+
+      const filtered = normalized
+        .filter((incident: any) => !severityFilter || incident.severity === severityFilter)
+        .filter((incident: any) => !sourceFilter || incident.sourceType === sourceFilter)
+        .filter((incident: any) => incident.timestampMs >= cutoffTs)
+        .filter((incident: any) => !requireEmail || !!incident.emailFrom)
+        .filter((incident: any) => !requireDownload || !!incident.downloadName)
+        .filter((incident: any) => {
+          if (!queryFilter) return true;
+          const haystack = [
+            incident.threatType,
+            incident.description,
+            incident.sourceURL,
+            incident.sourceIP,
+            incident.emailFrom,
+            incident.emailSubject,
+            incident.downloadName,
+            incident.localPath,
+            incident.processName,
+            incident.hash,
+            incident.deviceName,
+            incident.sourceType,
+            incident.dnsQuery,
+            incident.dnsQueryType,
+            incident.dnsResponseCode,
+            incident.dnsResolver,
+            incident.dnsProtocol,
+            incident.dnsEncrypted === true ? 'encrypted' : incident.dnsEncrypted === false ? 'unencrypted' : null,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+          return haystack.includes(queryFilter);
+        })
+        .sort((a: any, b: any) => b.timestampMs - a.timestampMs);
+
+      const total = filtered.length;
+      const page = filtered
+        .slice(parsedOffset, parsedOffset + parsedLimit)
+        .map(({ timestampMs, ...incident }: any) => incident);
+
+      safeJson(res, {
+        data: page,
+        total,
+        limit: parsedLimit,
+        offset: parsedOffset,
+        hours: parsedHours,
+        mode: monitoringMode,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/soc/dns-policy', authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const prefs = await storage.getUserPreferences(userId);
+      safeJson(res, {
+        data: {
+          trustedDnsResolvers: prefs?.trustedDnsResolvers || '',
+          dnsDetectionEnabled: prefs?.dnsDetectionEnabled ?? true,
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/soc/dns-policy', authenticateUser, requireSocPermission('write'), async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const trustedDnsResolvers = typeof req.body?.trustedDnsResolvers === 'string'
+        ? req.body.trustedDnsResolvers
+            .split(',')
+            .map((value: string) => value.trim())
+            .filter(Boolean)
+            .slice(0, 50)
+            .join(',')
+        : '';
+      const dnsDetectionEnabled = typeof req.body?.dnsDetectionEnabled === 'boolean'
+        ? req.body.dnsDetectionEnabled
+        : true;
+
+      const prefs = await storage.upsertUserPreferences({
+        userId,
+        trustedDnsResolvers,
+        dnsDetectionEnabled,
+      } as any);
+
+      try {
+        await storage.createSecurityAuditLog({
+          userId,
+          eventType: 'DNS_POLICY_UPDATED',
+          eventCategory: 'THREAT_MANAGEMENT',
+          action: 'dns_policy_updated',
+          resourceType: 'dns_policy',
+          resourceId: userId,
+          status: 'success',
+          severity: 'info',
+          details: {
+            trustedResolversCount: trustedDnsResolvers ? trustedDnsResolvers.split(',').length : 0,
+            dnsDetectionEnabled,
+          },
+          metadata: null,
+        } as any);
+      } catch {
+      }
+
+      safeJson(res, {
+        data: {
+          trustedDnsResolvers: prefs?.trustedDnsResolvers || trustedDnsResolvers,
+          dnsDetectionEnabled: prefs?.dnsDetectionEnabled ?? dnsDetectionEnabled,
+        },
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/soc/cases/:incidentId', authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const incidentId = String(req.params.incidentId || '').trim();
+
+      if (!incidentId) {
+        return res.status(400).json({ error: 'incidentId is required' });
+      }
+
+      const socCase = await storage.getSocCase(userId, incidentId);
+      safeJson(res, { data: socCase || null });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/soc/cases/:incidentId/events', authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const incidentId = String(req.params.incidentId || '').trim();
+      const parsedLimit = req.query.limit ? Math.min(200, Math.max(1, parseInt(String(req.query.limit), 10))) : 50;
+
+      if (!incidentId) {
+        return res.status(400).json({ error: 'incidentId is required' });
+      }
+
+      const events = await storage.getSocCaseEvents(userId, incidentId, parsedLimit);
+      safeJson(res, { data: events, limit: parsedLimit });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/soc/cases/:incidentId', authenticateUser, requireSocPermission('write'), async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const incidentId = String(req.params.incidentId || '').trim();
+      const body = req.body || {};
+
+      if (!incidentId) {
+        return res.status(400).json({ error: 'incidentId is required' });
+      }
+
+      const caseStatusRaw = typeof body.caseStatus === 'string' ? body.caseStatus.trim() : undefined;
+      const allowedStatuses = new Set(['open', 'in_progress', 'resolved', 'closed']);
+      if (caseStatusRaw && !allowedStatuses.has(caseStatusRaw)) {
+        return res.status(400).json({ error: 'Invalid caseStatus' });
+      }
+
+      const owner = typeof body.owner === 'string' ? body.owner.trim().slice(0, 120) : undefined;
+      const notes = typeof body.notes === 'string' ? body.notes.trim().slice(0, 5000) : undefined;
+      let slaDueAt: Date | undefined;
+      if (typeof body.slaDueAt === 'string' && body.slaDueAt.trim()) {
+        const parsed = new Date(body.slaDueAt);
+        if (Number.isNaN(parsed.getTime())) {
+          return res.status(400).json({ error: 'Invalid slaDueAt' });
+        }
+        slaDueAt = parsed;
+      } else if (body.slaDueAt === null || body.slaDueAt === '') {
+        slaDueAt = null as any;
+      }
+
+      const existingCase = await storage.getSocCase(userId, incidentId);
+
+      const updated = await storage.upsertSocCase(userId, incidentId, {
+        userId,
+        incidentId,
+        owner,
+        notes,
+        caseStatus: caseStatusRaw,
+        slaDueAt,
+      } as any);
+
+      const createEvent = async (eventType: string, fromValue?: string | null, toValue?: string | null, metadata?: Record<string, any> | null) => {
+        if (typeof (storage as any).createSocCaseEvent !== 'function') return;
+        await storage.createSocCaseEvent({
+          userId,
+          incidentId,
+          eventType,
+          actorId: userId,
+          fromValue: fromValue ?? null,
+          toValue: toValue ?? null,
+          metadata: metadata ?? null,
+        } as any);
+      };
+
+      const normalized = (value: any) => (value === null || value === undefined ? '' : String(value));
+      const prevOwner = normalized(existingCase?.owner);
+      const nextOwner = normalized(updated.owner);
+      const prevStatus = normalized(existingCase?.caseStatus || 'open');
+      const nextStatus = normalized(updated.caseStatus || 'open');
+      const prevSla = existingCase?.slaDueAt ? new Date(existingCase.slaDueAt).toISOString() : '';
+      const nextSla = updated.slaDueAt ? new Date(updated.slaDueAt).toISOString() : '';
+      const prevNotes = normalized(existingCase?.notes);
+      const nextNotes = normalized(updated.notes);
+
+      if (!existingCase) {
+        await createEvent('case_created', null, nextStatus, {
+          owner: updated.owner || null,
+          hasSlaDueAt: !!updated.slaDueAt,
+        });
+      }
+      if (prevStatus !== nextStatus) {
+        await createEvent('status_changed', prevStatus || null, nextStatus || null, null);
+      }
+      if (prevOwner !== nextOwner) {
+        await createEvent('owner_changed', prevOwner || null, nextOwner || null, null);
+      }
+      if (prevSla !== nextSla) {
+        await createEvent('sla_changed', prevSla || null, nextSla || null, null);
+      }
+      if (prevNotes !== nextNotes) {
+        await createEvent('notes_updated', null, null, {
+          previousLength: prevNotes.length,
+          currentLength: nextNotes.length,
+        });
+      }
+
+      try {
+        await storage.createSecurityAuditLog({
+          userId,
+          eventType: 'SOC_CASE_UPDATED',
+          eventCategory: 'THREAT_MANAGEMENT',
+          action: 'soc_case_updated',
+          resourceType: 'soc_case',
+          resourceId: incidentId,
+          status: 'success',
+          severity: 'info',
+          details: {
+            ownerSet: !!(owner && owner.length > 0),
+            notesLength: notes ? notes.length : 0,
+            caseStatus: caseStatusRaw || updated.caseStatus,
+            hasSlaDueAt: slaDueAt !== undefined,
+          },
+          metadata: null,
+        } as any);
+      } catch {
+      }
+
+      safeJson(res, { data: updated });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/soc/kpis', authenticateUser, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const preferences = await storage.getUserPreferences(userId);
+      const monitoringMode = preferences?.monitoringMode || 'demo';
+      const parsedHours = req.query.hours ? Math.min(24 * 30, Math.max(1, parseInt(String(req.query.hours), 10))) : 24;
+      const nowTs = Date.now();
+      const cutoffTs = nowTs - parsedHours * 60 * 60 * 1000;
+      const prevCutoffTs = cutoffTs - parsedHours * 60 * 60 * 1000;
+
+      let incidentRows: any[] = [];
+      if (monitoringMode === 'real') {
+        incidentRows = await storage.getThreatEvents(userId, 1000);
+      } else {
+        incidentRows = await storage.getThreats(userId);
+      }
+
+      const incidentTimestampRows: Array<{ id: string; ts: number }> = [];
+      for (const row of incidentRows || []) {
+        const incidentId = String(row?.id || '');
+        if (!incidentId) continue;
+        const tsRaw = row?.createdAt || row?.timestamp;
+        const ts = Date.parse(tsRaw);
+        if (Number.isNaN(ts)) continue;
+        incidentTimestampRows.push({ id: incidentId, ts });
+      }
+
+      const allCases = await storage.getSocCases(userId);
+
+      const openStatuses = new Set(['open', 'in_progress']);
+      const resolvedStatuses = new Set(['resolved', 'closed']);
+
+      const calculateWindow = (startTs: number, endTs: number) => {
+        const incidentTimestampMap = new Map<string, number>();
+        for (const row of incidentTimestampRows) {
+          if (row.ts < startTs || row.ts >= endTs) continue;
+          incidentTimestampMap.set(row.id, row.ts);
+        }
+
+        const relevantCases = allCases.filter((socCase) => incidentTimestampMap.has(String(socCase.incidentId)));
+
+        let openCases = 0;
+        let resolvedCases = 0;
+        let slaBreaches = 0;
+        let triageLagTotalMs = 0;
+        let triageLagCount = 0;
+        let resolveLagTotalMs = 0;
+        let resolveLagCount = 0;
+
+        for (const socCase of relevantCases) {
+          const status = String(socCase.caseStatus || 'open');
+          const incidentTs = incidentTimestampMap.get(String(socCase.incidentId));
+          if (!incidentTs) continue;
+
+          if (openStatuses.has(status)) {
+            openCases += 1;
+            const dueTs = socCase.slaDueAt ? Date.parse(String(socCase.slaDueAt)) : NaN;
+            if (!Number.isNaN(dueTs) && dueTs < endTs) {
+              slaBreaches += 1;
+            }
+          }
+
+          if (resolvedStatuses.has(status)) {
+            resolvedCases += 1;
+          }
+
+          const caseCreatedTs = Date.parse(String(socCase.createdAt));
+          if (!Number.isNaN(caseCreatedTs) && caseCreatedTs >= incidentTs) {
+            triageLagTotalMs += caseCreatedTs - incidentTs;
+            triageLagCount += 1;
+          }
+
+          if (resolvedStatuses.has(status)) {
+            const caseUpdatedTs = Date.parse(String(socCase.updatedAt));
+            if (!Number.isNaN(caseUpdatedTs) && caseUpdatedTs >= incidentTs) {
+              resolveLagTotalMs += caseUpdatedTs - incidentTs;
+              resolveLagCount += 1;
+            }
+          }
+        }
+
+        const avgMttdMinutes = triageLagCount > 0 ? Math.round((triageLagTotalMs / triageLagCount) / 60000) : null;
+        const avgMttrMinutes = resolveLagCount > 0 ? Math.round((resolveLagTotalMs / resolveLagCount) / 60000) : null;
+
+        return {
+          incidentsInWindow: incidentTimestampMap.size,
+          totalCases: relevantCases.length,
+          openCases,
+          resolvedCases,
+          slaBreaches,
+          avgMttdMinutes,
+          avgMttrMinutes,
+        };
+      };
+
+      const current = calculateWindow(cutoffTs, nowTs);
+      const previous = calculateWindow(prevCutoffTs, cutoffTs);
+
+      const deltaNumber = (currentValue: number, previousValue: number) => currentValue - previousValue;
+      const deltaNullableNumber = (currentValue: number | null, previousValue: number | null) => {
+        if (currentValue === null || previousValue === null) return null;
+        return currentValue - previousValue;
+      };
+
+      safeJson(res, {
+        data: {
+          hours: parsedHours,
+          mode: monitoringMode,
+          incidentsInWindow: current.incidentsInWindow,
+          totalCases: current.totalCases,
+          openCases: current.openCases,
+          resolvedCases: current.resolvedCases,
+          slaBreaches: current.slaBreaches,
+          avgMttdMinutes: current.avgMttdMinutes,
+          avgMttrMinutes: current.avgMttrMinutes,
+          previous,
+          deltas: {
+            openCases: deltaNumber(current.openCases, previous.openCases),
+            resolvedCases: deltaNumber(current.resolvedCases, previous.resolvedCases),
+            slaBreaches: deltaNumber(current.slaBreaches, previous.slaBreaches),
+            avgMttdMinutes: deltaNullableNumber(current.avgMttdMinutes, previous.avgMttdMinutes),
+            avgMttrMinutes: deltaNullableNumber(current.avgMttrMinutes, previous.avgMttrMinutes),
+          },
+        },
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -3286,6 +3863,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sourceURL: z.string().optional(),
         deviceName: z.string().optional(),
         threatVector: z.enum(['email', 'web', 'network', 'usb', 'download', 'other']).optional(),
+        emailFrom: z.string().optional(),
+        emailSubject: z.string().optional(),
+        senderEmail: z.string().optional(),
+        downloadName: z.string().optional(),
+        localPath: z.string().optional(),
+        processName: z.string().optional(),
+        sha256: z.string().optional(),
+        fileHash: z.string().optional(),
+        dnsQuery: z.string().optional(),
+        dnsQueryType: z.string().optional(),
+        dnsResponseCode: z.string().optional(),
+        dnsResolver: z.string().optional(),
+        dnsProtocol: z.string().optional(),
+        dnsEncrypted: z.boolean().optional(),
+        email: z.any().optional(),
+        download: z.any().optional(),
+        process: z.any().optional(),
         rawData: z.any(),
       });
 
@@ -3375,6 +3969,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sourceURL: eventData.sourceURL,
         deviceName: eventData.deviceName,
         threatVector: eventData.threatVector,
+        emailFrom: eventData.emailFrom,
+        emailSubject: eventData.emailSubject,
+        senderEmail: eventData.senderEmail,
+        downloadName: eventData.downloadName,
+        localPath: eventData.localPath,
+        processName: eventData.processName,
+        sha256: eventData.sha256,
+        fileHash: eventData.fileHash,
+        dnsQuery: eventData.dnsQuery,
+        dnsQueryType: eventData.dnsQueryType,
+        dnsResponseCode: eventData.dnsResponseCode,
+        dnsResolver: eventData.dnsResolver,
+        dnsProtocol: eventData.dnsProtocol,
+        dnsEncrypted: eventData.dnsEncrypted,
+        email: eventData.email,
+        download: eventData.download,
+        process: eventData.process,
         timestamp: eventData.timestamp,
       };
 
@@ -3392,9 +4003,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update event source heartbeat
       await storage.updateEventSourceHeartbeat(eventSource.id);
 
+      const userPrefs = await storage.getUserPreferences(eventSource.userId);
+      const dnsDetectionEnabled = userPrefs?.dnsDetectionEnabled !== false;
+      const isDnsLikeEvent = Boolean(
+        eventData.dnsQuery ||
+        eventData.dnsQueryType ||
+        eventData.dnsResponseCode ||
+        eventData.dnsResolver ||
+        eventData.dnsProtocol ||
+        /dns|doh|dot|doq/i.test(String(eventData.eventType || '')) ||
+        /dns|nxdomain|resolver|doh|dot|doq/i.test(String(eventData.message || '')),
+      );
+
       // FAST-TRACK: Immediate processing for High Severity / Critical events (Real-time Agents)
-      // This bypasses the 5-minute scheduled processor for urgent threats
-      if (['high', 'critical'].includes(eventData.severity || '')) {
+      // This bypasses the scheduled processor for urgent threats, but respects DNS policy controls.
+      const shouldFastTrack = ['high', 'critical'].includes(eventData.severity || '')
+        && (!isDnsLikeEvent || dnsDetectionEnabled);
+
+      if (shouldFastTrack) {
          try {
              const normalized = await storage.createNormalizedEvent({
                 rawEventId: rawEvent.id,
@@ -3405,7 +4031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 message: eventData.message,
                 sourceIP: eventData.sourceIp,
                 destinationIP: eventData.destinationIp,
-                metadata: eventData.rawData, // Use rawData as metadata
+                metadata: compactRawData,
                 isThreat: true, // Auto-mark high severity agent reports as threats
                 sourceURL: eventData.sourceURL,
                 deviceName: eventData.deviceName, 
@@ -3437,6 +4063,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
              console.error('Fast-track processing failed:', procError);
              // Proceed anyway, raw event is saved
          }
+      } else if (['high', 'critical'].includes(eventData.severity || '') && isDnsLikeEvent && !dnsDetectionEnabled) {
+        console.log('[ingest] DNS fast-track threat creation skipped due to dnsDetectionEnabled=false', {
+          sourceId: eventSource.id,
+          userId: eventSource.userId,
+          eventType: eventData.eventType,
+        });
       }
 
       res.status(201).json({ 
@@ -3687,6 +4319,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
   res.json(sanitizeForJSON(logs));
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/compliance/audit-logs/export", authenticateUser, requireAdmin, requireMfaFresh({ windowSeconds: 600 }), async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const eventType = req.query.eventType as string | undefined;
+      const eventCategory = req.query.eventCategory as string | undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const requestedLimit = req.query.limit ? parseInt(req.query.limit as string) : 5000;
+      const limit = Math.min(10000, Math.max(1, requestedLimit));
+
+      const signingKey = process.env.AUDIT_EXPORT_SIGNING_KEY
+        || (process.env.NODE_ENV !== 'production' ? process.env.JWT_SECRET : undefined);
+
+      if (!signingKey) {
+        return res.status(503).json({
+          error: 'Audit export signing key is not configured',
+          code: 'audit_export_signing_key_missing',
+        });
+      }
+
+      const retentionDaysRaw = parseInt(process.env.AUDIT_EXPORT_RETENTION_DAYS || '365', 10);
+      const retentionDays = Math.min(3650, Math.max(30, Number.isFinite(retentionDaysRaw) ? retentionDaysRaw : 365));
+      const keyId = process.env.AUDIT_EXPORT_KEY_ID || 'local-dev-key';
+
+      const filters = {
+        eventType: eventType || null,
+        eventCategory: eventCategory || null,
+        startDate: startDate ? startDate.toISOString() : null,
+        endDate: endDate ? endDate.toISOString() : null,
+        limit,
+      };
+
+      const logs = await storage.getSecurityAuditLogs({
+        eventType,
+        eventCategory,
+        startDate,
+        endDate,
+        limit,
+      });
+
+      const exportBundle = buildSignedAuditExport({
+        logs: sanitizeForJSON(logs),
+        filters,
+        exportedBy: userId,
+        keyId,
+        retentionDays,
+        signingKey,
+      });
+
+      try {
+        await storage.createSecurityAuditLog({
+          userId,
+          eventType: 'COMPLIANCE_AUDIT_EXPORT',
+          eventCategory: 'DATA_ACCESS',
+          action: 'compliance_audit_exported',
+          resourceType: 'security_audit_logs',
+          resourceId: null,
+          status: 'success',
+          severity: 'info',
+          details: {
+            recordCount: exportBundle.integrity.recordCount,
+            payloadHash: exportBundle.integrity.payloadHash,
+            chainHash: exportBundle.integrity.chainHash,
+            filters,
+          },
+          metadata: {
+            keyId,
+            retentionDays,
+          },
+        } as any);
+      } catch {
+      }
+
+      safeJson(res, { data: exportBundle });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/compliance/audit-logs/export/verify", authenticateUser, requireAdmin, requireMfaFresh({ windowSeconds: 600 }), async (req: AuthRequest, res) => {
+    try {
+      const userId = req.userId!;
+      const bundle = req.body?.bundle;
+
+      if (!bundle || typeof bundle !== 'object') {
+        return res.status(400).json({
+          error: 'bundle is required',
+          code: 'audit_export_bundle_required',
+        });
+      }
+
+      const signingKey = process.env.AUDIT_EXPORT_SIGNING_KEY
+        || (process.env.NODE_ENV !== 'production' ? process.env.JWT_SECRET : undefined);
+
+      if (!signingKey) {
+        return res.status(503).json({
+          error: 'Audit export signing key is not configured',
+          code: 'audit_export_signing_key_missing',
+        });
+      }
+
+      const verification = verifySignedAuditExport({ bundle, signingKey });
+
+      try {
+        await storage.createSecurityAuditLog({
+          userId,
+          eventType: 'COMPLIANCE_AUDIT_EXPORT_VERIFY',
+          eventCategory: 'DATA_ACCESS',
+          action: 'compliance_audit_export_verified',
+          resourceType: 'security_audit_logs_export',
+          resourceId: bundle?.integrity?.payloadHash || null,
+          status: verification.valid ? 'success' : 'failure',
+          severity: verification.valid ? 'info' : 'warning',
+          details: {
+            valid: verification.valid,
+            checks: verification.checks,
+            reasons: verification.reasons,
+          },
+          metadata: {
+            keyId: bundle?.integrity?.keyId || null,
+          },
+        } as any);
+      } catch {
+      }
+
+      if (!verification.valid) {
+        return res.status(409).json({
+          error: 'Audit export verification failed',
+          code: 'audit_export_verification_failed',
+          data: verification,
+        });
+      }
+
+      safeJson(res, { data: verification });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

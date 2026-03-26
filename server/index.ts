@@ -115,6 +115,21 @@ app.use((req, res, next) => {
 
   // --- Event Processor: run every 5 seconds for real-time analysis ---
   import('./eventProcessor').then(({ runEventProcessor }) => {
+    import('./socEscalationProcessor').then(({ runSocEscalationProcessor }) => {
+      setInterval(() => {
+        runSocEscalationProcessor().then((count) => {
+          if (count > 0) {
+            log(`[SocEscalation] Escalated ${count} overdue SOC cases`);
+          }
+        }).catch((err) => {
+          log('[SocEscalation] Error in escalation processor:', err);
+        });
+      }, 60000); // 1 minute
+      log('[SocEscalation] Automatic SLA escalation started (every 1 min)');
+    }).catch((err) => {
+      log('[SocEscalation] Failed to load processor:', err);
+    });
+
     setInterval(() => {
       runEventProcessor().catch((err) => {
         log('[Processor] Error in event processing:', err);

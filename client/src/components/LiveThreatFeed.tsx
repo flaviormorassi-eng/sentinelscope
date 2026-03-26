@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Terminal, Activity, Wifi } from 'lucide-react';
 import { format } from 'date-fns';
 import { UserPreferences } from '@shared/schema';
+import { useTranslation } from 'react-i18next';
 
 interface NetworkFlowEvent {
   id: string;
@@ -44,6 +45,7 @@ const generateMockEvent = (): NetworkFlowEvent => {
 };
 
 export function LiveThreatFeed() {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [localEvents, setLocalEvents] = useState<NetworkFlowEvent[]>([]);
   
@@ -107,21 +109,21 @@ export function LiveThreatFeed() {
   }, [localEvents]);
 
   return (
-    <Card className="col-span-1 md:col-span-3 lg:col-span-7 h-[400px] flex flex-col bg-[#0c0c14] border-slate-800 shadow-xl overflow-hidden relative group transition-all hover:border-slate-700">
+    <Card className="col-span-1 md:col-span-3 lg:col-span-7 h-[400px] flex flex-col bg-card border-border shadow-xl overflow-hidden relative group transition-all hover:border-muted-foreground/40">
       {/* Decorative scanline and vignetting */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,23,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-[5] pointer-events-none bg-[length:100%_4px,3px_100%] opacity-20" />
+      <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--background)/0)_50%,hsl(var(--foreground)/0.05)_50%),linear-gradient(90deg,hsl(var(--destructive)/0.06),hsl(var(--primary)/0.03),hsl(var(--chart-2)/0.05))] z-[5] pointer-events-none bg-[length:100%_4px,3px_100%] opacity-20" />
       
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-800 bg-slate-900/50 relative z-10">
-        <CardTitle className="text-sm font-medium font-mono flex items-center gap-2 text-green-400">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b border-border bg-muted/30 relative z-10">
+        <CardTitle className="text-sm font-medium font-mono flex items-center gap-2 text-primary">
           <Terminal className="h-4 w-4" />
-          NET.WATCHDOG // {isDemo ? 'SIMULATION_MODE' : 'LIVE_FEED'}
+          {t('networkActivity.networkFlow', 'Network Flow')} // {isDemo ? t('networkActivity.simulationMode', 'Simulation Mode') : t('networkActivity.liveFeed', 'Live Feed')}
         </CardTitle>
         <div className="flex gap-3 items-center">
-           <Badge variant="outline" className="text-xs font-mono border-green-900 text-green-500 bg-green-950/30">
-             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse mr-1.5" />
-             {localEvents.length} EVENTS CAPTURED
+           <Badge variant="outline" className="text-xs font-mono border-primary/30 text-primary bg-primary/10">
+             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse mr-1.5" />
+             {localEvents.length} {t('networkActivity.eventsLabel', 'events')}
            </Badge>
-           <Activity className="h-4 w-4 text-slate-500 animate-pulse" />
+           <Activity className="h-4 w-4 text-muted-foreground animate-pulse" />
         </div>
       </CardHeader>
       
@@ -129,14 +131,14 @@ export function LiveThreatFeed() {
         <ScrollArea className="h-full p-4" ref={scrollRef}>
           <div className="space-y-2">
              {localEvents.length === 0 && (
-                <div className="text-slate-500 italic flex items-center gap-2 animate-pulse mt-4 ml-2">
+                <div className="text-muted-foreground italic flex items-center gap-2 animate-pulse mt-4 ml-2">
                     <Wifi className="h-3 w-3" />
-                    Initializing flow capture...
+                    {t('networkActivity.initializingCapture', 'Initializing flow capture...')}
                 </div>
              )}
              {localEvents.map((event, i) => (
-               <div key={event.id || i} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 py-1.5 border-b border-slate-800/50 last:border-0 hover:bg-slate-900/40 transition-colors px-2 rounded-sm group/row">
-                 <span className="text-slate-600 shrink-0 w-20">
+               <div key={event.id || i} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 py-1.5 border-b border-border/50 last:border-0 hover:bg-muted/40 transition-colors px-2 rounded-sm group/row">
+                 <span className="text-muted-foreground shrink-0 w-20">
                    {format(new Date(event.timestamp), 'HH:mm:ss')}
                  </span>
                  
@@ -150,22 +152,22 @@ export function LiveThreatFeed() {
                    {event.severity}
                  </Badge>
 
-                 <span className="text-slate-300 font-bold shrink-0 min-w-32">
+                  <span className="text-foreground font-bold shrink-0 min-w-32">
                    {event.eventType}
                  </span>
 
-                 <div className="flex flex-1 items-center gap-2 text-slate-400 min-w-0">
-                    <span className="text-slate-500 text-[10px] w-10">{event.protocol || 'TCP'}</span>
+                  <div className="flex flex-1 items-center gap-2 text-muted-foreground min-w-0">
+                    <span className="text-muted-foreground text-[10px] w-10">{event.protocol || 'TCP'}</span>
                     <span className="truncate max-w-[120px]" title={event.sourceIP}>{event.sourceIP}</span>
-                    <span className="text-slate-600">→</span>
+                    <span className="text-muted-foreground">→</span>
                     <span className="truncate max-w-[120px]" title={event.destinationIP}>{event.destinationIP}</span>
                  </div>
                  
                  {event.action === 'blocked' && (
-                    <Badge variant="destructive" className="ml-auto text-[10px] h-5 px-1.5 uppercase tracking-wider shadow-sm shadow-red-900/50">BLOCKED</Badge>
+                      <Badge variant="destructive" className="ml-auto text-[10px] h-5 px-1.5 uppercase tracking-wider shadow-sm shadow-destructive/30">{t('threats.statuses.blocked', 'Blocked')}</Badge>
                  )}
                  {event.action === 'allowed' && (
-                    <span className="ml-auto text-[10px] text-green-500 uppercase tracking-wider px-1.5 opacity-50 group-hover/row:opacity-100">ALLOWED</span>
+                      <span className="ml-auto text-[10px] text-emerald-600 uppercase tracking-wider px-1.5 opacity-50 group-hover/row:opacity-100">{t('threats.statuses.allowed', 'Allowed')}</span>
                  )}
                </div>
              ))}

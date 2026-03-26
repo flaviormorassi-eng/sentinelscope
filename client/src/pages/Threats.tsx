@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Download, Search, Filter, Unlock, History, ExternalLink, Monitor, Mail, Usb, Globe, Network, XCircle, Eye } from 'lucide-react';
+import { Download, Search, Filter, Unlock, History, ExternalLink, Monitor, Mail, Usb, Globe, Network, XCircle, Eye, Radar, ShieldAlert, Target } from 'lucide-react';
 import { Threat, User } from '@shared/schema';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -419,9 +419,35 @@ export default function Threats() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold">{t('threats.title')}</h1>
-      </div>
+      <Card className="relative overflow-hidden border-border/60">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-destructive/10" />
+        <CardContent className="relative p-4 md:p-6">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-md border bg-background/70 px-2.5 py-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Radar className="h-3.5 w-3.5 text-primary" />
+                {t('threats.commandGrid', 'Threat Command Grid')}
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight">{t('threats.title')}</h1>
+              <p className="text-sm text-muted-foreground">{t('threats.subtitle', 'Review threat intelligence, enforce decisions, and pivot across linked contexts.')}</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+              <div className="rounded-md border bg-background/70 px-3 py-2 min-w-[180px]">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('threats.activeWindow', 'Active Window')}</p>
+                <p className="text-sm font-semibold">{listResp?.total ?? 0}</p>
+              </div>
+              <div className="rounded-md border bg-background/70 px-3 py-2 min-w-[180px]">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('threats.visibleResults', 'Visible Results')}</p>
+                <p className="text-sm font-semibold flex items-center gap-2"><Target className="h-4 w-4 text-chart-4" />{displayThreats.length}</p>
+              </div>
+              <div className="rounded-md border bg-background/70 px-3 py-2 min-w-[180px]">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('threats.mode', 'Mode')}</p>
+                <p className="text-sm font-semibold flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-chart-5" />{listResp?.mode === 'real' ? t('threats.modeReal', 'Real Monitoring') : t('threats.modeDemo', 'Demo Monitoring')}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       {flowContext.fromFlow && flowContext.src && (
         <Alert className="border-emerald-500/40 bg-emerald-500/10">
           <AlertTitle className="text-emerald-700 dark:text-emerald-400">

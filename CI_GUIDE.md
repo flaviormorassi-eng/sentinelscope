@@ -16,6 +16,7 @@ Key protections:
  - Coverage gating (lines >= 80%, branches >= 70%).
  - Trivy image & filesystem scans (vuln, secret, config) with SARIF.
  - CodeQL static analysis (`javascript`, `cpp`).
+ - Audit export integrity smoke check (`npm run audit:verify:smoke`) in `build-and-test`, `security`, and `endpoint-probes` jobs.
 
 ### Governance Labels
 | Label | Purpose | Effect |
@@ -27,8 +28,9 @@ Key protections:
 To trigger a workflow run:
 1. Open a PR or push to `main` (PR preferred for governance labels).
 2. Add required label(s) in the PR if performing checksum remediation or rollback operations.
-3. Confirm jobs: `build-and-test` matrix (Node 20/22), `security`, `summary`.
+3. Confirm jobs: `build-and-test` matrix (Node 20/22), `security`, `endpoint-probes`, `summary`.
 4. Inspect run logs:
+  - `Audit export integrity smoke` step should pass in all Node-based jobs.
    - Pending gate step should show JSON with `pending.length` = 0.
    - Drift check step should either skip (label present) or show zero `warn-changed` results.
    - Rollback guard should pass unless `.down.sql` changes detected.

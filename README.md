@@ -115,6 +115,9 @@ See `examples/` for agent scripts and payload formats.
 - Deployment: `DEPLOYMENT_GUIDE.md`
 - Stripe setup: `STRIPE_SETUP.md`
 - Payment testing: `PAYMENT_TESTING_GUIDE.md`
+- 12-month security leadership plan: `SECURITY_LEADERSHIP_ROADMAP_2026_2027.md`
+- 90-day SOC execution backlog: `SOC_90_DAY_EXECUTION_BACKLOG.md`
+- Government-grade security readiness gaps: `GOVERNMENT_SECURITY_READINESS_GAPS.md`
 
 ## License
 MIT

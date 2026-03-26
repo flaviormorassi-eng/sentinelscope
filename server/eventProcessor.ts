@@ -21,7 +21,48 @@ const THREAT_PATTERNS = [
   { type: 'Scanner Activity', severity: 'medium', keywords: ['sqlmap', 'nikto', 'nmap', 'burp collab', 'acunetix', 'nessus', 'gobuster'] },
 ];
 
-async function detectThreats(normalized: InsertNormalizedEvent): Promise<{ type: string; severity: string } | null> {
+async function detectThreats(normalized: InsertNormalizedEvent, preferences?: any): Promise<{ type: string; severity: string } | null> {
+  const metadata = (normalized.metadata && typeof normalized.metadata === 'object') ? normalized.metadata as Record<string, any> : {};
+  const dnsQuery = String(metadata.dnsQuery || metadata.domain || metadata.queryName || '').toLowerCase();
+  const dnsType = String(metadata.dnsQueryType || metadata.queryType || '').toUpperCase();
+  const dnsResponseCode = String(metadata.dnsResponseCode || metadata.responseCode || metadata.rcode || '').toUpperCase();
+  const dnsProtocol = String(metadata.dnsProtocol || metadata.protocol || '').toLowerCase();
+  const dnsEncrypted = metadata.dnsEncrypted === true || /doh|dot|doq/.test(dnsProtocol);
+  const dnsResolver = String(metadata.dnsResolver || metadata.resolver || metadata.resolverIp || '').trim();
+
+  const trustedResolversFromPrefs = typeof preferences?.trustedDnsResolvers === 'string'
+    ? preferences.trustedDnsResolvers
+    : '';
+  const trustedResolvers = (trustedResolversFromPrefs || process.env.TRUSTED_DNS_RESOLVERS || '')
+    .split(',')
+    .map((value: string) => value.trim())
+    .filter(Boolean);
+  const dnsDetectionEnabled = preferences?.dnsDetectionEnabled !== false;
+
+  if (!dnsDetectionEnabled) {
+    return null;
+  }
+
+  // DNS Detection #1: suspicious tunneling-like query structure
+  if (dnsQuery) {
+    const labels = dnsQuery.split('.').filter(Boolean);
+    const longestLabel = labels.reduce((max, label) => Math.max(max, label.length), 0);
+    const highEntropyLike = /[a-z0-9]{24,}/i.test(dnsQuery);
+    if (longestLabel >= 40 || labels.length >= 6 || (highEntropyLike && (dnsType === 'TXT' || dnsType === 'NULL'))) {
+      return { type: 'DNS Tunneling Suspected', severity: 'high' };
+    }
+  }
+
+  // DNS Detection #2: repeated NXDOMAIN-like suspicious resolution events
+  if (dnsResponseCode === 'NXDOMAIN' && dnsQuery) {
+    return { type: 'Suspicious DNS NXDOMAIN Activity', severity: 'medium' };
+  }
+
+  // DNS Detection #3: encrypted DNS resolver bypass attempt (DoH/DoT/DoQ)
+  if (dnsEncrypted && dnsResolver && trustedResolvers.length > 0 && !trustedResolvers.includes(dnsResolver)) {
+    return { type: 'Unauthorized Encrypted DNS Resolver', severity: 'high' };
+  }
+
   // 1. Check VirusTotal if IP is public and available
   if (normalized.destinationIP && !isPrivateIP(normalized.destinationIP)) {
      try {
@@ -57,6 +98,33 @@ async function processRawEvent(event: RawEvent) {
   try {
     const rawData = event.rawData as Record<string, any>;
     const conn = (rawData?.connection && typeof rawData.connection === 'object') ? rawData.connection : {};
+    const rawMetadata = rawData?.metadata && typeof rawData.metadata === 'object' ? rawData.metadata : {};
+    const pickString = (...values: any[]) => {
+      for (const value of values) {
+        if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+      }
+      return undefined;
+    };
+
+    const enrichedMetadata = {
+      ...rawMetadata,
+      emailFrom: pickString(rawData.emailFrom, rawData.senderEmail, rawData.from, rawMetadata.emailFrom, rawMetadata.senderEmail),
+      emailSubject: pickString(rawData.emailSubject, rawData.subject, rawMetadata.emailSubject, rawMetadata.subject),
+      downloadName: pickString(rawData.downloadName, rawData.fileName, rawData.filename, rawData.file, rawMetadata.downloadName, rawMetadata.fileName, rawMetadata.filename),
+      localPath: pickString(rawData.localPath, rawData.path, rawData.filePath, rawData.location, rawData.downloadPath, rawMetadata.localPath, rawMetadata.path, rawMetadata.filePath, rawMetadata.location),
+      processName: pickString(rawData.processName, rawData.process, rawData.processPath, rawMetadata.processName, rawMetadata.process, rawMetadata.processPath),
+      sha256: pickString(rawData.sha256, rawData.hash, rawData.fileHash, rawMetadata.sha256, rawMetadata.hash, rawMetadata.fileHash),
+      email: (rawData.email && typeof rawData.email === 'object') ? rawData.email : rawMetadata.email,
+      download: (rawData.download && typeof rawData.download === 'object') ? rawData.download : rawMetadata.download,
+      process: (rawData.process && typeof rawData.process === 'object') ? rawData.process : rawMetadata.process,
+      sourceURL: pickString(rawData.sourceURL, rawData.sourceUrl, rawData.url, rawMetadata.sourceURL, rawMetadata.sourceUrl, rawMetadata.url),
+      dnsQuery: pickString(rawData.dnsQuery, rawData.domain, rawData.queryName, rawMetadata.dnsQuery, rawMetadata.domain, rawMetadata.queryName),
+      dnsQueryType: pickString(rawData.dnsQueryType, rawData.queryType, rawMetadata.dnsQueryType, rawMetadata.queryType),
+      dnsResponseCode: pickString(rawData.dnsResponseCode, rawData.responseCode, rawData.rcode, rawMetadata.dnsResponseCode, rawMetadata.responseCode, rawMetadata.rcode),
+      dnsResolver: pickString(rawData.dnsResolver, rawData.resolver, rawData.resolverIp, rawMetadata.dnsResolver, rawMetadata.resolver, rawMetadata.resolverIp),
+      dnsProtocol: pickString(rawData.dnsProtocol, rawMetadata.dnsProtocol),
+      dnsEncrypted: typeof rawData.dnsEncrypted === 'boolean' ? rawData.dnsEncrypted : (typeof rawMetadata.dnsEncrypted === 'boolean' ? rawMetadata.dnsEncrypted : undefined),
+    };
 
     const eventType = rawData.eventType || rawData.type || conn.eventType || 'network_connection';
     const severity = rawData.severity || conn.severity || 'low';
@@ -71,7 +139,7 @@ async function processRawEvent(event: RawEvent) {
       eventType,
       severity,
       message: rawData.message || 'No message provided',
-      metadata: rawData.metadata || {},
+      metadata: enrichedMetadata,
       sourceURL: rawData.sourceURL,
       deviceName: rawData.deviceName,
       threatVector: rawData.threatVector,
@@ -118,7 +186,7 @@ async function processRawEvent(event: RawEvent) {
       }
     } else {
       // Use real detection logic
-      threatSignature = await detectThreats(normalized);
+      threatSignature = await detectThreats(normalized, preferences);
     }
 
     if (threatSignature) {

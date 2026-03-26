@@ -326,3 +326,77 @@
     inset: -1px;
   }
 }
+
+@layer utilities {
+  .app-polish {
+    --polish-transition-fast: 140ms;
+    --polish-transition-base: 180ms;
+    --polish-lift-y: -1px;
+    --polish-shadow-hover: var(--shadow-md);
+    --polish-border-hover: hsl(var(--border) / 0.9);
+  }
+
+  .app-polish-motion-subtle {
+    --polish-transition-fast: 110ms;
+    --polish-transition-base: 140ms;
+    --polish-lift-y: -0.5px;
+    --polish-shadow-hover: var(--shadow-sm);
+  }
+
+  .app-polish-motion-balanced {
+    --polish-transition-fast: 140ms;
+    --polish-transition-base: 180ms;
+    --polish-lift-y: -1px;
+    --polish-shadow-hover: var(--shadow-md);
+  }
+
+  .app-polish-motion-dramatic {
+    --polish-transition-fast: 170ms;
+    --polish-transition-base: 230ms;
+    --polish-lift-y: -1.5px;
+    --polish-shadow-hover: var(--shadow-lg);
+  }
+
+  .app-polish .shadcn-card,
+  .app-polish [data-testid^="page-"] .rounded-md.border,
+  .app-polish [data-testid^="page-"] .rounded-lg.border {
+    transition: box-shadow var(--polish-transition-base) ease, border-color var(--polish-transition-base) ease, transform var(--polish-transition-base) ease;
+  }
+
+  .app-polish .shadcn-card:hover,
+  .app-polish [data-testid^="page-"] .rounded-md.border:hover,
+  .app-polish [data-testid^="page-"] .rounded-lg.border:hover {
+    box-shadow: var(--polish-shadow-hover);
+    border-color: var(--polish-border-hover);
+  }
+
+  .app-polish button,
+  .app-polish a,
+  .app-polish input,
+  .app-polish textarea,
+  .app-polish [role="button"] {
+    transition: color var(--polish-transition-fast) ease, background-color var(--polish-transition-fast) ease, border-color var(--polish-transition-fast) ease, box-shadow var(--polish-transition-base) ease, transform var(--polish-transition-base) ease;
+  }
+
+  .app-polish button:hover:not(:disabled),
+  .app-polish [role="button"]:hover {
+    transform: translateY(var(--polish-lift-y));
+  }
+
+  .app-polish button:active:not(:disabled),
+  .app-polish [role="button"]:active {
+    transform: translateY(0);
+  }
+
+  .app-polish :is(button, a, input, textarea, [role="button"]):focus-visible {
+    box-shadow: 0 0 0 1px hsl(var(--ring) / 0.7), 0 0 0 4px hsl(var(--ring) / 0.2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-polish * {
+      transition: none !important;
+      animation: none !important;
+      transform: none !important;
+    }
+  }
+}

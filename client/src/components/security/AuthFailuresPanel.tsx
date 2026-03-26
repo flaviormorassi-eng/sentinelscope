@@ -21,7 +21,7 @@ interface AuditLogEntry {
   metadata?: any;
 }
 
-const ACTION_LABELS: Record<string, string> = {
+const ACTION_DEFAULT_LABELS: Record<string, string> = {
   missing_token: 'Missing Token',
   invalid_or_expired_token: 'Invalid/Expired Token',
   no_user_identity: 'No User Identity',
@@ -129,7 +129,9 @@ export const AuthFailuresPanel: React.FC = () => {
           </thead>
           <tbody>
             {failureLogs.slice(0, 25).map(l => {
-              const actionLabel = ACTION_LABELS[l.action] || l.action;
+              const actionKey = `authFailures.actions.${l.action}`;
+              const translatedAction = t(actionKey, { defaultValue: ACTION_DEFAULT_LABELS[l.action] || l.action });
+              const actionLabel = translatedAction === actionKey ? (ACTION_DEFAULT_LABELS[l.action] || l.action) : translatedAction;
               return (
                 <tr key={l.id} className="border-b last:border-b-0 hover:bg-muted/50">
                    <td className="py-1 pr-2 whitespace-nowrap">

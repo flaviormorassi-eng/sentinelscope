@@ -40,6 +40,7 @@
     "securityCenter": "Centro de Seguridad",
     "threats": "Registro de Amenazas",
     "alerts": "Alertas",
+    "socCenter": "SOC Center",
     "map": "Mapa de Amenazas",
     "networkActivity": "Actividad de Red",
     "virustotal": "Escaneo VirusTotal",

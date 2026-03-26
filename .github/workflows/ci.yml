@@ -52,6 +52,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Audit export integrity smoke (fast-fail)
+        run: npm run audit:verify:smoke
       - name: Pending migrations gate
         run: |
           OUT=$(npm run db:migrate:pending:json | tail -n 1)
@@ -79,6 +81,8 @@ jobs:
           if [ -n "$CHANGES" ]; then echo "Down files modified without allow-rollback label"; echo "$CHANGES"; exit 1; fi
       - name: Typecheck
         run: npm run check
+      - name: SOC regression gate
+        run: npm run test:soc
       - name: Build
         run: npm run build
       - name: Test
@@ -140,6 +144,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Audit export integrity smoke
+        run: npm run audit:verify:smoke
       - name: ESLint
         run: |
           if [ -f .eslintrc.js ] || [ -f .eslintrc.cjs ] || [ -f .eslintrc.json ]; then npx eslint . || exit 1; else echo 'No ESLint config found'; fi
@@ -268,6 +274,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Audit export integrity smoke
+        run: npm run audit:verify:smoke
       - name: Apply migrations
         run: npm run db:migrate
       - name: Build (server + client)

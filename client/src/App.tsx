@@ -90,6 +90,9 @@ function Router() {
       <Route path="/security-center">
         <ProtectedRoute component={SecurityCenter} />
       </Route>
+      <Route path="/soc-center">
+        {() => <Redirect to="/security-center?tab=soc" />}
+      </Route>
       <Route path="/compliance-info" component={CompliancePage} />
       <Route path="/dashboard">
         <ProtectedRoute component={Dashboard} />
@@ -147,6 +150,28 @@ function Router() {
   );
 }
 
+function GlobalPageAura({ children }: { children: React.ReactNode }) {
+  const motionProfile = 'balanced' as const;
+  const motionProfileClassByProfile = {
+    subtle: 'app-polish-motion-subtle',
+    balanced: 'app-polish-motion-balanced',
+    dramatic: 'app-polish-motion-dramatic',
+  } as const;
+  const motionProfileClass = motionProfileClassByProfile[motionProfile];
+
+  return (
+    <div className={`relative min-h-full app-polish ${motionProfileClass}`}>
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-24 left-[-8%] h-64 w-64 rounded-full border border-primary/25 bg-primary/10 blur-2xl" />
+        <div className="absolute top-1/3 right-[-10%] h-72 w-72 rounded-full border border-chart-4/25 bg-chart-4/10 blur-2xl" />
+        <div className="absolute bottom-[-120px] left-1/3 h-64 w-64 rounded-full border border-chart-5/20 bg-chart-5/10 blur-2xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,hsl(var(--primary)/0.06),transparent_40%),radial-gradient(circle_at_80%_30%,hsl(var(--chart-4)/0.06),transparent_38%),radial-gradient(circle_at_50%_85%,hsl(var(--chart-5)/0.05),transparent_42%)]" />
+      </div>
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+}
+
 function AppContent() {
   const { user, isAdmin } = useAuth();
   const { t } = useTranslation();
@@ -186,7 +211,11 @@ function AppContent() {
   }, []);
 
   if (!user) {
-    return <Router />;
+    return (
+      <GlobalPageAura>
+        <Router />
+      </GlobalPageAura>
+    );
   }
 
   return (
@@ -228,7 +257,9 @@ function AppContent() {
           </header>
           <DevAuthNotice />
           <main className="flex-1 overflow-y-auto">
-            <Router />
+            <GlobalPageAura>
+              <Router />
+            </GlobalPageAura>
           </main>
         </div>
       </div>

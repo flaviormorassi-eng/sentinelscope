@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 const geolocationResponseSchema = z.object({
-  status: z.string(),
+  success: z.boolean().optional(),
   country: z.string().optional(),
   city: z.string().optional(),
-  lat: z.number().optional(),
-  lon: z.number().optional(),
-  message: z.string().optional(), // for failed requests
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  message: z.string().optional(),
 });
 
 export interface GeolocationData {
@@ -18,8 +18,7 @@ export interface GeolocationData {
 
 export async function getGeolocation(ip: string): Promise<GeolocationData | null> {
   try {
-    // Use a free, no-key-required geolocation API for this example
-    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,city,lat,lon`);
+    const response = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`);
     if (!response.ok) {
       console.error(`Geolocation API error for IP ${ip}: ${response.statusText}`);
       return null;
@@ -27,12 +26,12 @@ export async function getGeolocation(ip: string): Promise<GeolocationData | null
 
     const data = geolocationResponseSchema.parse(await response.json());
 
-    if (data.status === 'success') {
+    if (data.success !== false) {
       return {
         country: data.country,
         city: data.city,
-        lat: data.lat?.toString(),
-        lon: data.lon?.toString(),
+        lat: data.latitude?.toString(),
+        lon: data.longitude?.toString(),
       };
     }
     return null;

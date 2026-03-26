@@ -30,6 +30,10 @@ import {
   type InsertAgentRegistration,
   type BrowsingActivity,
   type InsertBrowsingActivity,
+  type SocCase,
+  type InsertSocCase,
+  type SocCaseEvent,
+  type InsertSocCaseEvent,
   type UserMfa,
   type InsertUserMfa,
   type SubscriptionTier,
@@ -48,6 +52,8 @@ import {
   rawEvents,
   normalizedEvents,
   threatEvents,
+  socCases,
+  socCaseEvents,
   intelMatches,
   agentRegistrations,
   // ipBlocklist, // Removed: not exported from @shared/schema
@@ -245,6 +251,13 @@ export interface IStorage {
   }>;
   flagDomain(userId: string, domain: string): Promise<void>;
 
+  getSocCase(userId: string, incidentId: string): Promise<SocCase | undefined>;
+  getSocCases(userId: string): Promise<SocCase[]>;
+  getOverdueSocCases(limit?: number): Promise<SocCase[]>;
+  upsertSocCase(userId: string, incidentId: string, updates: Partial<InsertSocCase>): Promise<SocCase>;
+  createSocCaseEvent(event: InsertSocCaseEvent): Promise<SocCaseEvent>;
+  getSocCaseEvents(userId: string, incidentId: string, limit?: number): Promise<SocCaseEvent[]>;
+
   // MFA
   getUserMfa(userId: string): Promise<UserMfa | undefined>;
   upsertUserMfa(userId: string, updates: Partial<UserMfa>): Promise<UserMfa>;
@@ -282,6 +295,12 @@ export class MemStorage implements IStorage {
     };
     filterMap(this.threats);
     filterMap(this.alerts);
+    filterMap(this.socCases);
+    for (const key of Array.from(this.socCaseEvents.keys())) {
+      if (key.startsWith(`${userId}:`)) {
+        this.socCaseEvents.delete(key);
+      }
+    }
     // MemStorage doesn't persist rawEvents/normalizedEvents typically
   }
 
@@ -301,6 +320,8 @@ export class MemStorage implements IStorage {
   private threats: Map<string, Threat>;
   private alerts: Map<string, Alert>;
   private preferences: Map<string, UserPreferences>;
+  private socCases: Map<string, SocCase>;
+  private socCaseEvents: Map<string, SocCaseEvent[]>;
   private auditLogs: Map<string, AdminAuditLog>;
   private mfa: Map<string, UserMfa> = new Map();
   private webauthn: Map<string, WebAuthnCredential[]> = new Map();
@@ -310,6 +331,8 @@ export class MemStorage implements IStorage {
     this.threats = new Map();
     this.alerts = new Map();
     this.preferences = new Map();
+    this.socCases = new Map();
+    this.socCaseEvents = new Map();
     this.auditLogs = new Map();
   }
 
@@ -487,11 +510,81 @@ export class MemStorage implements IStorage {
         browsingMonitoringEnabled: forcedPrefs.browsingMonitoringEnabled ?? false,
         browsingHistoryEnabled: forcedPrefs.browsingHistoryEnabled ?? false,
         browsingConsentGivenAt: forcedPrefs.browsingConsentGivenAt ?? null,
-        flaggedOnlyDefault: (forcedPrefs as any).flaggedOnlyDefault ?? false
+        flaggedOnlyDefault: (forcedPrefs as any).flaggedOnlyDefault ?? false,
+        trustedDnsResolvers: (forcedPrefs as any).trustedDnsResolvers ?? '',
+        dnsDetectionEnabled: (forcedPrefs as any).dnsDetectionEnabled ?? true,
       };
       this.preferences.set(id, newPrefs);
       return newPrefs;
     }
+  }
+
+  async getSocCase(userId: string, incidentId: string): Promise<SocCase | undefined> {
+    return this.socCases.get(`${userId}:${incidentId}`);
+  }
+
+  async getSocCases(userId: string): Promise<SocCase[]> {
+    return Array.from(this.socCases.values())
+      .filter((socCase) => socCase.userId === userId)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
+
+  async getOverdueSocCases(limit: number = 200): Promise<SocCase[]> {
+    const now = Date.now();
+    return Array.from(this.socCases.values())
+      .filter((socCase) => {
+        const status = String(socCase.caseStatus || 'open');
+        const dueTs = socCase.slaDueAt ? new Date(socCase.slaDueAt).getTime() : NaN;
+        return (status === 'open' || status === 'in_progress') && !Number.isNaN(dueTs) && dueTs < now;
+      })
+      .sort((a, b) => {
+        const aTs = a.slaDueAt ? new Date(a.slaDueAt).getTime() : now;
+        const bTs = b.slaDueAt ? new Date(b.slaDueAt).getTime() : now;
+        return aTs - bTs;
+      })
+      .slice(0, limit);
+  }
+
+  async createSocCaseEvent(event: InsertSocCaseEvent): Promise<SocCaseEvent> {
+    const next: SocCaseEvent = {
+      id: randomUUID(),
+      userId: event.userId,
+      incidentId: event.incidentId,
+      eventType: event.eventType,
+      actorId: event.actorId ?? null,
+      fromValue: event.fromValue ?? null,
+      toValue: event.toValue ?? null,
+      metadata: event.metadata ?? null,
+      createdAt: new Date(),
+    };
+    const key = `${event.userId}:${event.incidentId}`;
+    const list = this.socCaseEvents.get(key) || [];
+    this.socCaseEvents.set(key, [next, ...list]);
+    return next;
+  }
+
+  async getSocCaseEvents(userId: string, incidentId: string, limit: number = 100): Promise<SocCaseEvent[]> {
+    const key = `${userId}:${incidentId}`;
+    return (this.socCaseEvents.get(key) || []).slice(0, limit);
+  }
+
+  async upsertSocCase(userId: string, incidentId: string, updates: Partial<InsertSocCase>): Promise<SocCase> {
+    const key = `${userId}:${incidentId}`;
+    const existing = this.socCases.get(key);
+    const now = new Date();
+    const socCase: SocCase = {
+      id: existing?.id || randomUUID(),
+      userId,
+      incidentId,
+      owner: updates.owner ?? existing?.owner ?? null,
+      notes: updates.notes ?? existing?.notes ?? null,
+      caseStatus: updates.caseStatus ?? existing?.caseStatus ?? 'open',
+      slaDueAt: updates.slaDueAt ?? existing?.slaDueAt ?? null,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    };
+    this.socCases.set(key, socCase);
+    return socCase;
   }
 
 
@@ -972,6 +1065,8 @@ export class DbStorage implements IStorage {
 
     // 7. Delete Dependent Records for Threats (Alerts & Decisions)
     await db.delete(alerts).where(eq(alerts.userId, userId));
+    await db.delete(socCaseEvents).where(eq(socCaseEvents.userId, userId));
+    await db.delete(socCases).where(eq(socCases.userId, userId));
     
     if (threatIds.length > 0) {
       await db.delete(threatDecisions).where(inArray(threatDecisions.threatId, threatIds));
@@ -1154,6 +1249,86 @@ export class DbStorage implements IStorage {
         .returning();
       return result[0];
     }
+  }
+
+  async getSocCase(userId: string, incidentId: string): Promise<SocCase | undefined> {
+    const result = await this.db
+      .select()
+      .from(socCases)
+      .where(and(eq(socCases.userId, userId), eq(socCases.incidentId, incidentId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getSocCases(userId: string): Promise<SocCase[]> {
+    return await this.db
+      .select()
+      .from(socCases)
+      .where(eq(socCases.userId, userId))
+      .orderBy(desc(socCases.updatedAt));
+  }
+
+  async getOverdueSocCases(limit: number = 200): Promise<SocCase[]> {
+    return await this.db
+      .select()
+      .from(socCases)
+      .where(and(
+        inArray(socCases.caseStatus, ['open', 'in_progress']),
+        isNotNull(socCases.slaDueAt),
+        lt(socCases.slaDueAt, new Date()),
+      ))
+      .orderBy(socCases.slaDueAt)
+      .limit(limit);
+  }
+
+  async createSocCaseEvent(event: InsertSocCaseEvent): Promise<SocCaseEvent> {
+    const result = await this.db
+      .insert(socCaseEvents)
+      .values(event)
+      .returning();
+    return result[0];
+  }
+
+  async getSocCaseEvents(userId: string, incidentId: string, limit: number = 100): Promise<SocCaseEvent[]> {
+    return await this.db
+      .select()
+      .from(socCaseEvents)
+      .where(and(eq(socCaseEvents.userId, userId), eq(socCaseEvents.incidentId, incidentId)))
+      .orderBy(desc(socCaseEvents.createdAt))
+      .limit(limit);
+  }
+
+  async upsertSocCase(userId: string, incidentId: string, updates: Partial<InsertSocCase>): Promise<SocCase> {
+    const existing = await this.getSocCase(userId, incidentId);
+    const nextValues = {
+      owner: updates.owner ?? existing?.owner ?? null,
+      notes: updates.notes ?? existing?.notes ?? null,
+      caseStatus: updates.caseStatus ?? existing?.caseStatus ?? 'open',
+      slaDueAt: updates.slaDueAt ?? existing?.slaDueAt ?? null,
+      updatedAt: new Date(),
+    };
+
+    if (existing) {
+      const result = await this.db
+        .update(socCases)
+        .set(nextValues)
+        .where(eq(socCases.id, existing.id))
+        .returning();
+      return result[0];
+    }
+
+    const result = await this.db
+      .insert(socCases)
+      .values({
+        userId,
+        incidentId,
+        owner: nextValues.owner,
+        notes: nextValues.notes,
+        caseStatus: nextValues.caseStatus,
+        slaDueAt: nextValues.slaDueAt,
+      })
+      .returning();
+    return result[0];
   }
 
 
@@ -1861,6 +2036,11 @@ export class DbStorage implements IStorage {
         sourceCity: normalizedEvents.sourceCity,
         sourceLat: normalizedEvents.sourceLat,
         sourceLon: normalizedEvents.sourceLon,
+        eventType: normalizedEvents.eventType,
+        action: normalizedEvents.action,
+        protocol: normalizedEvents.protocol,
+        timestamp: normalizedEvents.timestamp,
+        metadata: normalizedEvents.metadata,
       })
       .from(threatEvents)
       .leftJoin(normalizedEvents, eq(threatEvents.normalizedEventId, normalizedEvents.id))

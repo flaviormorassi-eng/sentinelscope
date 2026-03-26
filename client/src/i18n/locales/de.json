@@ -38,6 +38,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "securityCenter": "Sicherheitscenter",
+    "socCenter": "SOC Center",
     "threats": "Bedrohungsprotokoll",
     "alerts": "Warnungen",
     "map": "Bedrohungskarte",

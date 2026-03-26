@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Bot, User as UserIcon, ShieldAlert, Cpu } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface BotStats {
   total: number;
@@ -12,28 +13,29 @@ interface BotStats {
 }
 
 export function BotTrafficChart() {
+  const { t } = useTranslation();
   const { data: stats, isLoading } = useQuery<BotStats>({
     queryKey: ['/api/network/bot-stats'],
     refetchInterval: 15000,
   });
 
   const data = [
-    { name: 'Legitimate Traffic', value: stats?.humans || 0, color: '#10b981' }, // Emerald-500
-    { name: 'Automated/Bot Traffic', value: stats?.bots || 0, color: '#ef4444' }, // Red-500
+    { name: t('networkActivity.legitimateTraffic', 'Legitimate Traffic'), value: stats?.humans || 0, color: 'hsl(var(--chart-2))' },
+    { name: t('networkActivity.botTraffic', 'Automated/Bot Traffic'), value: stats?.bots || 0, color: 'hsl(var(--destructive))' },
   ];
 
   const total = (stats?.humans || 0) + (stats?.bots || 0);
   const botPercentage = total > 0 ? Math.round(((stats?.bots || 0) / total) * 100) : 0;
 
   return (
-    <Card className="h-full bg-[#0c0c14] border-slate-800 shadow-xl overflow-hidden relative group">
+    <Card className="h-full bg-card border-border shadow-xl overflow-hidden relative group">
       {/* Background Matrix Effect (Subtle) */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,23,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(0,0,0,0.06),rgba(100,255,100,0.02),rgba(0,0,0,0.06))] z-[5] pointer-events-none bg-[length:100%_4px,3px_100%] opacity-20" />
+      <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--background)/0)_50%,hsl(var(--foreground)/0.05)_50%),linear-gradient(90deg,hsl(var(--foreground)/0.06),hsl(var(--primary)/0.03),hsl(var(--foreground)/0.06))] z-[5] pointer-events-none bg-[length:100%_4px,3px_100%] opacity-20" />
 
-      <CardHeader className="border-b border-slate-800 bg-slate-900/50 relative z-10 py-3">
-        <CardTitle className="text-sm font-medium font-mono flex items-center gap-2 text-blue-400">
+      <CardHeader className="border-b border-border bg-muted/30 relative z-10 py-3">
+        <CardTitle className="text-sm font-medium font-mono flex items-center gap-2 text-primary">
           <Cpu className="h-4 w-4" />
-          TRAFFIC_ANALYZER // CLASSIFICATION
+          {t('networkActivity.trafficAnalyzer', 'Traffic Analyzer')} // {t('networkActivity.classification', 'Classification')}
         </CardTitle>
       </CardHeader>
 
@@ -57,18 +59,18 @@ export function BotTrafficChart() {
                 ))}
               </Pie>
               <Tooltip 
-                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '4px', color: '#f8fafc' }}
-                itemStyle={{ color: '#e2e8f0' }}
+                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '4px', color: 'hsl(var(--card-foreground))' }}
+                itemStyle={{ color: 'hsl(var(--card-foreground))' }}
               />
             </PieChart>
           </ResponsiveContainer>
           
           {/* Centered Percentage */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className={`text-3xl font-bold ${botPercentage > 30 ? 'text-red-500' : 'text-slate-200'}`}>
+            <span className={`text-3xl font-bold ${botPercentage > 30 ? 'text-destructive' : 'text-foreground'}`}>
               {botPercentage}%
             </span>
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest">BOT LOAD</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{t('networkActivity.botLoad', 'Bot Load')}</span>
           </div>
         </div>
 
@@ -76,44 +78,44 @@ export function BotTrafficChart() {
         <div className="flex-1 w-full space-y-4">
             {/* Top Stats */}
             <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-900/50 p-3 rounded border border-slate-800 flex items-center gap-3">
-                    <div className="p-2 bg-green-500/10 rounded-full">
-                        <UserIcon className="h-4 w-4 text-green-500" />
+              <div className="bg-muted/30 p-3 rounded border border-border flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/10 rounded-full">
+                  <UserIcon className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider">Humans</div>
-                        <div className="text-lg font-bold text-slate-200 font-mono">{(stats?.humans || 0).toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wider">{t('networkActivity.humans', 'Humans')}</div>
+                  <div className="text-lg font-bold text-foreground font-mono">{(stats?.humans || 0).toLocaleString()}</div>
                     </div>
                 </div>
-                <div className={`bg-slate-900/50 p-3 rounded border border-slate-800 flex items-center gap-3 ${botPercentage > 50 ? 'animate-pulse border-red-900/50' : ''}`}>
-                    <div className="p-2 bg-red-500/10 rounded-full">
-                        <Bot className="h-4 w-4 text-red-500" />
+              <div className={`bg-muted/30 p-3 rounded border border-border flex items-center gap-3 ${botPercentage > 50 ? 'animate-pulse border-destructive/40' : ''}`}>
+                <div className="p-2 bg-destructive/10 rounded-full">
+                  <Bot className="h-4 w-4 text-destructive" />
                     </div>
                     <div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider">Bots</div>
-                        <div className="text-lg font-bold text-slate-200 font-mono">{(stats?.bots || 0).toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wider">{t('networkActivity.bots', 'Bots')}</div>
+                  <div className="text-lg font-bold text-foreground font-mono">{(stats?.bots || 0).toLocaleString()}</div>
                     </div>
                 </div>
             </div>
 
             {/* Top Bot List */}
             <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-1">
-                    <span>Top Detected Agents</span>
-                    <span>Hits</span>
+              <div className="flex items-center justify-between text-xs text-muted-foreground uppercase tracking-wider border-b border-border pb-1">
+                <span>{t('networkActivity.topDetectedAgents', 'Top Detected Agents')}</span>
+                <span>{t('networkActivity.hits', 'Hits')}</span>
                 </div>
                 <div className="space-y-1">
                     {stats?.botTypes.slice(0, 3).map((bot, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs font-mono group/item hover:bg-slate-800/30 p-1 rounded transition-colors">
+                  <div key={i} className="flex items-center justify-between text-xs font-mono group/item hover:bg-muted/40 p-1 rounded transition-colors">
                             <div className="flex items-center gap-2 truncate max-w-[180px]">
-                                <ShieldAlert className="h-3 w-3 text-red-400 opacity-50" />
-                                <span className="text-slate-300 truncate" title={bot.browser}>{bot.browser}</span>
+                      <ShieldAlert className="h-3 w-3 text-destructive opacity-50" />
+                      <span className="text-foreground truncate" title={bot.browser}>{bot.browser}</span>
                             </div>
-                            <span className="text-slate-500">{bot.count.toLocaleString()}</span>
+                    <span className="text-muted-foreground">{bot.count.toLocaleString()}</span>
                         </div>
                     ))}
                     {(!stats?.botTypes || stats.botTypes.length === 0) && (
-                        <div className="text-xs text-slate-600 italic py-2">No significant bot signatures detected.</div>
+                  <div className="text-xs text-muted-foreground italic py-2">{t('networkActivity.noSignificantBotSignatures', 'No significant bot signatures detected.')}</div>
                     )}
                 </div>
             </div>

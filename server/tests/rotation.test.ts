@@ -122,6 +122,10 @@ vi.mock('../storage', () => {
       return rec;
     },
 
+    async getUserPreferences() {
+      return { dnsDetectionEnabled: true } as any;
+    },
+
     async createSecurityAuditLog() { /* no-op for tests */ },
   };
   return { storage };

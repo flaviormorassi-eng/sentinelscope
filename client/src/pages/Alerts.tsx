@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { AlertTriangle, Bell, CheckCircle, CircleDot, RefreshCw, XCircle } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle, CircleDot, Radar, RefreshCw, Siren, XCircle } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import type { Threat } from '@shared/schema';
@@ -274,10 +274,35 @@ export default function Alerts() {
 
   return (
     <div className="p-6 space-y-6" data-testid="page-alerts">
+      <Card className="relative overflow-hidden border-border/60">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-chart-5/10" />
+        <CardContent className="relative p-4 md:p-6">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-md border bg-background/70 px-2.5 py-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Radar className="h-3.5 w-3.5 text-primary" />
+                {t('alerts.commandDeck', 'Alert Command Deck')}
+              </div>
+              <h2 className="text-2xl font-bold flex items-center gap-2"><Bell className="h-6 w-6" /> {t('nav.alerts')}</h2>
+              <p className="text-sm text-muted-foreground">{t('alerts.subtitle', 'Real-time security notifications and important system events.')}</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="rounded-md border bg-background/70 px-3 py-2 min-w-[180px]">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('alerts.unreadSignal', 'Unread Signal')}</p>
+                <p className="text-sm font-semibold flex items-center gap-2"><Siren className="h-4 w-4 text-chart-5" />{unreadCount}</p>
+              </div>
+              <div className="rounded-md border bg-background/70 px-3 py-2 min-w-[180px]">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('alerts.totalInQueue', 'Total In Queue')}</p>
+                <p className="text-sm font-semibold">{listResp?.total ?? 0}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold flex items-center gap-2"><Bell className="h-6 w-6" /> {t('nav.alerts')}</h2>
-          <p className="text-sm text-muted-foreground">{t('alerts.subtitle', 'Real-time security notifications and important system events.')}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('alerts.liveTriage', 'Live triage controls')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}><RefreshCw className="h-4 w-4 mr-1" />{t('common.refresh', 'Refresh')}</Button>

@@ -35,7 +35,7 @@ Each log record stored in `security_audit_logs` includes:
   - Current values: `auth`, `api_key`
 - `eventCategory` 
   - Broader compliance grouping (used for reporting filters)
-  - Current values: `authentication`, `security`
+  - Current values: `authentication`, `security`, `access_control`, `data_access`
 
 Multiple `eventType` values can roll up into a single `eventCategory` in compliance dashboards.
 
@@ -66,6 +66,21 @@ These are treated as security because they reflect protective controls.
 | `ip_blocked_destination` | Destination IP in blocklist during event ingest | warning | `{ ip }` |
 | `ip_blocked_browsing` | Blocklisted IP in browsing ingest batch | warning | `{ ip }` |
 
+### Access Control (`eventType=SOC_RBAC_DENIED`, `eventCategory=ACCESS_CONTROL`)
+| Action | Trigger | Severity | Metadata |
+|--------|---------|----------|----------|
+| `soc_rbac_denied` | SOC endpoint write blocked by role policy (e.g., auditor write attempt) | medium | `{ method, path, requiredPermission, role }` |
+
+### Compliance Data Export (`eventType=COMPLIANCE_AUDIT_EXPORT`, `eventCategory=DATA_ACCESS`)
+| Action | Trigger | Severity | Metadata |
+|--------|---------|----------|----------|
+| `compliance_audit_exported` | Signed compliance export generated | info | `{ keyId, retentionDays }` with `details.{recordCount,payloadHash,chainHash,filters}` |
+
+### Compliance Export Verification (`eventType=COMPLIANCE_AUDIT_EXPORT_VERIFY`, `eventCategory=DATA_ACCESS`)
+| Action | Trigger | Severity | Metadata |
+|--------|---------|----------|----------|
+| `compliance_audit_export_verified` | Export bundle verification request executed | info/warning | `status=success` when valid; `status=failure` with `details.{checks,reasons}` when tampered/invalid |
+
 ## 5. Severity Guidelines
 Use severities to aid triage:
 - `info`: Normal operational events (successful rotation)
@@ -85,6 +100,29 @@ Query parameters:
 - `startDate`, `endDate` (ISO timestamps)
 - `limit` (defaults 100)
 
+Signed immutable export endpoint: `GET /api/compliance/audit-logs/export` (admin only)
+- Supports same filters as `/api/compliance/audit-logs` plus `limit` (max 10000)
+- Returns deterministic JSON bundle with:
+  - `retention` lock metadata (`immutable`, `retentionDays`, `lockUntil`)
+  - `integrity` block (`payloadHash`, `chainHash`, `signature`, `keyId`)
+
+Verification endpoint: `POST /api/compliance/audit-logs/export/verify` (admin only)
+- Request body: `{ "bundle": <export bundle> }`
+- Success: `200` with verification checks
+- Tampered/invalid: `409` with `code=audit_export_verification_failed`
+
+Offline verification CLI:
+- Command: `npm run audit:verify -- --file <bundle.json>`
+- Optional key override: `--key <signing-key>`
+- If `--key` is omitted, the CLI uses `AUDIT_EXPORT_SIGNING_KEY` and then `JWT_SECRET` in non-production.
+- Exit codes: `0` valid, `1` invalid/tampered, `2` usage/config error.
+- CI-safe combined smoke command: `npm run audit:verify:smoke` (generates sample bundle, validates success path, then validates tamper detection path)
+
+Environment variables:
+- `AUDIT_EXPORT_SIGNING_KEY` (required in production)
+- `AUDIT_EXPORT_KEY_ID` (optional key identifier included in exports)
+- `AUDIT_EXPORT_RETENTION_DAYS` (optional, clamped 30-3650)
+
 ### Examples
 ```bash
 # All authentication failures last 24h
@@ -98,6 +136,15 @@ curl -H "Authorization: Bearer <ADMIN_JWT>" \
 # Failed events for a specific user
 curl -H "Authorization: Bearer <ADMIN_JWT>" \
   'https://your.domain/api/compliance/audit-logs?userId=<USER_ID>&eventCategory=authentication'
+
+# Offline verify an exported bundle
+npm run audit:verify -- --file ./audit-export.json
+
+# One-command offline tamper smoke test (expects detection)
+npm run audit:verify:tamper -- --file ./audit-export.json
+
+# CI-safe combined smoke check (auto-generates sample and runs both paths)
+npm run audit:verify:smoke
 ```
 
 ## 7. Rotation Window Auditing
@@ -139,7 +186,9 @@ Recommended retention: 365 days (adjust per compliance scope). Purge beyond rete
 authentication: missing_token, invalid_or_expired_token, no_user_identity, internal_error,
                 optional_invalid_token, api_key_missing, api_key_invalid, event_source_inactive
 security:       rotate, force_expire, ip_blocked_source, ip_blocked_destination, ip_blocked_browsing
+access_control: soc_rbac_denied
+data_access:    compliance_audit_exported, compliance_audit_export_verified
 ```
 
 ---
-_Last updated: 2025-11-13_
+_Last updated: 2026-03-26_

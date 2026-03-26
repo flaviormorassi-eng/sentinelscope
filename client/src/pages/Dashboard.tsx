@@ -16,7 +16,12 @@ import {
   ShieldAlert,
   Download,
   Calendar,
-  MoreHorizontal
+  MoreHorizontal,
+  Radar,
+  Sparkles,
+  Globe2,
+  Cpu,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Threat, ThreatEvent, UserPreferences } from '@shared/schema';
@@ -131,6 +136,13 @@ export default function Dashboard() {
   };
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+  const CHART_COLORS = [
+    'hsl(var(--chart-1))',
+    'hsl(var(--chart-2))',
+    'hsl(var(--chart-3))',
+    'hsl(var(--chart-4))',
+    'hsl(var(--chart-5))',
+  ];
 
   // Calculate some "mock" trends for display if not available (Enhancement)
   // In a real app, these would come from the API comparing vs previous period.
@@ -140,47 +152,72 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-4 md:p-8 md:pt-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-2">
-        <div>
-          <div className="flex items-center gap-4 flex-wrap">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">{t('dashboard.title')}</h2>
-            {preferences?.monitoringMode === 'real' ? (
-              <Badge variant="destructive" className="animate-pulse gap-1.5 shadow-md shadow-red-500/20 whitespace-nowrap">
-                <span className="h-2 w-2 rounded-full bg-white" />
-                LIVE
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-muted-foreground gap-1.5 whitespace-nowrap">
-                <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
-                DEMO
-              </Badge>
-            )}
-          </div>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">
-            {t('app.tagline')} - Welcome back, {user?.displayName || user?.email}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-            {isAdmin && (
-                <Button variant="default" size="sm" onClick={() => setLocation('/admin')}>
-                    <Shield className="mr-2 h-4 w-4" />
-                    <span className="hidden md:inline">Admin</span>
-                </Button>
-            )}
-            <Button variant="outline" size="sm" className="hidden sm:flex">
-                <Calendar className="mr-2 h-4 w-4" />
-                Last 24 Hours
-            </Button>
-            <Button size="sm" onClick={handleDownloadReport} disabled={isGeneratingReport}>
-                {isGeneratingReport ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      <Card className="relative overflow-hidden border-border/60">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-chart-2/10" />
+        <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full border border-primary/20" />
+        <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full border border-primary/30" />
+        <CardContent className="relative p-4 md:p-6">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto]">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
+                <Radar className="h-3.5 w-3.5 text-primary" />
+                {t('dashboard.commandCenter', 'Command Center')}
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-2xl md:text-3xl font-bold tracking-tight">{t('dashboard.title')}</h2>
+                {preferences?.monitoringMode === 'real' ? (
+                  <Badge variant="destructive" className="animate-pulse gap-1.5 whitespace-nowrap">
+                    <span className="h-2 w-2 rounded-full bg-white" />
+                    {t('dashboard.liveMode', 'LIVE')}
+                  </Badge>
                 ) : (
-                    <Download className="mr-2 h-4 w-4" />
+                  <Badge variant="outline" className="text-muted-foreground gap-1.5 whitespace-nowrap">
+                    <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
+                    {t('dashboard.demoMode', 'DEMO')}
+                  </Badge>
                 )}
-                <span className="hidden md:inline">{isGeneratingReport ? 'Generating...' : 'Download Report'}</span>
-            </Button>
-        </div>
-      </div>
+              </div>
+              <p className="text-sm md:text-base text-muted-foreground">
+                {t('app.tagline')} • {t('dashboard.welcomeBack', 'Welcome back')}, {user?.displayName || user?.email}
+              </p>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div className="rounded-md border bg-background/60 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('dashboard.signalHealth', 'Signal Health')}</p>
+                  <p className="text-sm font-semibold flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" />{stats?.active ? t('dashboard.activeMonitoring', 'Active Monitoring') : t('dashboard.idleMonitoring', 'Idle')}</p>
+                </div>
+                <div className="rounded-md border bg-background/60 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('dashboard.threatPulse', 'Threat Pulse')}</p>
+                  <p className="text-sm font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-chart-2" />{stats?.alerts || 0} {t('dashboard.alertsToday', 'alerts')}</p>
+                </div>
+                <div className="rounded-md border bg-background/60 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('dashboard.networkScope', 'Network Scope')}</p>
+                  <p className="text-sm font-semibold flex items-center gap-2"><Globe2 className="h-4 w-4 text-chart-1" />{(stats?.totalEvents || 0).toLocaleString()} {t('dashboard.eventsLabel', 'events')}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 justify-end flex-wrap">
+              {isAdmin && (
+                <Button variant="default" size="sm" onClick={() => setLocation('/admin')}>
+                  <Shield className="mr-2 h-4 w-4" />
+                  <span className="hidden md:inline">{t('nav.adminPanel', 'Admin')}</span>
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="hidden sm:flex">
+                <Calendar className="mr-2 h-4 w-4" />
+                {t('dashboard.last24h', 'Last 24 Hours')}
+              </Button>
+              <Button size="sm" onClick={handleDownloadReport} disabled={isGeneratingReport}>
+                {isGeneratingReport ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                <span className="hidden md:inline">{isGeneratingReport ? t('dashboard.generating', 'Generating...') : t('dashboard.downloadReport', 'Download Report')}</span>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="overview" className="space-y-4">
         <div className="w-full overflow-x-auto pb-1">
@@ -246,6 +283,37 @@ export default function Dashboard() {
         </TabsContent>
 
         <TabsContent value="overview" className="space-y-4">
+          <Card className="border-border/60">
+            <CardContent className="p-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('dashboard.aiResponseCore', 'Response Core')}</p>
+                    <Cpu className="h-4 w-4 text-primary" />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold">{stats?.blocked || 0}</p>
+                  <p className="text-xs text-muted-foreground">{t('dashboard.blockedOperations', 'automated containment actions')}</p>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('dashboard.realtimePressure', 'Realtime Pressure')}</p>
+                    <Activity className="h-4 w-4 text-chart-4" />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold">{stats?.active || 0}</p>
+                  <p className="text-xs text-muted-foreground">{t('dashboard.activeThreatChannels', 'active threat channels')}</p>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('dashboard.alertFocus', 'Alert Focus')}</p>
+                    <Bell className="h-4 w-4 text-chart-3" />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold">{stats?.alerts || 0}</p>
+                  <p className="text-xs text-muted-foreground">{t('dashboard.requiresAnalystAttention', 'requiring analyst attention')}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Stats Cards Row */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
@@ -310,7 +378,7 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle>{t('dashboard.threatTimeline')}</CardTitle>
                 <CardDescription>
-                    Live threat detection volume over the last 24 hours.
+                    {t('dashboard.liveThreatTimelineDescription', 'Live threat detection volume over the last 24 hours.')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="pl-0 md:pl-2">
@@ -320,19 +388,19 @@ export default function Dashboard() {
                       <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                          <defs>
                             <linearGradient id="colorThreats" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                                <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0}/>
                             </linearGradient>
                          </defs>
                         <XAxis 
                             dataKey="time" 
-                            stroke="#888888" 
+                          stroke="hsl(var(--muted-foreground))" 
                             fontSize={12} 
                             tickLine={false} 
                             axisLine={false} 
                         />
                         <YAxis 
-                            stroke="#888888" 
+                          stroke="hsl(var(--muted-foreground))" 
                             fontSize={12} 
                             tickLine={false} 
                             axisLine={false} 
@@ -342,10 +410,10 @@ export default function Dashboard() {
                             contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)' }}
                             itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
                         />
-                        <Area type="monotone" dataKey="threats" stroke="#8884d8" fillOpacity={1} fill="url(#colorThreats)" />
+                        <Area type="monotone" dataKey="threats" stroke="hsl(var(--chart-1))" fillOpacity={1} fill="url(#colorThreats)" />
                       </AreaChart>
                     </ResponsiveContainer>
-                  ) : <div className="flex h-full items-center justify-center text-muted-foreground">No data available</div>}
+                  ) : <div className="flex h-full items-center justify-center text-muted-foreground">{t('dashboard.noData', 'No data available')}</div>}
                  </div>
               </CardContent>
             </Card>
@@ -355,7 +423,7 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle>{t('dashboard.threatsByType')}</CardTitle>
                 <CardDescription>
-                  Distribution of detected threat categories.
+                  {t('dashboard.threatTypeDistributionDescription', 'Distribution of detected threat categories.')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -374,7 +442,7 @@ export default function Dashboard() {
                             paddingAngle={5}
                         >
                           {typeDistribution.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                           ))}
                         </Pie>
                         <Tooltip 
@@ -384,7 +452,7 @@ export default function Dashboard() {
                          <Legend verticalAlign="bottom" height={36}/>
                       </PieChart>
                      </ResponsiveContainer>
-                  ) : <div className="flex h-full items-center justify-center text-muted-foreground">No data available</div>}
+                  ) : <div className="flex h-full items-center justify-center text-muted-foreground">{t('dashboard.noData', 'No data available')}</div>}
                 </div>
               </CardContent>
             </Card>
@@ -395,13 +463,13 @@ export default function Dashboard() {
           {/* Recent Threats Feed */}
           <Card className="col-span-4">
              <CardHeader>
-                <CardTitle>Recent Detected Threats</CardTitle>
-                <CardDescription>Latest security events detected across your network.</CardDescription>
+               <CardTitle>{t('dashboard.recentDetectedThreats', 'Recent Detected Threats')}</CardTitle>
+               <CardDescription>{t('dashboard.latestSecurityEventsDescription', 'Latest security events detected across your network.')}</CardDescription>
              </CardHeader>
              <CardContent>
                 <div className="space-y-4">
-                    {threatsLoading && <div>Loading threats...</div>}
-                    {recentThreats.length === 0 && !threatsLoading && <div className="text-center text-muted-foreground">No recent threats detected.</div>}
+                  {threatsLoading && <div>{t('dashboard.loadingThreats', 'Loading threats...')}</div>}
+                  {recentThreats.length === 0 && !threatsLoading && <div className="text-center text-muted-foreground">{t('dashboard.noRecentThreats', 'No recent threats detected.')}</div>}
                     <ScrollArea className="h-[300px] w-full pr-4">
                          <div className="space-y-4">
                             {recentThreats.map((threat, i) => {
@@ -414,7 +482,7 @@ export default function Dashboard() {
 
                                 const tObj = threat as any;
                                 const title = isReal ? tObj.threatType : tObj.description;
-                                const displayTitle = title || 'Unknown Threat Event';
+                                const displayTitle = title || t('dashboard.unknownThreatEvent', 'Unknown Threat Event');
                                 const sev = tObj.severity || 'low';
                                 // Add logic to look real
                                 const srcIp = tObj.sourceIP || `10.0.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
@@ -427,7 +495,7 @@ export default function Dashboard() {
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <p className="text-sm font-medium leading-none">{displayTitle.substring(0, 50)}</p>
-                                                    {isReal && <Badge variant="outline" className="text-[10px] h-5">Network</Badge>}
+                                                    {isReal && <Badge variant="outline" className="text-[10px] h-5">{t('dashboard.network', 'Network')}</Badge>}
                                                 </div>
                                                 <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono text-xs mt-1">
                                                     <span>{timeStr}</span> 
@@ -445,7 +513,7 @@ export default function Dashboard() {
                                         </div>
                                         <div className="flex items-center space-x-4">
                                              <Badge variant={getSeverityBadgeVariant(sev)} className="uppercase">{sev}</Badge>
-                                             {sev === 'critical' && <Button size="sm" variant="destructive">Block</Button>}
+                                             {sev === 'critical' && <Button size="sm" variant="destructive">{t('common.block', 'Block')}</Button>}
                                              {sev !== 'critical' && <Button size="sm" variant="ghost"><MoreHorizontal className="h-4 w-4" /></Button>}
                                         </div>
                                     </div>

@@ -133,6 +133,8 @@ export const userPreferences = pgTable("user_preferences", {
   browsingConsentGivenAt: timestamp("browsing_consent_given_at"),
   // UI defaults persisted server-side
   flaggedOnlyDefault: boolean("flagged_only_default").notNull().default(false),
+  trustedDnsResolvers: text("trusted_dns_resolvers").notNull().default(''),
+  dnsDetectionEnabled: boolean("dns_detection_enabled").notNull().default(true),
 });
 
 // Admin audit log
@@ -337,6 +339,67 @@ export const threatEvents = pgTable(
       table.createdAt,
     ),
     statusIdx: index("threat_events_status_idx").on(table.mitigationStatus),
+  }),
+);
+
+export const socCases = pgTable(
+  "soc_cases",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id),
+    incidentId: varchar("incident_id").notNull(),
+    owner: text("owner"),
+    notes: text("notes"),
+    caseStatus: text("case_status").notNull().default("open"),
+    slaDueAt: timestamp("sla_due_at"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
+  },
+  (table) => ({
+    userIncidentUnique: unique("soc_cases_user_incident_unique").on(
+      table.userId,
+      table.incidentId,
+    ),
+    userUpdatedIdx: index("soc_cases_user_updated_idx").on(
+      table.userId,
+      table.updatedAt,
+    ),
+  }),
+);
+
+export const socCaseEvents = pgTable(
+  "soc_case_events",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id),
+    incidentId: varchar("incident_id").notNull(),
+    eventType: text("event_type").notNull(),
+    actorId: varchar("actor_id").references(() => users.id),
+    fromValue: text("from_value"),
+    toValue: text("to_value"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+  },
+  (table) => ({
+    userIncidentCreatedIdx: index("soc_case_events_user_incident_created_idx").on(
+      table.userId,
+      table.incidentId,
+      table.createdAt,
+    ),
   }),
 );
 
@@ -598,6 +661,17 @@ export const insertBrowsingActivitySchema = createInsertSchema(
   detectedAt: true,
 });
 
+export const insertSocCaseSchema = createInsertSchema(socCases).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSocCaseEventSchema = createInsertSchema(socCaseEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -648,6 +722,12 @@ export type BrowsingActivity = typeof browsingActivity.$inferSelect;
 export type InsertBrowsingActivity = z.infer<
   typeof insertBrowsingActivitySchema
 >;
+
+export type SocCase = typeof socCases.$inferSelect;
+export type InsertSocCase = z.infer<typeof insertSocCaseSchema>;
+
+export type SocCaseEvent = typeof socCaseEvents.$inferSelect;
+export type InsertSocCaseEvent = z.infer<typeof insertSocCaseEventSchema>;
 
 // Subscription tiers
 export const SUBSCRIPTION_TIERS = {
