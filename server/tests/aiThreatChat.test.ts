@@ -92,6 +92,16 @@ describe('/api/ai/chat', () => {
 
     expect(typeof res.body.summary).toBe('string');
     expect(['low', 'medium', 'high', 'critical']).toContain(res.body.riskLevel);
+    expect(Array.isArray(res.body.mitreContext?.tactics)).toBe(true);
+    expect(Array.isArray(res.body.mitreContext?.techniques)).toBe(true);
+    expect(typeof res.body.mitreContext?.confidence).toBe('number');
+    expect(res.body.mitreContext?.tactics?.length).toBeGreaterThan(0);
+    expect(res.body.mitreContext?.techniques?.length).toBeGreaterThan(0);
+    expect(res.body.mitreContext?.techniques).toContain('T1566');
+    expect(['p1', 'p2', 'p3', 'p4']).toContain(res.body.assetImpact?.priority);
+    expect(typeof res.body.assetImpact?.score).toBe('number');
+    expect(typeof res.body.assetImpact?.rationale).toBe('string');
+    expect(res.body.assetImpact?.rationale?.length).toBeGreaterThan(12);
     expect(res.body.recommendation?.status).toBe('awaiting_human_decision');
     expect(res.body.poweredByAi).toBe(false);
     expect(res.body.enforcement?.executed).toBe(false);

@@ -5188,6 +5188,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let selectedThreat: any | undefined;
       let selectedThreatEvent: any | undefined;
       let selectedAlert: any | undefined;
+      let resolvedThreatId: string | null = parsed.threatId || null;
+      let resolvedThreatEventId: string | null = parsed.threatEventId || null;
 
       if (parsed.threatId) {
         selectedThreat = await storage.getThreatById(parsed.threatId);
@@ -5209,11 +5211,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      if (!selectedThreat && !selectedThreatEvent) {
+        const extractedIds = parsed.message.match(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi) || [];
+        for (const candidateId of extractedIds.slice(0, 3)) {
+          const candidateEvent = await storage.getThreatEventById(candidateId);
+          if (candidateEvent && candidateEvent.userId === userId) {
+            selectedThreatEvent = candidateEvent;
+            resolvedThreatEventId = candidateId;
+            break;
+          }
+
+          const candidateThreat = await storage.getThreatById(candidateId);
+          if (candidateThreat && candidateThreat.userId === userId) {
+            selectedThreat = candidateThreat;
+            resolvedThreatId = candidateId;
+            break;
+          }
+        }
+      }
+
       if (parsed.alertId) {
         const userAlerts = await storage.getAlerts(userId);
         selectedAlert = userAlerts.find((a: any) => String(a.id) === String(parsed.alertId));
         if (!selectedAlert) {
           return res.status(404).json({ error: 'Alert not found' });
+        }
+
+        if (!selectedThreat && selectedAlert?.threatId) {
+          const alertThreat = await storage.getThreatById(String(selectedAlert.threatId));
+          if (alertThreat && alertThreat.userId === userId) {
+            selectedThreat = alertThreat;
+            resolvedThreatId = alertThreat.id;
+          }
         }
       }
 
@@ -5249,8 +5278,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tenantAiMode = getTenantAiMode(userId);
       const actionDraft = tenantAiMode === 'prefilled_actions'
         ? {
-            threatId: parsed.threatId || null,
-            threatEventId: parsed.threatEventId || null,
+            threatId: resolvedThreatId,
+            threatEventId: resolvedThreatEventId,
             suggestedDecision: assessment.recommendation?.suggestedAction || 'investigate',
             reason: assessment.recommendation?.reason || null,
             requiresHumanConfirmation: true,
@@ -5269,8 +5298,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: {
           language: parsed.language,
           messageLength: parsed.message.length,
-          threatId: parsed.threatId || null,
-          threatEventId: parsed.threatEventId || null,
+          threatId: resolvedThreatId,
+          threatEventId: resolvedThreatEventId,
           alertId: parsed.alertId || null,
           includeRecent: parsed.includeRecent,
           poweredByAi: assessment.poweredByAi,

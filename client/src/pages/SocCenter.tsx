@@ -144,6 +144,16 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
     summary: string;
     riskLevel: 'low' | 'medium' | 'high' | 'critical' | string;
     confidence: number;
+    mitreContext?: {
+      tactics?: string[];
+      techniques?: string[];
+      confidence?: number;
+    };
+    assetImpact?: {
+      priority?: 'p1' | 'p2' | 'p3' | 'p4' | string;
+      score?: number;
+      rationale?: string;
+    };
     recommendation: {
       status: 'awaiting_human_decision' | string;
       suggestedAction: 'block' | 'allow' | 'monitor' | 'investigate' | string;
@@ -435,6 +445,13 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
   const riskLevelVariant = (riskLevel: string): 'destructive' | 'secondary' | 'default' | 'outline' => {
     if (riskLevel === 'critical' || riskLevel === 'high') return 'destructive';
     if (riskLevel === 'medium') return 'secondary';
+    return 'outline';
+  };
+
+  const assetPriorityVariant = (priority: string): 'destructive' | 'secondary' | 'default' | 'outline' => {
+    if (priority === 'p1') return 'destructive';
+    if (priority === 'p2') return 'secondary';
+    if (priority === 'p3') return 'default';
     return 'outline';
   };
 
@@ -799,11 +816,69 @@ export default function SocCenter({ embedded = false }: SocCenterProps) {
                 {t('soc.ai.confidence', 'Confidence')}: {aiAssessment.confidence}%
               </Badge>
             )}
+            {aiAssessment?.assetImpact?.priority && (
+              <Badge
+                variant={assetPriorityVariant(String(aiAssessment.assetImpact.priority).toLowerCase())}
+                data-testid="soc-ai-asset-priority"
+              >
+                {t('soc.ai.assetPriority', 'Asset Priority')}: {String(aiAssessment.assetImpact.priority).toUpperCase()}
+              </Badge>
+            )}
+            {typeof aiAssessment?.assetImpact?.score === 'number' && (
+              <Badge variant="outline" data-testid="soc-ai-asset-score">
+                {t('soc.ai.assetScore', 'Asset Score')}: {aiAssessment.assetImpact.score}
+              </Badge>
+            )}
+            {Array.isArray(aiAssessment?.mitreContext?.tactics) && aiAssessment.mitreContext.tactics.length > 0 && (
+              <Badge variant="outline" data-testid="soc-ai-mitre-tactics-count">
+                {t('soc.ai.mitreTactics', 'MITRE Tactics')}: {aiAssessment.mitreContext.tactics.length}
+              </Badge>
+            )}
+            {Array.isArray(aiAssessment?.mitreContext?.techniques) && aiAssessment.mitreContext.techniques.length > 0 && (
+              <Badge variant="outline" data-testid="soc-ai-mitre-techniques-count">
+                {t('soc.ai.mitreTechniques', 'MITRE Techniques')}: {aiAssessment.mitreContext.techniques.length}
+              </Badge>
+            )}
           </div>
 
           {aiAssessment && (
             <div className="rounded border bg-muted/20 p-3 space-y-2" data-testid="soc-ai-response">
               <p className="text-sm">{aiAssessment.summary}</p>
+              {(Array.isArray(aiAssessment.mitreContext?.tactics) && aiAssessment.mitreContext.tactics.length > 0) ||
+              (Array.isArray(aiAssessment.mitreContext?.techniques) && aiAssessment.mitreContext.techniques.length > 0) ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">{t('soc.ai.mitreOverview', 'MITRE ATT&CK Overview')}</p>
+                  {Array.isArray(aiAssessment.mitreContext?.tactics) && aiAssessment.mitreContext.tactics.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('soc.ai.tactics', 'Tactics')}: {aiAssessment.mitreContext.tactics.slice(0, 5).join(', ')}
+                    </p>
+                  )}
+                  {Array.isArray(aiAssessment.mitreContext?.techniques) && aiAssessment.mitreContext.techniques.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('soc.ai.techniques', 'Techniques')}: {aiAssessment.mitreContext.techniques.slice(0, 6).join(', ')}
+                    </p>
+                  )}
+                  {typeof aiAssessment.mitreContext?.confidence === 'number' && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('soc.ai.mitreConfidence', 'Mapping confidence')}: {aiAssessment.mitreContext.confidence}%
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
+              {(aiAssessment.assetImpact?.priority || aiAssessment.assetImpact?.rationale) && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">{t('soc.ai.assetImpact', 'Asset Impact')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('soc.ai.assetPriority', 'Asset Priority')}: {(aiAssessment.assetImpact?.priority || 'p4').toUpperCase()}
+                    {typeof aiAssessment.assetImpact?.score === 'number' ? ` • ${t('soc.ai.assetScore', 'Asset Score')}: ${aiAssessment.assetImpact.score}` : ''}
+                  </p>
+                  {aiAssessment.assetImpact?.rationale && (
+                    <p className="text-xs text-muted-foreground">{aiAssessment.assetImpact.rationale}</p>
+                  )}
+                </div>
+              )}
+
               <p className="text-xs text-muted-foreground">
                 {t('soc.ai.suggestedAction', 'Suggested action')}: {aiAssessment.recommendation?.suggestedAction || '-'}
                 {' • '}
