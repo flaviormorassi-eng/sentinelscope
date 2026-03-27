@@ -126,10 +126,13 @@ def collect_connections_lsof():
                 # name_field is like 192.168.1.5:49448->1.1.1.1:443
                 local, remote = name_field.split("->")
                 if ":" not in remote: continue
+                if ":" not in local: continue
                 
                 # Handle IPv6 brackets if present
                 r_ip, r_port = remote.rsplit(':', 1)
                 r_ip = r_ip.strip("[]")
+                l_ip, l_port = local.rsplit(':', 1)
+                l_ip = l_ip.strip("[]")
                 
                 # Skip loopback
                 if r_ip.startswith("127.") or r_ip == "::1" or r_ip == "localhost":
@@ -166,6 +169,9 @@ def collect_connections_lsof():
                     "fullUrl": full_url,
                     "browser": command,
                     "ipAddress": r_ip,
+                    "sourceIp": l_ip,
+                    "sourcePort": int(l_port) if str(l_port).isdigit() else None,
+                    "destinationPort": int(r_port) if str(r_port).isdigit() else None,
                     "detectedAt": timestamp_iso
                 }
                 events.append(event)
@@ -219,6 +225,8 @@ def collect_connections():
             
             pid = conn.pid
             proc_name = get_process_name(pid) if pid else "unknown"
+            local_ip = getattr(conn.laddr, 'ip', None)
+            local_port = getattr(conn.laddr, 'port', None)
             
             # Resolve hostname
             hostname = resolve_ip(remote_ip)
@@ -245,6 +253,9 @@ def collect_connections():
                 "fullUrl": full_url,
                 "browser": proc_name,
                 "ipAddress": remote_ip,
+                "sourceIp": local_ip,
+                "sourcePort": local_port,
+                "destinationPort": remote_port,
                 "detectedAt": timestamp_iso
             }
             events.append(event)
@@ -288,18 +299,28 @@ def send_flow_events(events):
     }
 
     for ev in events:
-        ip = ev.get("ipAddress")
-        if not ip:
+        destination_ip = ev.get("ipAddress")
+        if not destination_ip:
             continue
+
+        source_ip = ev.get("sourceIp") or "unknown"
+        process_name = ev.get('browser', 'unknown')
+        destination_label = ev.get('domain') or destination_ip
+
+        message = (
+            f"Outbound connection observed: process={process_name} "
+            f"source={source_ip} destination={destination_label} ({destination_ip})"
+        )
 
         payload = {
             "timestamp": ev.get("detectedAt"),
             "severity": classify_connection_severity(ev),
             "eventType": "network_connection",
-            "sourceIp": ip,
+            "sourceIp": source_ip,
+            "destinationIp": destination_ip,
             "protocol": ev.get("protocol") or "tcp",
             "action": "observed",
-            "message": f"Outbound connection observed: {ev.get('browser','unknown')} -> {ev.get('domain','unknown')}",
+            "message": message,
             "sourceURL": ev.get("fullUrl"),
             "deviceName": ev.get("browser"),
             "threatVector": "network",
@@ -309,9 +330,13 @@ def send_flow_events(events):
             }
         }
 
-        source_port = extract_port_from_event(ev)
+        source_port = ev.get("sourcePort")
         if source_port is not None:
             payload["sourcePort"] = source_port
+
+        destination_port = ev.get("destinationPort") or extract_port_from_event(ev)
+        if destination_port is not None:
+            payload["destinationPort"] = destination_port
 
         try:
             response = requests.post(EVENTS_INGEST_URL, json=payload, headers=headers, timeout=5)
